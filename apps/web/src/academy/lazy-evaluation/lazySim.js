@@ -1,5 +1,7 @@
 /* Silnik symulatora lazy evaluation: imperatywna animacja DOM na 9 wierszach.
-   Przeniesiony 1:1 z zaakceptowanego artefaktu i opakowany komponentem LazySim.tsx.
+   Przeniesiony z zaakceptowanego artefaktu i opakowany komponentem LazySim.tsx. Po review MVP (issue #1)
+   zmieniły się tylko teksty prowadzące: rozdzielają odczyt opisu pliku od odczytu wierszy i nie obiecują,
+   że każda akcja zawsze liczy wszystko od zera. Logika i układ sceny są bez zmian.
    PLANS (content/spark/lazy-evaluation/plans.json) to plany po optymalizacji z prawdziwego explain(). */
 export function createLazySim(els, PLANS) {
   const { scene, sayEl, factsEl, dock, ticks, missionEl } = els;
@@ -22,7 +24,7 @@ export function createLazySim(els, PLANS) {
   COLS.forEach((c, i) => { const h = el('div', 'colh', c); h.style.left = (16 + i * 44) + 'px'; src.appendChild(h); heads[c] = h; srcCells[c] = []; });
   const cellEl = (c, r) => { const d = el('div', 'cell'); d.dataset.c = c; if (c === 'status') d.className = 'cell dot' + (r.status === 'active' ? ' on' : ''); else d.textContent = r[c]; return d; };
   ROWS.forEach((r, i) => { const row = el('div', 'srow'); row.style.top = rowY(i) + 'px'; COLS.forEach(c => { const d = cellEl(c, r); srcCells[c].push(d); row.appendChild(d); }); src.appendChild(row); });
-  const readTag = el('div', 'src-tag'); readTag.innerHTML = '<span>odczyty pliku</span><span class="dots"></span><span class="none">jeszcze żadnego</span>'; scene.appendChild(readTag);
+  const readTag = el('div', 'src-tag'); readTag.innerHTML = '<span>odczyty wierszy</span><span class="dots"></span><span class="none">jeszcze żadnego</span>'; scene.appendChild(readTag);
   const pushTag = el('div', 'push-tag', 'filtr przekazany do czytnika'); scene.appendChild(pushTag);
   scene.appendChild(el('div', 'rail'));
   const t2 = el('div', 'zone-t', 'wynik'); t2.style.left = RES + 'px'; scene.appendChild(t2);
@@ -151,11 +153,11 @@ export function createLazySim(els, PLANS) {
   }
   function facts(plan, action) {
     const out = [], ops = st.ops, n = plan.read.length;
-    if (st.cache) out.push('Z cache() Spark musi policzyć cały DataFrame, bo ma go zapamiętać w całości. Nawet jeśli akcją jest count().');
+    if (st.cache) out.push('Z cache() Spark liczy DataFrame w takiej postaci, w jakiej ma go zapamiętać, ze wszystkimi jego kolumnami. Nawet jeśli akcją jest count().');
     if (n === 0) out.push('Nie czyta żadnej kolumny. Do policzenia wierszy wystarczy mu ich liczba.');
     else if (n < 4) out.push('Czyta ' + n + ' z 4 kolumn: ' + plan.read.map(c => FULL[c]).join(', ') + '. Reszty nie dotyka.');
     if (ops.indexOf('s') > -1 && ops.indexOf('f') > ops.indexOf('s') && plan.n[0] && plan.n[0].t === 'filter') out.push('Przestawił kolejność. Filter idzie przed select, żeby jak najwcześniej odrzucić wiersze.');
-    if (plan.pushed) out.push('Warunek filtra przekazał do czytnika Parquet, który może dzięki temu pomijać całe bloki pliku.');
+    if (plan.pushed) out.push('Warunek filtra przekazał do czytnika Parquet. Czytnik może dzięki temu pominąć część pliku, jeśli pozwalają na to dane (zbliżenie niżej).');
     if (!ops.includes('s') && plan.n.some(x => x.t === 'project' && x.cols.length)) out.push('Dopisał własny Project, żeby dalej nie nieść zbędnych kolumn.');
     if (ops.includes('s') && action === 'count' && !st.cache && plan.n.some(x => x.t === 'project' && !x.cols.length)) out.push('Twój select okazał się zbędny dla count(), więc nic po nim nie zostało.');
     if (!out.length) out.push('Tu nie było czego upraszczać. Plan zostaje taki, jak go napisałeś.');
@@ -176,8 +178,8 @@ export function createLazySim(els, PLANS) {
       await sleep(500);
       await through(nodes, action);
       st.cacheUsed = true;
-      say('Plik nietknięty, żadnego liczenia. Wynik wyszedł z pamięci.');
-      fact('Tak samo zadziała każda kolejna akcja na tym DataFrame, dopóki cache istnieje.');
+      say('Plik nietknięty, żadnego liczenia. Wynik wyszedł z cache.');
+      fact('Tak samo zadziała kolejna akcja na tym DataFrame, dopóki dane są w cache. Spark może je stamtąd usunąć, a wtedy liczy od nowa.');
     } else {
       const plan = PLANS[key + '|' + (st.cache ? 'show' : action)];
       say('Akcja. Spark pierwszy raz widzi całe zapytanie, więc zanim ruszy dane, upraszcza plan.');
@@ -196,7 +198,7 @@ export function createLazySim(els, PLANS) {
       if (st.cache) { say('Policzone, a wynik został też w cache. Uruchom akcję jeszcze raz i patrz na źródło.', true); }
       else if (st.planRuns === 1 && !st.everRan) { say('Jedno przejście po danych i tylko po tym, co potrzebne. Uruchom akcję jeszcze raz i patrz na źródło.', true); }
       else if (st.planRuns === 1) { say('Nowy plan, nowe przejście po danych. Uruchom akcję ponownie, żeby zobaczyć powtórkę.', true); }
-      else { st.reran = true; st.showCache = true; say('Spark niczego nie zapamiętał. Przeczytał plik jeszcze raz i policzył wszystko od zera.'); fact('Każda kropka pod źródłem to jeden pełny odczyt.'); fact('Jeśli wynik ma posłużyć kilku akcjom, możesz go zatrzymać w pamięci. Dodaj cache().'); }
+      else { st.reran = true; st.showCache = true; say('Spark nie przechował wyniku poprzedniej akcji. Przeczytał wiersze jeszcze raz i policzył wszystko od zera.'); fact('Każda kropka pod źródłem to jeden pełny odczyt wierszy.'); fact('Nie zawsze powtarza się cała praca. Wyjątek zobaczysz w etapie Praktyka.'); fact('Jeśli wynik ma posłużyć kilku akcjom, możesz go zatrzymać na czas sesji. Dodaj cache().'); }
     }
     st.everRan = true; st.busy = false; mission(); drawDock();
   }
@@ -204,7 +206,7 @@ export function createLazySim(els, PLANS) {
   /* ---------- sterowanie ---------- */
   function addOp(o) {
     st.ops.push(o);
-    say(st.firstOp ? 'Plan urósł o jeden krok. Spójrz na dane po lewej: ani drgnęły.' : 'Kolejny krok zapisany. Nadal żadnej pracy.');
+    say(st.firstOp ? 'Plan urósł o jeden krok. Spójrz na wiersze po lewej: ani drgnęły.' : 'Kolejny krok zapisany. Wiersze nadal nietknięte.');
     if (o === 'g') fact('Po groupBy zostają tylko publisher_id, subs i mrr, więc filter i select już tu nie pasują.');
     if (st.firstOp) fact('To jest transformacja: opis, nie wykonanie.');
     st.firstOp = false; planChanged();
@@ -221,7 +223,7 @@ export function createLazySim(els, PLANS) {
     if (st.ops.length || st.everRan) group('Akcje', [b('.show()', () => run('show'), 'act'), b('.count()', () => run('count'), 'act')]);
     if (st.showCache) group('Pamięć', [b(st.cache ? '✓ .cache()' : '.cache()', () => {
       st.cache = !st.cache;
-      say(st.cache ? 'cache() to też tylko wpis w planie. Pojemnik jest pusty, dopóki nie uruchomisz akcji.' : 'cache() usunięty. Każda akcja znów liczy od zera.');
+      say(st.cache ? 'cache() to też tylko wpis w planie. Pojemnik jest pusty, dopóki nie uruchomisz akcji.' : 'cache() usunięty. Kolejna akcja znów policzy plan od źródła.');
       planChanged();
     })]);
     if (st.ops.length || st.cache) group(' ', [
@@ -229,7 +231,7 @@ export function createLazySim(els, PLANS) {
       b('od nowa', () => { st.ops = []; st.cache = false; say('Czysty plan. Dodaj operację.'); readTag.querySelector('.dots').innerHTML = ''; readTag.querySelector('.none').textContent = 'jeszcze żadnego'; planChanged(); }, 'ghostb') ]);
   }
 
-  say('Po lewej plik z 9 subskrypcjami. Dodaj pierwszą operację i obserwuj, co stanie się z danymi.');
+  say('Po lewej plik z 9 subskrypcjami. Spark zna już jego kolumny. Dodaj pierwszą operację i obserwuj, co stanie się z wierszami.');
   drawNodes(written()); mission(); drawDock();
   return { destroy() { dead = true; scene.innerHTML = ''; dock.innerHTML = ''; factsEl.innerHTML = ''; } };
 }

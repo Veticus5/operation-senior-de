@@ -97,22 +97,23 @@ function PickActions({ onDone }: { onDone: Done }) {
 }
 
 function Predict({ onDone }: { onDone: Done }) {
+  const t = tasks.predict;
   const [a, setA] = useState<number | null>(null);
   const [b, setB] = useState<number | null>(null);
   return (
     <>
       <h2>Przewidź licznik</h2>
-      <p className="muted">Plik ma 9 wierszy. Funkcja seen() zwiększa licznik za każdym razem, gdy przechodzi przez nią wiersz.</p>
-      <pre className="code">{'df = (subs.filter(seen(col("status")) == "active")\n          .groupBy("publisher_id").count())\n\ndf.show()\ndf.count()\ndf.show()\nprint(counter.value)   # ?'}</pre>
-      <Choice options={['9', '18', '27', '3']} correct={2} picked={a} onPick={setA} />
+      <p className="muted">{t.setup}</p>
+      <pre className="code">{t.code}</pre>
+      <Choice options={t.options} correct={t.correct} picked={a} onPick={setA} />
       {a !== null && (
-        <Feedback ok={a === 2}>
-          <p>{a === 2 ? 'Tak, 27. ' : 'To będzie 27. '}Trzy akcje to trzy pełne wykonania planu, a każde przepuszcza przez filter wszystkie 9 wierszy. W prawdziwym uruchomieniu licznik pokazał kolejno 9, 18 i 27.</p>
-          <p>A gdyby po definicji dodać df.cache()?</p>
-          <Choice options={['9', '18', '27']} correct={0} picked={b} onPick={i => { setB(i); onDone(a === 2 && i === 0); }} />
+        <Feedback ok={a === t.correct}>
+          <p>{a === t.correct ? `Tak, ${t.options[t.correct]}. ` : `To będzie ${t.options[t.correct]}. `}{t.why}</p>
+          <p>{t.cacheAsk}</p>
+          <Choice options={t.cacheOptions} correct={t.cacheCorrect} picked={b} onPick={i => { setB(i); onDone(a === t.correct && i === t.cacheCorrect); }} />
           {b !== null && (
-            <Feedback ok={b === 0}>
-              <p>Dziewięć. Pierwsza akcja liczy i wypełnia cache, dwie kolejne czytają już z pamięci. Tak było w eksperymencie 3: 9, 9, 9.</p>
+            <Feedback ok={b === t.cacheCorrect}>
+              <p>{t.cacheWhy}</p>
             </Feedback>
           )}
         </Feedback>
@@ -152,7 +153,7 @@ function Columns({ onDone }: { onDone: Done }) {
           )}
         </div>
       ))}
-      {picked.every(v => v !== null) && <p className="small">Wszystkie trzy liczby pochodzą z ReadSchema w prawdziwym explain().</p>}
+      {picked.every(v => v !== null) && <p className="small">{tasks.columnsSource}</p>}
     </>
   );
 }
@@ -161,7 +162,7 @@ const TASKS: ((done: Done) => ReactNode)[] = [
   done => (
     <>
       <h2>Która linijka pierwsza każe Sparkowi przetwarzać wiersze?</h2>
-      <p className="muted">Kliknij ją.</p>
+      <p className="muted">Chodzi o wiersze, nie o odczyt opisu pliku. Kliknij ją.</p>
       <Lines {...tasks.clickLine} onDone={done} />
     </>
   ),

@@ -118,3 +118,90 @@
   .nav{top:45px}.tools{top:45px}
 }
 a.btn{text-decoration:none;display:inline-block}
+
+/* ---------- hasło słownika (TermTooltip) ---------- */
+.term-wrap{position:relative;display:inline}
+.term{display:inline;border:0;background:transparent;padding:0;margin:0;font:inherit;color:inherit;text-align:inherit;cursor:help;text-decoration:underline dotted var(--ink-3);text-underline-offset:4px}
+.term:hover,.term:focus-visible{text-decoration-color:var(--accent)}
+.term-tip{position:absolute;top:calc(100% + 8px);z-index:25;background:var(--bg-3);border:1px solid var(--line-2);border-radius:12px;padding:12px 14px;font:400 15px/1.5 var(--body);color:var(--ink-2);text-align:left;letter-spacing:0;text-transform:none;white-space:normal;box-shadow:0 12px 32px rgba(0,0,0,.45)}
+.term-tip[hidden]{display:none}
+.term-wrap .term-tip b{display:block;font:600 15px/1.5 var(--body);letter-spacing:0;text-transform:none;color:var(--ink);margin:0 0 3px}
+
+/* ---------- most do znanego (ConceptBridge) ---------- */
+.bridge{border:1px solid var(--line);border-radius:16px;background:var(--bg-2);padding:22px 24px;margin:28px 0;max-width:700px}
+.bridge-k,.bridge span,.cx-title,.cx-label{font:500 12px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+.bridge p.bridge-k{font:500 12px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--accent);margin:0 0 16px}
+.bridge-cols{display:grid;grid-template-columns:1fr 1fr;gap:16px 28px}
+.bridge span{display:block;margin-bottom:6px}
+.bridge p{margin:0;font-size:16.5px;line-height:1.55;color:var(--ink);max-width:none}
+.bridge-end{margin-top:18px;padding-top:16px;border-top:1px dashed var(--line-2)}
+.bridge-end p{color:var(--ink-2)}
+.bank .bridge p{font-size:15.5px}
+
+/* ---------- kod czytany linia po linii (CodeExplainer) ---------- */
+.cx{margin:22px 0 26px}
+.cx-title{margin:0 0 8px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;max-width:none}
+.cx-title span{letter-spacing:0;text-transform:none;font-weight:400}
+.cx-lines{background:var(--bg-2);border:1px solid var(--line);border-radius:14px;padding:8px;display:flex;flex-direction:column}
+.cx-line{display:grid;grid-template-columns:22px minmax(0,1fr);gap:10px;align-items:start;text-align:left;border:1px solid transparent;background:transparent;border-radius:8px;padding:6px 10px;font:400 13.5px/1.6 var(--mono);color:#d9d4cb}
+.cx-line span{white-space:pre-wrap;overflow-wrap:anywhere}
+.cx-line i,.cx-label i{font:500 11px/20px var(--mono);font-style:normal;width:20px;height:20px;border-radius:50%;border:1px solid var(--line-2);color:var(--ink-3);text-align:center;flex:none}
+.cx-line:hover{background:var(--bg-3)}
+.cx-line[aria-pressed="true"]{border-color:var(--accent-dim);background:var(--bg-3)}
+.cx-line[aria-pressed="true"] i,.cx-label i{border-color:var(--accent);color:var(--accent)}
+.cx-id{color:var(--ink-3)}
+.cx-panel{border-left:2px solid var(--accent);padding:2px 0 2px 20px;margin-top:14px;min-height:96px}
+.cx-label{display:flex;gap:10px;align-items:center;margin:0 0 6px;color:var(--ink-2);letter-spacing:.04em;text-transform:none;font-size:13px}
+.cx-panel p:last-child{font-size:17px;margin:0}
+
+/* ---------- eksperymenty: założenia, zakres, rozwinięcie ---------- */
+.setup,.scope{font-size:16px;line-height:1.55;color:var(--ink-2);margin:12px 0 0;max-width:64ch}
+.setup b,.scope b{font:500 12px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);margin-right:4px}
+.scope{border-top:1px dashed var(--line-2);padding-top:14px;margin:4px 0 20px}
+.read .setup b,.read .scope b{color:var(--ink-3);font-weight:500}
+details.deeper,details.why{border:1px solid var(--line);border-radius:14px;margin:18px 0 8px;max-width:700px}
+details.deeper summary,details.why summary{cursor:pointer;list-style:none;padding:13px 18px;font-size:16.5px;font-weight:500;color:var(--ink);display:grid;grid-template-columns:1fr 20px;gap:14px;align-items:start}
+details.deeper summary::-webkit-details-marker,details.why summary::-webkit-details-marker{display:none}
+details.deeper summary::after,details.why summary::after{content:"+";font:400 20px/1.2 var(--mono);color:var(--ink-3);text-align:right}
+details.deeper[open] summary::after,details.why[open] summary::after{content:"–";color:var(--accent)}
+details.deeper>div,details.why>div{padding:2px 18px 6px;border-top:1px solid var(--line)}
+details.deeper p,details.why p{font-size:16.5px;line-height:1.6;margin:14px 0;color:var(--ink-2);max-width:none}
+details.deeper p b,details.why p b{color:var(--ink);font-weight:600}
+details.why{margin-top:26px}
+.why-note{font:400 13px var(--mono)!important;color:var(--ink-3)!important}
+
+/* ---------- zbliżenie: row groups ---------- */
+.zoom{max-width:700px;margin:88px auto 0}
+.zoom h3{margin-top:44px}
+.rg-controls{display:flex;gap:10px;flex-wrap:wrap;margin:6px 0 16px}
+.rg-controls .segc button{white-space:nowrap}
+.rgs{list-style:none;margin:0 0 14px;padding:0;display:flex;flex-direction:column;gap:8px}
+.rg{display:grid;grid-template-columns:104px minmax(0,1fr) 156px;gap:6px 16px;align-items:center;border:1px solid var(--line-2);border-radius:12px;padding:11px 14px;transition:opacity .3s,border-color .3s}
+.rg-n,.rg-range{font:500 12.5px var(--mono);color:var(--ink-2)}
+.rg-range{text-align:right;color:var(--ink-3)}
+.rg-bar{position:relative;height:10px;border-radius:5px;background:var(--bg-3)}
+.rg-bar i{position:absolute;top:0;bottom:0;border-radius:5px;background:var(--accent)}
+.rg-bar b{position:absolute;top:-5px;bottom:-5px;width:2px;background:var(--ink)}
+.rg-verdict{grid-column:1 / -1;font-size:14.5px;color:var(--ink)}
+.rg.skip{border-style:dashed;border-color:var(--line)}
+.rg.skip .rg-bar i{background:var(--ink-3)}
+.rg.skip .rg-n,.rg.skip .rg-verdict{color:var(--ink-3)}
+.rg-sum{font-size:17px}
+
+@media (max-width:640px){
+  .bridge{padding:18px}.bridge-cols{grid-template-columns:1fr}
+  .rg{grid-template-columns:1fr auto}.rg-bar{grid-column:1 / -1;grid-row:2}
+  .cx-line{font-size:12.5px;padding:6px 6px}
+  .zoom{margin-top:64px}
+  .rg-controls .segc button{font-size:13px;padding:6px 9px}
+}
+
+/* ---------- 390 px bez poziomego przewijania ---------- */
+/* Długie ścieżki i nazwy ustawień w tekście nie mogą rozpychać strony. */
+p code,li code,summary code{overflow-wrap:anywhere}
+@media (max-width:640px){
+  .data{display:block;max-width:100%;overflow-x:auto}
+  .data th,.data td{padding-right:14px}
+  .lesson-row{grid-template-columns:1fr}
+  .lesson-row .m{text-align:left;white-space:normal}
+}

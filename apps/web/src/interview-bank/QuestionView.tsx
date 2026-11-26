@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { AREA_LABEL, lessonByTopic, questions } from '@content/index';
+import { Html } from '../components/Html';
 import { MASTERY } from '../lib/progress';
 import { href } from '../lib/router';
 import { useProgress } from '../lib/useProgress';
@@ -59,6 +60,13 @@ export function QuestionView({ id }: { id: string }) {
                 <p className="ans" lang={lang} style={{ borderColor: 'var(--line-2)', fontSize: 17 }}>{q.senior[lang]}</p>
               </div>
             )}
+            <details className="why">
+              <summary>Jak to działa, krok po kroku</summary>
+              <div>
+                <p className="why-note">Do zrozumienia, nie do recytowania. Podkreślone pojęcia mają definicje.</p>
+                {q.explain.map((html, i) => <Html as="p" key={i} html={html} />)}
+              </div>
+            </details>
             <div className="block">
               <h2>Słowa kluczowe</h2>
               <div className="kw">{q.keywords.map(k => <span key={k}>{k}</span>)}</div>
