@@ -16,9 +16,10 @@
 <section class="experiment" aria-label="Symulacja pomijania grup wierszy">
 <small>Symulacja koncepcyjna · 16 przykładowych rekordów</small>
 <div class="controls">
-<div class="control"><label>Warunek SQL</label><div class="options" id="filters" role="group" aria-label="Warunek filtrowania"><button data-limit="1000" aria-pressed="true">amount &gt; 1000</button><button data-limit="2000" aria-pressed="false">2000</button><button data-limit="4000" aria-pressed="false">4000</button></div></div>
+<div class="control"><label>Warunek SQL</label><div class="options" id="filters" role="group" aria-label="Warunek filtrowania"><button data-limit="1000" aria-pressed="true">amount &gt; 1000</button><button data-limit="2000" aria-pressed="false">&gt; 2000</button><button data-limit="4000" aria-pressed="false">&gt; 4000</button></div></div>
 <div class="control"><label>Ułożenie danych</label><div class="options" id="layout" role="group" aria-label="Ułożenie danych"><button data-layout="sorted" aria-pressed="true">Posortowane</button><button data-layout="mixed" aria-pressed="false">Rozsiane</button></div></div>
 </div>
+<small>Pomarańczowe wartości spełniają filtr · zakres po prawej to min–max.</small>
 <div id="groups"></div>
 <div class="result" aria-live="polite"><div><div class="metric" id="metric">2 z 4</div><small>grup do sprawdzenia</small></div><p id="reason"></p></div>
 </section>
@@ -42,7 +43,7 @@ function render(){
   const title=document.createElement("span");title.className="group-title";title.textContent="Grupa "+(i+1);
   const numbers=document.createElement("div");numbers.className="numbers";
   for(const v of g){const n=document.createElement("span");n.className="number"+(v>limit?" match":"");n.textContent=v;numbers.append(n)}
-  const status=document.createElement("span");status.className="status";const b=document.createElement("b");b.textContent=skip?"Pomiń":"Sprawdź";const meta=document.createElement("small");meta.textContent="max "+max;status.append(b,meta);row.append(title,numbers,status);return row;
+  const status=document.createElement("span");status.className="status";const b=document.createElement("b");b.textContent=skip?"Pomiń":"Sprawdź";const meta=document.createElement("small");meta.textContent=Math.min(...g)+"–"+max;status.append(b,meta);row.append(title,numbers,status);return row;
  }));
  document.getElementById("metric").textContent=read+" z 4";
  document.getElementById("reason").textContent=read===4?"Każda grupa może zawierać pasujące rekordy. Same statystyki nie pozwalają niczego pominąć.":(4-read)+" z 4 grup nie może zawierać pasujących rekordów. W tym modelu można je pominąć.";
