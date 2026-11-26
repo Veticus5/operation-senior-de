@@ -24,6 +24,9 @@ export const meta: LessonMeta = {
   minutes: 40
 };
 
+/** Lab uruchamiany z etapu Praktyka. Identyfikator z labs/registry.json. */
+export const labId = 'spark-lazy-evaluation-lab';
+
 export interface Beat { html: string; next: string | null; bridge?: Bridge; /** Zwinięte pogłębienie, poza domyślną ścieżką. */ more?: { title: string; html: string[] } }
 export const beats: Beat[] = [
   {

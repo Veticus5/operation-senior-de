@@ -78,12 +78,13 @@ Sprawdzian końcowy: czy osoba, która zna SQL i Pythona, a Sparka nie, przejdzi
 
 ## Zasady techniczne
 
-- Stack: React, TypeScript (strict), Vite, zwykły CSS z tokenami w `apps/web/src/styles/base.css`. Bez backendu, bazy, logowania i chmury.
+- Stack: React, TypeScript (strict), Vite, zwykły CSS z tokenami w `apps/web/src/styles/base.css`. Bez bazy, logowania i chmury. Aplikacja pozostaje statyczna i musi działać bez żadnego serwera.
+- Jedyny wyjątek od „bez backendu" to lokalny runner labów (`apps/lab-runner`, decyzja Macieja): opcjonalny proces na `127.0.0.1`, który uruchamia wyłącznie skrypty z allowlisty `labs/registry.json`. Nie rozszerzaj go o wykonywanie kodu od użytkownika, parametry polecenia z przeglądarki ani nasłuch poza localhostem. Wyjście labu w interfejsie pochodzi tylko z procesu: nie wklejaj tam zapisanych ani zmyślonych wydruków.
 - Nowa zależność wymaga uzasadnienia w opisie pull requesta. Domyślna odpowiedź brzmi „nie".
 - Treść mieszka w `content/`, interfejs w `apps/web/`. Komponent nie zawiera treści merytorycznej wpisanej na sztywno.
 - Identyfikatory `id` pytań i lekcji oraz `topicId` są stabilne. Postęp użytkownika jest po nich zapisany, więc ich zmiana kasuje mu historię.
 - Postęp: `localStorage`, klucz `osde-progress-v1`. Zmiana kształtu danych wymaga nowego klucza albo migracji.
-- Elementy wspólne dla lekcji i banku są w `apps/web/src/components/`: `TermTooltip` (hasło słownika), `CodeExplainer` (kod linia po linii), `ConceptBridge` (most do znanego), `Html` (render fragmentów treści). Używaj ich zamiast pisać podobne od nowa.
+- Elementy wspólne dla lekcji i banku są w `apps/web/src/components/`: `TermTooltip` (hasło słownika), `CodeExplainer` (kod linia po linii), `ConceptBridge` (most do znanego), `Html` (render fragmentów treści), `LabRunner` (lab z `labs/registry.json`: kod i uruchomienie przez lokalny runner). Używaj ich zamiast pisać podobne od nowa.
 - Fragmenty HTML w treści przechodzą przez parser `apps/web/src/lib/richText.ts`. Dozwolony jest mały zestaw znaczników. Nieznany albo niedomknięty znacznik wywala test.
 - Kierunek wizualny jest ustalony: ciemne ciepłe tło, jeden pomarańczowy akcent, Bricolage Grotesque, Figtree, JetBrains Mono. Academy jest przestronne i narracyjne, Interview Bank zwarty. Nie przerabiaj tego na dashboard.
 - Bez atrap: nie dodawaj przycisków, zakładek ani sekcji, które jeszcze nie działają, ani pustych katalogów „na przyszłość".

@@ -41,6 +41,25 @@ export interface Question {
   followUps: FollowUp[];
   /** Typowe błędy kandydatów. */
   mistakes: string[];
+  /** Laby, które odtwarzają liczby z tego pytania. Identyfikatory z labs/registry.json. */
+  labIds?: string[];
+}
+
+/**
+ * Lab z allowlisty labs/registry.json: skrypt, który lokalny runner może uruchomić z interfejsu.
+ * Identyfikator jest stabilny, bo wiążą się nim lekcje i pytania.
+ */
+export interface Lab {
+  id: string;
+  /** Ścieżka skryptu względem katalogu labs/. */
+  script: string;
+  title: string;
+  /** Co lab mierzy, jedno zdanie po polsku. */
+  summary: string;
+  /** Jak daleko wolno uogólniać wynik. Dozwolone znaczniki jak w Question.explain. */
+  scope: string;
+  /** Limit czasu jednego uruchomienia, egzekwowany przez runner. */
+  timeoutSec: number;
 }
 
 /** Hasło słownika. Definicja ma być zrozumiała bez znajomości innych haseł. */

@@ -6,10 +6,13 @@
   ],
   "scripts": {
     "dev": "npm run dev -w apps/web --",
+    "dev:labs": "node apps/lab-runner/dev.mjs",
+    "runner": "node apps/lab-runner/server.mjs",
     "build": "npm run build -w apps/web",
     "preview": "npm run preview -w apps/web --",
     "typecheck": "npm run typecheck -w apps/web",
-    "test": "npm run test -w apps/web",
+    "test": "npm run test -w apps/web && npm run test:runner",
+    "test:runner": "node --test apps/lab-runner/*.test.mjs",
     "check": "npm run typecheck && npm run test && npm run build"
   },
   "engines": {

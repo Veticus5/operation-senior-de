@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { AREA_LABEL, lessonByTopic, questions } from '@content/index';
 import { Html } from '../components/Html';
+import { LabRunner } from '../components/LabRunner';
 import { MASTERY } from '../lib/progress';
 import { href } from '../lib/router';
 import { useProgress } from '../lib/useProgress';
@@ -96,6 +97,13 @@ export function QuestionView({ id }: { id: string }) {
             <a className="lesson-link" href={href('academy', lesson.id)}>{lesson.title} · ok. {lesson.minutes} min →</a>
           </div>
         )}
+
+        {q.labIds?.map(labId => (
+          <div className="block" key={labId}>
+            <h2>Sprawdź to sam</h2>
+            <LabRunner labId={labId} />
+          </div>
+        ))}
 
         <div className="pn">
           {prev ? <a href={href('bank', 'q', prev.id)}>← {prev.title}</a> : <span />}
