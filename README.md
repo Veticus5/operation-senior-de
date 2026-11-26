@@ -61,7 +61,10 @@ Pozostałe laby i to, co mierzą, opisuje [labs/README.md](labs/README.md).
 - Sprawdza nagłówki `Origin` i `Host`. Domyślnie wpuszcza `http://localhost:5173`, `http://127.0.0.1:5173` oraz te same adresy na porcie 4173 (`npm run preview`). Dodatkowe źródła: `LAB_RUNNER_ORIGINS=http://localhost:3000`.
 - Limity: jedno uruchomienie naraz, limit czasu z rejestru (dla labu lazy evaluation 300 s), najwyżej 2 MB wyjścia. Po przekroczeniu, po kliknięciu „Przerwij" albo po zamknięciu strony runner zabija całą grupę procesów, razem z JVM Sparka. Pamięci nie ogranicza osobno: JVM Sparka startuje z domyślnym limitem sterty (w uruchomieniu kontrolnym `-Xmx1g`).
 - Do labu przekazuje tylko kilka zmiennych środowiskowych (`PATH`, `HOME`, `JAVA_HOME`, ustawienia języka i katalogów uv).
-- Ustawia labowi `SPARK_LOCAL_IP=127.0.0.1`, chyba że zmienna jest już ustawiona. Dzięki temu Spark i jego interfejs WWW (port 4040) słuchają tylko na pętli zwrotnej. To jedyna różnica względem uruchomienia w terminalu, poza `PYTHONUNBUFFERED=1`, które sprawia, że wydruki docierają na bieżąco.
+- Zawsze ustawia labowi `SPARK_LOCAL_IP=127.0.0.1`, także wtedy, gdy w otoczeniu runnera ta zmienna ma inną wartość. Dzięki temu Spark i jego interfejs WWW (port 4040) słuchają tylko na pętli zwrotnej. To jedyna różnica względem uruchomienia w terminalu, poza `PYTHONUNBUFFERED=1`, które sprawia, że wydruki docierają na bieżąco.
+- Uruchamia dokładnie ten plik, który pokazuje strona. Przy starcie zapamiętuje skrót SHA-256 każdego skryptu z rejestru. Jeśli plik potem się zmieni, runner odmawia uruchomienia (HTTP 409), a interfejs wyłącza przycisk i prosi o ponowny start runnera. To samo, gdy kod wkompilowany w stronę różni się od pliku runnera.
+- Zamknięcie runnera (Ctrl+C, SIGTERM) najpierw przerywa trwający lab i czeka, aż jego procesy znikną: SIGTERM, po 3 s SIGKILL dla całej grupy.
+- **To nie jest piaskownica.** Limit czasu, limit wyjścia i jedno uruchomienie naraz chronią przed zawieszonym albo rozgadanym labem, ale nie ograniczają procesora, pamięci, dysku ani sieci. Skrypty z rejestru to zaufany kod z tego repozytorium i działają z Twoimi uprawnieniami.
 - Zabijanie grupy procesów działa na Linuksie i macOS. Na Windows runner nie był sprawdzany.
 
 Inny port: `LAB_RUNNER_PORT=9000 VITE_LAB_RUNNER_URL=http://127.0.0.1:9000 npm run dev:labs`.

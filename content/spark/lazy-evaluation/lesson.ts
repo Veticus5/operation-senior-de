@@ -26,6 +26,8 @@ export const meta: LessonMeta = {
 
 /** Lab uruchamiany z etapu Praktyka. Identyfikator z labs/registry.json. */
 export const labId = 'spark-lazy-evaluation-lab';
+/** Wskazówka nad przyciskiem uruchomienia: lab wypisuje odpowiedzi do eksperymentów poniżej. */
+export const labHint = 'Najpierw przewidź. Wydruk tego skryptu zawiera odpowiedzi do pięciu eksperymentów poniżej, więc zgadnij je, zanim klikniesz, a potem porównaj.';
 
 export interface Beat { html: string; next: string | null; bridge?: Bridge; /** Zwinięte pogłębienie, poza domyślną ścieżką. */ more?: { title: string; html: string[] } }
 export const beats: Beat[] = [

@@ -79,7 +79,7 @@ Sprawdzian końcowy: czy osoba, która zna SQL i Pythona, a Sparka nie, przejdzi
 ## Zasady techniczne
 
 - Stack: React, TypeScript (strict), Vite, zwykły CSS z tokenami w `apps/web/src/styles/base.css`. Bez bazy, logowania i chmury. Aplikacja pozostaje statyczna i musi działać bez żadnego serwera.
-- Jedyny wyjątek od „bez backendu" to lokalny runner labów (`apps/lab-runner`, decyzja Macieja): opcjonalny proces na `127.0.0.1`, który uruchamia wyłącznie skrypty z allowlisty `labs/registry.json`. Nie rozszerzaj go o wykonywanie kodu od użytkownika, parametry polecenia z przeglądarki ani nasłuch poza localhostem. Wyjście labu w interfejsie pochodzi tylko z procesu: nie wklejaj tam zapisanych ani zmyślonych wydruków.
+- Jedyny wyjątek od „bez backendu" to lokalny runner labów (`apps/lab-runner`, decyzja Macieja): opcjonalny proces na `127.0.0.1`, który uruchamia wyłącznie skrypty z allowlisty `labs/registry.json`. Runner nie jest piaskownicą: skrypty z rejestru to zaufany kod z repozytorium, a limity (czas, wyjście, jedno uruchomienie) nie ograniczają procesora ani pamięci. Nie rozszerzaj go o wykonywanie kodu od użytkownika, parametry polecenia z przeglądarki ani nasłuch poza localhostem. Wyjście labu w interfejsie pochodzi tylko z procesu: nie wklejaj tam zapisanych ani zmyślonych wydruków.
 - Nowa zależność wymaga uzasadnienia w opisie pull requesta. Domyślna odpowiedź brzmi „nie".
 - Treść mieszka w `content/`, interfejs w `apps/web/`. Komponent nie zawiera treści merytorycznej wpisanej na sztywno.
 - Identyfikatory `id` pytań i lekcji oraz `topicId` są stabilne. Postęp użytkownika jest po nich zapisany, więc ich zmiana kasuje mu historię.

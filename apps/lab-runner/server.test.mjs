@@ -7,7 +7,7 @@ import { after, before, describe, it } from 'node:test';
 import { mkdtempSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { HOST, configFromEnv, createLabRunner, javaMajor, loadRegistry } from './server.mjs';
+import { HOST, childEnv, configFromEnv, createLabRunner, javaMajor, loadRegistry } from './server.mjs';
 
 const ORIGIN = 'http://localhost:5173';
 const SCRIPTS = {
@@ -16,29 +16,58 @@ const SCRIPTS = {
   sleep: `console.log('start'); setTimeout(() => {}, 60000)`,
   flood: `const s = 'x'.repeat(1024); setInterval(() => console.log(s), 1)`,
   env: `console.log(JSON.stringify({ secret: process.env.OSDE_TEST_SECRET ?? null, unbuffered: process.env.PYTHONUNBUFFERED, sparkIp: process.env.SPARK_LOCAL_IP }))`,
-  missing: null
+  missing: null,
+  // Proces, który ignoruje SIGTERM i ma potomka robiącego to samo: tak zachowuje się zawieszona JVM.
+  stubborn: `const child = require('node:child_process').spawn(process.execPath, ['-e', "process.on('SIGTERM', () => {}); setInterval(() => {}, 1000)"], { stdio: 'inherit' });
+    process.on('SIGTERM', () => {});
+    setTimeout(() => console.log(JSON.stringify({ pids: [process.pid, child.pid] })), 300);
+    setInterval(() => {}, 1000)`
 };
+const fakeCommand = lab => (lab.id === 'missing' ? { cmd: 'osde-nie-ma-takiego-polecenia', args: [] } : { cmd: process.execPath, args: ['-e', SCRIPTS[lab.id] ?? SCRIPTS.sleep] });
+const alive = pid => {
+  try { process.kill(pid, 0); return true; } catch { return false; }
+};
+const gone = async pids => {
+  for (let i = 0; i < 40 && pids.some(alive); i++) await new Promise(resolve => setTimeout(resolve, 50));
+  return !pids.some(alive);
+};
+/** Startuje uparty proces i zwraca jego identyfikatory, gdy oba procesy już ignorują SIGTERM. */
+async function startStubborn(url, signal) {
+  const response = await fetch(`${url}/api/labs/stubborn/run`, { method: 'POST', headers: { Origin: ORIGIN }, signal });
+  const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
+  // Samo słowo „pids" nie wystarczy: zdarzenie start zawiera polecenie, a więc i treść skryptu.
+  let text = '';
+  for (;;) {
+    const { done, value } = await reader.read();
+    assert.equal(done, false, 'strumień skończył się przed wydrukiem identyfikatorów');
+    text += value;
+    const printed = text.split('\n').slice(0, -1).map(line => JSON.parse(line)).find(e => e.type === 'stdout');
+    if (printed) {
+      reader.closed.catch(() => {});
+      return JSON.parse(printed.data).pids;
+    }
+  }
+}
 const registry = new Map(Object.keys(SCRIPTS).map(id => [id, { id, script: `${id}.py`, timeoutSec: id === 'sleep' ? 0.4 : 20, sha256: 'x' }]));
 registry.set('slow', { id: 'slow', script: 'slow.py', timeoutSec: 20, sha256: 'x' });
 
 let server, base;
 before(async () => {
   process.env.OSDE_TEST_SECRET = 'nie-dla-labu';
+  process.env.SPARK_LOCAL_IP = '0.0.0.0'; // runner ma to zignorować
   server = createLabRunner({
+    verify: () => true,
     registry,
     labsDir: tmpdir(),
     origins: [ORIGIN],
     limits: { maxOutputBytes: 64 * 1024, killGraceMs: 500 },
     probe: async () => ({ uv: { found: true }, java: { found: false } }),
-    command: lab => (lab.id === 'missing' ? { cmd: 'osde-nie-ma-takiego-polecenia', args: [] } : { cmd: process.execPath, args: ['-e', SCRIPTS[lab.id] ?? SCRIPTS.sleep] })
+    command: fakeCommand
   });
   await new Promise(resolve => server.listen(0, HOST, resolve));
   base = `http://${HOST}:${server.address().port}`;
 });
-after(() => {
-  server.closeAllConnections();
-  server.close();
-});
+after(() => server.shutdown());
 
 const post = (id, init = {}) => fetch(`${base}/api/labs/${id}/run`, { method: 'POST', headers: { Origin: ORIGIN }, ...init });
 const events = async response => (await response.text()).trim().split('\n').map(line => JSON.parse(line));
@@ -122,6 +151,10 @@ describe('uruchomienie', () => {
     assert.equal(end.status, 'error');
     assert.match(end.message, /Nie znaleziono polecenia/);
   });
+  it('wymusza Sparka na pętli zwrotnej, nawet gdy otoczenie runnera mówi inaczej', () => {
+    const env = childEnv({ PATH: '/bin', SPARK_LOCAL_IP: '0.0.0.0', AWS_SECRET_ACCESS_KEY: 'x' });
+    assert.deepEqual(env, { PATH: '/bin', PYTHONUNBUFFERED: '1', SPARK_LOCAL_IP: '127.0.0.1' });
+  });
   it('przekazuje labowi tylko wybrane zmienne środowiskowe', async () => {
     const out = (await events(await post('env'))).find(e => e.type === 'stdout');
     assert.deepEqual(JSON.parse(out.data), { secret: null, unbuffered: '1', sparkIp: '127.0.0.1' });
@@ -159,6 +192,72 @@ describe('limity i przerywanie', () => {
     }
     assert.equal(health.busy, false);
     assert.equal((await events(await post('hello'))).at(-1).status, 'ok');
+  });
+});
+
+describe('procesy, które nie chcą się zakończyć', () => {
+  it('rozłączenie klienta: po SIGTERM przychodzi SIGKILL dla całej grupy', async () => {
+    const controller = new AbortController();
+    const pids = await startStubborn(base, controller.signal);
+    assert.ok(pids.every(alive));
+    controller.abort();
+    assert.ok(await gone(pids), 'proces albo jego potomek przeżył przerwanie');
+    const health = await (await fetch(`${base}/api/health`, { headers: { Origin: ORIGIN } })).json();
+    assert.equal(health.busy, false);
+  });
+  it('zamknięcie runnera czeka, aż lab i jego potomkowie znikną', async () => {
+    const own = createLabRunner({ registry, labsDir: tmpdir(), origins: [ORIGIN], verify: () => true, limits: { killGraceMs: 400 }, probe: async () => ({}), command: fakeCommand });
+    await new Promise(resolve => own.listen(0, HOST, resolve));
+    const pids = await startStubborn(`http://${HOST}:${own.address().port}`);
+    const t0 = performance.now();
+    await own.shutdown();
+    const waited = performance.now() - t0;
+    // Zaraz po powrocie z shutdown() procesów ma już nie być: bez czekania i bez dodatkowego sprzątania.
+    assert.ok(await gone(pids), 'shutdown() wrócił, a proces labu nadal żyje');
+    assert.ok(waited >= 350, `SIGTERM był ignorowany, więc zamknięcie musiało poczekać na SIGKILL (czekało ${Math.round(waited)} ms)`);
+    assert.ok(waited < 2400, `zamknięcie jest ograniczone czasowo (czekało ${Math.round(waited)} ms)`);
+    assert.equal(own.listening, false);
+  });
+  it('zamknięcie bez trwającego labu wraca od razu', async () => {
+    const own = createLabRunner({ registry, labsDir: tmpdir(), origins: [ORIGIN], verify: () => true, command: fakeCommand });
+    await new Promise(resolve => own.listen(0, HOST, resolve));
+    const t0 = performance.now();
+    await own.shutdown();
+    assert.ok(performance.now() - t0 < 500);
+  });
+});
+
+describe('zgodność kodu pokazanego i wykonanego', () => {
+  it('odmawia uruchomienia skryptu zmienionego po starcie runnera', async () => {
+    const dir = mkdtempSync(path.join(tmpdir(), 'osde-changed-'));
+    mkdirSync(path.join(dir, 'ok'));
+    writeFileSync(path.join(dir, 'ok', 'lab.py'), 'print(1)\n');
+    writeFileSync(path.join(dir, 'registry.json'), JSON.stringify({ labs: [{ id: 'hello', script: 'ok/lab.py', timeoutSec: 10 }] }));
+    const own = createLabRunner({ labsDir: dir, origins: [ORIGIN], probe: async () => ({}), command: fakeCommand });
+    await new Promise(resolve => own.listen(0, HOST, resolve));
+    const url = `http://${HOST}:${own.address().port}`;
+    const run = () => fetch(`${url}/api/labs/hello/run`, { method: 'POST', headers: { Origin: ORIGIN } });
+    const health = async () => (await (await fetch(`${url}/api/health`, { headers: { Origin: ORIGIN } })).json()).labs[0];
+    try {
+      assert.equal((await health()).changed, false);
+      assert.equal((await events(await run())).at(-1).status, 'ok');
+
+      writeFileSync(path.join(dir, 'ok', 'lab.py'), 'print(2)\n');
+      assert.equal((await health()).changed, true);
+      const refused = await run();
+      assert.equal(refused.status, 409);
+      assert.equal((await refused.json()).error, 'script-changed');
+
+      // Przywrócenie pierwotnej treści wystarcza: liczy się zawartość, nie data modyfikacji.
+      writeFileSync(path.join(dir, 'ok', 'lab.py'), 'print(1)\n');
+      assert.equal((await events(await run())).at(-1).status, 'ok');
+
+      rmSync(path.join(dir, 'ok', 'lab.py'));
+      assert.equal((await run()).status, 409);
+    } finally {
+      await own.shutdown();
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });
 

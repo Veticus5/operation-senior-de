@@ -25,14 +25,13 @@ const stopVite = () => {
 };
 
 let closing = false;
-const shutdown = code => {
+const shutdown = async code => {
   if (closing) return;
   closing = true;
-  runner.stopActiveRun();
-  runner.close();
-  runner.closeAllConnections();
   stopVite();
-  process.exitCode = code;
+  // Czeka, aż trwający lab (Python i JVM) naprawdę się zakończy, zanim proces wyjdzie.
+  await runner.shutdown();
+  process.exit(code);
 };
 vite.on('exit', code => shutdown(code ?? 0));
 process.on('SIGINT', () => shutdown(0));

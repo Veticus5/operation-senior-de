@@ -29,10 +29,14 @@ function statusText(run: RunState, elapsed: number, timeoutSec: number | undefin
 }
 
 /** Co trzeba naprawić w środowisku, zanim lab wystartuje. Pusta lista: można uruchamiać. */
-function blockers(health: RunnerHealth, labId: string): string[] {
+function blockers(health: RunnerHealth, labId: string, sourceDiffers: boolean): string[] {
   const { uv, java } = health.env;
   const out: string[] = [];
-  if (!health.labs.some(l => l.id === labId)) out.push('Runner nie ma tego labu na liście dozwolonych skryptów. Uruchom go z tej samej wersji repozytorium co aplikację.');
+  const known = health.labs.find(l => l.id === labId);
+  // Kod pokazany na stronie i kod wykonany muszą być tym samym plikiem, inaczej wynik nie tłumaczy kodu.
+  if (known?.changed) out.push('Skrypt labu zmienił się na dysku od startu runnera. Runner nie uruchomi zmienionego pliku: zatrzymaj go i uruchom ponownie.');
+  else if (sourceDiffers) out.push('Kod pokazany wyżej różni się od pliku, który zarejestrował runner. Odśwież stronę albo przebuduj aplikację, żeby uruchomić dokładnie ten kod, który widzisz.');
+  if (!known) out.push('Runner nie ma tego labu na liście dozwolonych skryptów. Uruchom go z tej samej wersji repozytorium co aplikację.');
   if (!uv.found) out.push('Nie znaleziono uv. Runner startuje laby poleceniem „uv run", więc zainstaluj uv (docs.astral.sh/uv) i uruchom runner ponownie.');
   if (!java.found) out.push(`Nie znaleziono Javy (runner szukał w ${java.source}). PySpark uruchamia Sparka w maszynie wirtualnej Javy, więc bez niej lab nie wystartuje. Zainstaluj JDK ${java.required} lub nowszy i uruchom runner ponownie.`);
   else if (!java.ok) out.push(`Znaleziona Java ${java.version} jest za stara: laby wymagają wersji ${java.required} lub nowszej. Ustaw JAVA_HOME na nowsze JDK i uruchom runner ponownie.`);
@@ -43,7 +47,7 @@ function blockers(health: RunnerHealth, labId: string): string[] {
  * Lab z repozytorium: kod skryptu i, jeśli działa lokalny runner, przycisk, który naprawdę go uruchamia.
  * Wyjście pochodzi wyłącznie z procesu. Bez runnera komponent pokazuje kod i polecenie do terminala.
  */
-export function LabRunner({ labId, sourceOpen = false }: { labId: string; sourceOpen?: boolean }) {
+export function LabRunner({ labId, sourceOpen = false, hint }: { labId: string; sourceOpen?: boolean; /** Krótka wskazówka tuż nad przyciskiem uruchomienia. */ hint?: string }) {
   const lab = labById(labId);
   const source = LAB_SOURCES[labId] ?? '';
   const local = isLocalPage(window.location.hostname);
@@ -113,7 +117,7 @@ export function LabRunner({ labId, sourceOpen = false }: { labId: string; source
   };
 
   const running = run.status === 'running';
-  const problems = health ? blockers(health, lab.id) : [];
+  const problems = health ? blockers(health, lab.id, sourceDiffers) : [];
   const timeoutSec = health?.labs.find(l => l.id === lab.id)?.timeoutSec;
   const manual = `cd labs && uv run ${lab.script}`;
 
@@ -163,11 +167,11 @@ export function LabRunner({ labId, sourceOpen = false }: { labId: string; source
           {problems.length === 0 && !health.env.deps.ready && !running && (
             <p className="labr-note">Pierwsze uruchomienie potrwa dłużej: uv najpierw utworzy środowisko i pobierze PySpark. Ten czas wlicza się do limitu.</p>
           )}
-          {sourceDiffers && <p className="labr-note bad">Kod pokazany wyżej różni się od pliku, który uruchomi runner. Odśwież stronę albo przebuduj aplikację.</p>}
           {health.busy && !running && <p className="labr-note">Runner wykonuje teraz inny lab. Jednocześnie działa tylko jedno uruchomienie.</p>}
 
           {problems.length === 0 && (
             <>
+              {hint && run.status === 'idle' && <p className="labr-note labr-hint">{hint}</p>}
               <div className="labr-bar">
                 {running
                   ? <button type="button" className="btn" onClick={() => abort.current?.abort()}>Przerwij</button>

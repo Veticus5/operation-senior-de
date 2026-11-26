@@ -16,7 +16,8 @@ export interface RunnerEnv {
 export interface RunnerHealth {
   service: string;
   busy: boolean;
-  labs: { id: string; script: string; timeoutSec: number; sha256: string }[];
+  /** sha256: skrót skryptu z chwili startu runnera. changed: plik na dysku jest już inny. */
+  labs: { id: string; script: string; timeoutSec: number; sha256: string; changed: boolean }[];
   env: RunnerEnv;
 }
 
@@ -100,6 +101,7 @@ export class RunnerError extends Error {}
 
 const REFUSALS: Record<string, string> = {
   busy: 'Runner wykonuje już inny lab. Poczekaj, aż skończy, albo przerwij go tam, gdzie został uruchomiony.',
+  'script-changed': 'Skrypt labu zmienił się od startu runnera, więc runner odmówił uruchomienia. Uruchom runner ponownie.',
   'unknown-lab': 'Runner nie zna tego labu. Uruchom runner z tej samej wersji repozytorium co aplikację.',
   'origin-not-allowed': 'Runner nie wpuszcza tego adresu strony. Dozwolone źródła ustawia zmienna LAB_RUNNER_ORIGINS.'
 };

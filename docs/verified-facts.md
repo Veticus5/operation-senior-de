@@ -112,7 +112,7 @@ Lab `lazy_evaluation/lazy_lab.py` uruchomiony przez runner, przyciskiem w lekcji
 | Limit sterty JVM Sparka przy ustawieniach domyślnych | `-Xmx1g` |
 | Rozłączenie klienta w trakcie pracy | po 1,5 s nie było już procesu Pythona ani JVM |
 
-Zakres: jedna maszyna, jedna konfiguracja. Czasy są orientacyjne i zależą od sprzętu oraz stanu pamięci podręcznej uv (przy pustej dojdzie pobranie PySpark). Bez `SPARK_LOCAL_IP` Spark wypisał ostrzeżenie z nazwą hosta i adresem w sieci lokalnej, a gdzie wtedy nasłuchuje, nie sprawdzałem. Windows nie był sprawdzany.
+Zakres: jedna maszyna, jedna konfiguracja. Czasy są orientacyjne i zależą od sprzętu oraz stanu pamięci podręcznej uv (przy pustej dojdzie pobranie PySpark). Runner ustawia `SPARK_LOCAL_IP=127.0.0.1` zawsze, niezależnie od otoczenia. Bez tej zmiennej Spark wypisał ostrzeżenie z nazwą hosta i adresem w sieci lokalnej, a gdzie wtedy nasłuchuje, nie sprawdzałem. Windows nie był sprawdzany.
 
 ## Dokumentacja
 

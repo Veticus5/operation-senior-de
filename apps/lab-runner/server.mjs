@@ -31,7 +31,7 @@ export const MIN_JAVA = 17;
 export const DEFAULT_LABS_DIR = fileURLToPath(new URL('../../labs', import.meta.url));
 
 /** Zmienne środowiskowe przekazywane do labu. Reszta środowiska runnera do procesu nie trafia. */
-const ENV_PASSTHROUGH = ['PATH', 'HOME', 'USER', 'LANG', 'LC_ALL', 'TMPDIR', 'JAVA_HOME', 'SPARK_LOCAL_IP', 'UV_CACHE_DIR', 'XDG_CACHE_HOME', 'XDG_DATA_HOME'];
+const ENV_PASSTHROUGH = ['PATH', 'HOME', 'USER', 'LANG', 'LC_ALL', 'TMPDIR', 'JAVA_HOME', 'UV_CACHE_DIR', 'XDG_CACHE_HOME', 'XDG_DATA_HOME'];
 
 /**
  * Wczytuje allowlistę. Każdy wpis musi wskazywać istniejący plik .py wewnątrz katalogu labów
@@ -49,7 +49,7 @@ export function loadRegistry(labsDir = DEFAULT_LABS_DIR, limits = DEFAULT_LIMITS
     if (!existsSync(file)) throw new Error(`Brak skryptu: ${lab.script}`);
     if (!realpathSync(file).startsWith(root + path.sep)) throw new Error(`Skrypt poza katalogiem labów: ${lab.script}`);
     if (!(lab.timeoutSec > 0 && lab.timeoutSec <= limits.maxTimeoutSec)) throw new Error(`Niepoprawny limit czasu: ${lab.id}`);
-    registry.set(lab.id, { id: lab.id, script: lab.script, timeoutSec: lab.timeoutSec, sha256: createHash('sha256').update(readFileSync(file)).digest('hex') });
+    registry.set(lab.id, { id: lab.id, script: lab.script, timeoutSec: lab.timeoutSec, sha256: sha256File(file) });
   }
   return registry;
 }
@@ -89,15 +89,25 @@ export async function probeEnvironment(labsDir = DEFAULT_LABS_DIR) {
   };
 }
 
-function childEnv() {
-  const env = {
-    PYTHONUNBUFFERED: '1', // bez buforowania stdout wydruki labu docierają na żywo
-    // Spark i jego interfejs WWW (port 4040) mają słuchać tylko na pętli zwrotnej, tak jak runner.
-    // Wartość z otoczenia runnera, jeśli jest ustawiona, ma pierwszeństwo (ENV_PASSTHROUGH niżej).
-    SPARK_LOCAL_IP: '127.0.0.1'
-  };
-  for (const key of ENV_PASSTHROUGH) if (process.env[key] !== undefined) env[key] = process.env[key];
+export function childEnv(source = process.env) {
+  const env = {};
+  for (const key of ENV_PASSTHROUGH) if (source[key] !== undefined) env[key] = source[key];
+  env.PYTHONUNBUFFERED = '1'; // bez buforowania stdout wydruki labu docierają na żywo
+  // Spark i jego interfejs WWW (port 4040) słuchają tylko na pętli zwrotnej, tak jak runner.
+  // Ustawiane na końcu i nieprzekazywane z otoczenia: SPARK_LOCAL_IP runnera tego nie zmieni.
+  env.SPARK_LOCAL_IP = '127.0.0.1';
   return env;
+}
+
+const sha256File = file => createHash('sha256').update(readFileSync(file)).digest('hex');
+
+/** Czy skrypt na dysku jest tym samym plikiem, który runner zarejestrował przy starcie. */
+export function scriptUnchanged(labsDir, lab) {
+  try {
+    return sha256File(path.join(labsDir, lab.script)) === lab.sha256;
+  } catch {
+    return false;
+  }
 }
 
 /** Lab startuje we własnej grupie procesów, więc sygnał trafia też do JVM uruchomionej przez PySpark. */
@@ -111,7 +121,7 @@ function killGroup(child, signal) {
 }
 
 /**
- * Tworzy serwer runnera (bez nasłuchu). Opcje `command` i `probe` istnieją dla testów:
+ * Tworzy serwer runnera (bez nasłuchu). Opcje `command`, `probe` i `verify` istnieją dla testów:
  * nie da się ich ustawić przez HTTP ani przez zmienne środowiskowe.
  */
 export function createLabRunner(options = {}) {
@@ -121,6 +131,9 @@ export function createLabRunner(options = {}) {
   const origins = new Set(options.origins ?? DEFAULT_ORIGINS);
   const command = options.command ?? (lab => ({ cmd: 'uv', args: ['run', lab.script] }));
   const probe = options.probe ?? (() => probeEnvironment(labsDir));
+  // Kod pokazany uczniowi i kod wykonany muszą być tym samym plikiem. Runner zapamiętuje skrót
+  // skryptu przy starcie i odmawia uruchomienia, jeśli plik od tego czasu się zmienił.
+  const verify = options.verify ?? (lab => scriptUnchanged(labsDir, lab));
   let active = null;
 
   const json = (res, status, body, headers = {}) => {
@@ -158,7 +171,7 @@ export function createLabRunner(options = {}) {
       res.end();
     };
     const timeout = setTimeout(() => stop('timeout'), lab.timeoutSec * 1000);
-    active = { id: lab.id, stop };
+    active = { id: lab.id, stop, closed: new Promise(resolve => child.once('close', resolve)) };
 
     send({ type: 'start', labId: lab.id, command: [cmd, ...args].join(' '), cwd: path.basename(labsDir), timeoutSec: lab.timeoutSec, startedAt: new Date().toISOString() });
     for (const stream of ['stdout', 'stderr']) {
@@ -202,7 +215,7 @@ export function createLabRunner(options = {}) {
         service: 'osde-lab-runner',
         api: 1,
         busy: active !== null,
-        labs: [...registry.values()],
+        labs: [...registry.values()].map(lab => ({ ...lab, changed: !verify(lab) })),
         limits: { maxOutputBytes: limits.maxOutputBytes, concurrentRuns: 1 },
         env: await probe()
       }, cors);
@@ -219,6 +232,7 @@ export function createLabRunner(options = {}) {
     const lab = registry.get(runMatch[1]);
     if (!lab) return json(res, 404, { error: 'unknown-lab' }, cors);
     if (active) return json(res, 409, { error: 'busy', labId: active.id }, cors);
+    if (!verify(lab)) return json(res, 409, { error: 'script-changed', labId: lab.id }, cors);
     run(lab, res, cors);
   }
 
@@ -228,9 +242,21 @@ export function createLabRunner(options = {}) {
       else res.destroy();
     });
   });
-  server.on('close', () => active?.stop('cancelled'));
-  /** Przerywa trwające uruchomienie. Używane przy zamykaniu runnera. */
-  server.stopActiveRun = () => active?.stop('cancelled');
+  /**
+   * Zamyka runner: przerywa trwający lab i czeka, aż jego grupa procesów naprawdę zniknie.
+   * Najpierw SIGTERM, po `killGraceMs` SIGKILL. Czekanie jest ograniczone, żeby zamknięcie nie zawisło.
+   */
+  server.shutdown = async () => {
+    const run = active;
+    if (run) {
+      run.stop('cancelled');
+      await Promise.race([run.closed, new Promise(resolve => setTimeout(resolve, limits.killGraceMs + 2000))]);
+    }
+    await new Promise(resolve => {
+      server.close(resolve);
+      server.closeAllConnections();
+    });
+  };
   return server;
 }
 
@@ -263,10 +289,12 @@ export async function start() {
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   start().then(server => {
+    let closing = false;
     const shutdown = () => {
-      server.stopActiveRun();
-      server.close(() => process.exit(0));
-      server.closeAllConnections();
+      if (closing) return;
+      closing = true;
+      // Proces kończy się dopiero po sprzątnięciu labu: inaczej timer z SIGKILL nigdy by nie zadziałał.
+      server.shutdown().then(() => process.exit(0));
     };
     process.on('SIGINT', shutdown);
     process.on('SIGTERM', shutdown);
