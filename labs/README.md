@@ -9,7 +9,7 @@ cd labs
 uv run lazy_evaluation/lazy_lab.py
 ```
 
-Lab z rejestru `registry.json` da się też uruchomić z interfejsu: `npm run dev:labs` w katalogu głównym, potem przycisk „Uruchom lab" w lekcji albo w pytaniu. Runner wykonuje dokładnie to samo polecenie co wyżej. Na razie w rejestrze jest jeden lab: `lazy_evaluation/lazy_lab.py`.
+Lab z rejestru `registry.json` da się też uruchomić z interfejsu: `npm run dev:labs` w katalogu głównym, potem przycisk „Uruchom lab" w lekcji albo w pytaniu. Runner wykonuje dokładnie to samo polecenie co wyżej. W rejestrze są dwa laby: `lazy_evaluation/lazy_lab.py` i `execution_architecture/execution_lab.py`.
 
 Inny skrypt uruchamiasz tak samo, podając jego ścieżkę. Żeby sprawdzić inną wersję Sparka bez zmiany projektu:
 
@@ -22,6 +22,7 @@ uv run --no-project --with pyspark==4.3.0 python lazy_evaluation/lazy_lab.py
 | `lazy_evaluation/lazy_lab.py` | lekcja Lazy Evaluation, eksperymenty 1–5 | czas definicji a akcji, plan po optymalizacji, ponowne wykonanie i cache, moment zgłoszenia błędu, liczba jobów na akcję |
 | `lazy_evaluation/lazy_conditions_lab.py` | ta sama lekcja, rozwinięcia pod eksperymentami | kiedy druga akcja liczy od nowa, a kiedy używa ponownie wyników shuffle'u; częściowe wypełnianie cache; od czego zależy moment błędu (ANSI, użycie kolumny); kiedy sama definicja uruchamia joba; skąd liczba jobów w `show()` |
 | `lazy_evaluation/pushdown_lab.py` | ta sama lekcja, zbliżenie w etapie Mechanizm | ile wierszy skan Parquet faktycznie oddaje przy danych posortowanych i nieposortowanych oraz czy `PushedFilters` o tym mówi |
+| `execution_architecture/execution_lab.py` | lekcja Spark Execution Architecture i pytania banku o tym samym temacie | SparkSession a SparkContext, cztery plany jednego zapytania, joby, stage'e i taski trzech zapytań z AQE i bez, wariant z broadcast joinem, ponowienie nieudanego taska (`local[3]` kontra `local[3,4]`) |
 | `interview_bank/spark_checks.py` | Interview Bank, pytania o Sparku | wartości domyślne, hint broadcast a typ joina, co wędruje przez shuffle, trzy sposoby podziału na partycje, taski a równoległość, praca wykonana przez driver |
 
 Zasada: jeśli lekcja albo pytanie w banku podaje liczbę „z uruchomienia", musi istnieć lab, który ją odtwarza.
@@ -32,4 +33,5 @@ Zasada: jeśli lekcja albo pytanie w banku podaje liczbę „z uruchomienia", mu
 - Wynik jest obserwacją z danej wersji i konfiguracji, nie gwarancją Sparka. Liczby w treści zostały sprawdzone na PySpark 4.0.1 (przypięta) i 4.3.0. Zakres każdego wyniku jest w `docs/verified-facts.md`.
 - Liczniki w UDF są oparte na akumulatorach. Na klastrze ponowione zadanie może zwiększyć taki licznik więcej niż raz.
 - `pushdown_lab.py` i `lazy_conditions_lab.py` czytają metryki skanu, stopkę Parquet i zajętość cache przez wewnętrzne API JVM. To wystarcza do labu, ale nie jest stabilnym interfejsem.
+- `execution_lab.py` uruchamia Sparka trzy razy w jednym procesie (`local[3]`, potem `local[3]` i `local[3,4]` dla części z awarią taska) i ustawia `spark.sql.files.maxPartitionBytes` na 4 MB, żeby każdy z czterech małych plików wejścia był osobną partycją.
 - Laby nie obejmują Spark Connect, Databricks serverless ani Photona.

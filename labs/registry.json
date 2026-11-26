@@ -7,6 +7,14 @@
       "summary": "Pięć małych eksperymentów na 9 wierszach: czas definicji a czas akcji, plan po optymalizacji, ponowne wykonanie i cache, moment zgłoszenia błędu, liczba jobów na akcję.",
       "scope": "To uruchomienie lokalne: <code>local[3]</code>, czyli jeden proces z trzema wątkami, bez klastra. Czasy będą inne przy każdym uruchomieniu. Liczniki wierszy i jobów zależą od wersji Sparka, planu i konfiguracji, więc traktuj je jako obserwację, nie gwarancję.",
       "timeoutSec": 300
+    },
+    {
+      "id": "spark-execution-architecture-lab",
+      "script": "execution_architecture/execution_lab.py",
+      "title": "Od zapytania do tasków na prawdziwym Sparku",
+      "summary": "Cztery części: SparkSession a SparkContext, cztery plany jednego zapytania, joby, stage'e i taski trzech zapytań z AQE i bez, oraz task, który pada przy pierwszej próbie.",
+      "scope": "To uruchomienie lokalne: <code>local[3]</code>, czyli jeden proces z trzema wątkami, bez klastra, na małych danych testowych. Liczby jobów, stage'y i tasków zależą od wersji Sparka, planu i konfiguracji, więc traktuj je jako obserwację, nie gwarancję. Część z awarią taska uruchamia Sparka ponownie jako <code>local[3,4]</code>.",
+      "timeoutSec": 300
     }
   ]
 }

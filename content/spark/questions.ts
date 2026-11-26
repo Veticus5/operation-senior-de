@@ -171,40 +171,124 @@ export const sparkQuestions: Question[] = [
   {
     id: 'spark-job-stage-task',
     topicId: 'spark.execution-model',
+    labIds: ['spark-execution-architecture-lab'],
     area: 'spark',
     priority: 'P0',
     title: 'Job, stage, task',
     question: {
-      pl: 'Co się dzieje, gdy uruchamiasz job w Sparku? Co to job, stage i task?',
-      en: 'Walk me through what happens when you run a Spark job.'
+      pl: 'Co się dzieje od wywołania akcji do wykonania tasków? Czym są job, stage i task?',
+      en: 'Walk me through what happens when you call an action in Spark. What are jobs, stages and tasks?'
     },
     answer: {
-      pl: 'Driver to proces z moim kodem. Buduje i optymalizuje plan, a gdy wywołam akcję, tworzy job. Job dzieli na stage\'e w miejscach, gdzie potrzebny jest shuffle, a każdy stage na taski, po jednym na partycję. Taski wykonują executory. Stage\'e, które przygotowują dane do shuffle\'u, zapisują pliki shuffle, a ostatni stage zwraca wynik do drivera albo zapisuje go do celu. Liczba partycji to liczba tasków, ale to, ile z nich działa jednocześnie, ogranicza liczba dostępnych rdzeni na executorach. Za mało partycji daje duże taski, które zrzucają dane na dysk albo nie mieszczą się w pamięci, za dużo daje narzut na planowanie i małe pliki.',
-      en: 'The driver is the process that runs my code. It builds and optimizes the plan, and when I call an action it creates a job. It splits the job into stages wherever a shuffle is needed, and each stage into tasks, one per partition. Executors run the tasks. Stages that feed a shuffle write shuffle files, and the final stage returns the result to the driver or writes it to the sink. The number of partitions is the number of tasks, but how many run at the same time is limited by the available executor cores. Too few partitions means large tasks that spill to disk or run out of memory, too many means scheduling overhead and small files.'
+      pl: 'Spark najpierw zamienia zapytanie na plan: logiczny, który optymalizuje Catalyst, a potem fizyczny, z konkretnymi operatorami. Do akcji nic się nie wykonuje. Akcja sprawia, że driver wysyła job i dzieli go na stage\'e w miejscach shuffle\'u, bo tam taski muszą poczekać na wynik poprzedniego stage\'a. Stage to zestaw tasków, po jednym na partycję, które wykonują ten sam kod. Liczą je executory. Stage\'e przed shuffle\'em zapisują pliki shuffle, a ostatni zwraca wynik do drivera albo zapisuje go do celu. Liczba partycji wyznacza liczbę tasków, ale to, ile działa naraz, ogranicza liczba rdzeni executorów. I jedna akcja to jeden lub więcej jobów: AQE albo broadcast join potrafią rozbić pracę na kilka.',
+      en: "Spark first turns my query into a plan: a logical plan that Catalyst optimizes, then a physical plan with concrete operators. Nothing runs until an action. The action makes the driver submit a job and cut it into stages at shuffle boundaries, because that's where tasks have to wait for the previous stage's output. A stage is a set of tasks, one per partition, all running the same code, and executors run them. Stages that feed a shuffle write shuffle files, and the final stage returns the result to the driver or writes it to the sink. The partition count sets the number of tasks, but how many run at once is capped by executor cores. And one action means one or more jobs: AQE or a broadcast join can split the work into several."
     },
     senior: {
-      pl: 'Reguła „akcja to job, shuffle to stage, partycja to task" jest przybliżeniem. Z AQE jedna akcja bywa kilkoma jobami, a liczba tasków po shuffle\'u maleje, bo Spark skleja małe partycje. Stage może też zostać pominięty, gdy jego pliki shuffle już istnieją. Driver to nie tylko koordynator: trafia do niego wszystko, co ściągnę przez collect, w Apache Spark buduje on małą stronę broadcast joina, a zapytanie na danych lokalnych potrafi policzyć sam.',
-      en: 'The rule "action is a job, shuffle is a stage, partition is a task" is an approximation. With AQE one action can be several jobs, and the task count after a shuffle drops because Spark merges small partitions. A stage can also be skipped when its shuffle files already exist. And the driver is not only a coordinator: everything I collect lands there, in Apache Spark it builds the small side of a broadcast join, and it can evaluate a query on local data by itself.'
+      pl: 'Reguła „akcja to job, shuffle to stage, partycja to task" jest przybliżeniem. W lokalnym teście ten sam zapis z joinem dał 1 job i 406 tasków przy wyłączonym AQE i broadcaście, a 3 joby i 7 tasków przy ustawieniach domyślnych. AQE uruchamia części planu przed shuffle\'em jako osobne joby i skleja małe partycje, a strona broadcast joina policzyła się własnym jobem. Stage może też zostać pominięty, gdy jego pliki shuffle już istnieją. Awarie są obsługiwane na dwóch poziomach: task jest ponawiany, domyślnie do czterech prób, a utrata plików shuffle powoduje ponowne wysłanie stage\'a, który je zapisał.',
+      en: 'The rule "action is a job, shuffle is a stage, partition is a task" is an approximation. In a local test the same write with a join was one job and 406 tasks with AQE and broadcast turned off, and three jobs and 7 tasks with default settings. AQE runs the parts of the plan before a shuffle as separate jobs and merges small partitions, and the broadcast side of a join was computed in its own job. A stage can also be skipped when its shuffle files already exist. Failures are handled at two levels: a task is retried, four attempts by default, and losing shuffle files makes Spark resubmit the stage that wrote them.'
     },
     explain: [
-      'Trzy poziomy, od góry. <b>Job</b> powstaje, gdy akcja każe coś policzyć. Spark tnie go na <b>stage\'e</b> tam, gdzie potrzebny jest <term id="shuffle">shuffle</term>, bo dane trzeba najpierw zapisać, a potem odczytać w nowym układzie. Stage składa się z <b>tasków</b>: jeden task liczy jedną <term id="partition">partycję</term>.',
-      'Pliki shuffle zapisują tylko te stage\'e, po których następuje shuffle. Ostatni stage joba oddaje wynik <term id="driver">driverowi</term> albo zapisuje go do tabeli.',
-      'Liczba tasków to nie równoległość. Pomiar lokalny na <term id="local-mode">local[3]</term>: stage z 12 partycjami miał 12 tasków, ale jednocześnie działały najwyżej 3, tyle, ile było wątków. Na klastrze tę rolę pełnią rdzenie <term id="executor">executorów</term>.',
-      'Driver planuje i koordynuje, ale nie jest wolny od danych. Odbiera wyniki <code>collect()</code> i <code>toPandas()</code>. W Apache Spark zbiera i buduje małą stronę broadcast joina. A zapytanie na danych lokalnych potrafi policzyć sam: w labie <code>SELECT … FROM VALUES … WHERE</code> wykonało się bez żadnego joba (plan <code>LocalTableScan</code>).'
+      'Zanim cokolwiek ruszy, zapytanie staje się planem fizycznym: listą operatorów z zaznaczonymi miejscami, w których dane trzeba przenieść między partycjami. Takie miejsce to <term id="shuffle">shuffle</term>, a w planie węzeł <term id="exchange">Exchange</term>.',
+      'Trzy poziomy, od góry. <b>Job</b> powstaje, gdy akcja każe coś policzyć. Spark tnie go na <b>stage\'e</b> w miejscach shuffle\'u, bo partycja po shuffle\'u zbiera dane od wszystkich tasków poprzedniego stage\'a i trzeba na nie poczekać. Stage składa się z <b>tasków</b>: jeden task liczy jedną <term id="partition">partycję</term>. Pliki shuffle zapisują tylko stage\'e przed shuffle\'em. Ostatni oddaje wynik <term id="driver">driverowi</term> albo zapisuje go do celu.',
+      'Pomiar lokalny, filter + groupBy z zapisem: 1 job, 2 stage\'e, 4 + 200 tasków. Cztery, bo wejście miało 4 partycje. Dwieście, bo tyle wynosi domyślnie <code>spark.sql.shuffle.partitions</code>. Z włączonym <term id="aqe">AQE</term> ta sama akcja dała 2 joby i 5 tasków: część przed shuffle\'em poszła osobnym jobem, a 200 małych partycji zostało sklejonych w jedną.',
+      'Liczba tasków to nie równoległość. Na <term id="local-mode">local[3]</term> stage z 12 partycjami miał 12 tasków, ale jednocześnie działały najwyżej 3. Na klastrze tę rolę pełnią rdzenie <term id="executor">executorów</term>.',
+      'Driver planuje i koordynuje, ale nie jest wolny od danych. Odbiera wyniki <code>collect()</code>, w Apache Spark buduje małą stronę broadcast joina, a zapytanie na danych lokalnych potrafi policzyć sam, bez żadnego joba.'
     ],
-    keywords: ['driver', 'executor', 'job', 'stage', 'task', 'Spark UI', 'local[N]'],
+    keywords: ['driver', 'executor', 'job', 'stage', 'task', 'DAG', 'Exchange', 'Spark UI', 'local[N]'],
     followUps: [
-      { q: 'What happens if an executor fails?', a: 'Its tasks are retried on another executor, up to a retry limit. If shuffle files it wrote are lost, Spark re-runs the stage that produced them.', pl: 'Spark zna plan, więc umie odtworzyć brakujący fragment.' },
+      { q: 'Does one action always produce exactly one job?', a: "No. An action triggers execution of the plan, and that can take several jobs. With adaptive query execution Spark runs the part of the plan before each shuffle as its own job, and a broadcast join can compute the small side in a separate job. So I say one or more jobs per action, depending on the plan and the configuration.", pl: 'Lab: ten sam zapis z joinem dał 1, 2, 3 albo 4 joby, zależnie od AQE i broadcastu.' },
+      { q: 'How can you tell how many stages a query will have?', a: "From the physical plan. Every Exchange with a partitioning is a shuffle, and each shuffle adds a stage boundary, so one shuffle means two stages. A BroadcastExchange is not a shuffle. With AQE that's the initial plan, so I confirm it in the Spark UI after the run, where some stages may also show as skipped.", pl: 'Licz węzły Exchange z podziałem na partycje. Plan sprzed wykonania AQE może jeszcze zmienić.' },
+      { q: 'A stage after a shuffle has 200 tasks for a tiny result. Why?', a: "Because the number of partitions after a shuffle comes from spark.sql.shuffle.partitions, which is 200 by default in Apache Spark, not from the data size. Most of those tasks process empty partitions. With AQE enabled Spark merges small shuffle partitions, so the stage ends up with far fewer tasks.", pl: '200 to ustawienie, nie rozmiar danych. W labie AQE skleiło 200 partycji w 1.' },
+      { q: 'What is the DAG in Spark?', a: "It's the graph of dependencies between the steps of a computation. Directed, because each step depends on earlier ones, and acyclic, so there's always a valid order to run it. Spark cuts that graph into stages at shuffle boundaries, and a stage starts only when the stages it depends on have finished. Independent stages, like the two scans feeding a join, can run at the same time.", pl: 'Graf zależności: z niego wynika kolejność stage\'y, a nie z kolejności linijek w kodzie.' },
+      { q: 'What happens if an executor fails?', a: "Its running tasks are retried on other executors, up to the task retry limit. If shuffle files it wrote are lost as well, a later stage fails to fetch them, and Spark resubmits the stage that produced them for the missing partitions. Spark can do that because the plan says how every partition was computed.", pl: 'Dwa poziomy: ponowienie taska i ponowne wysłanie stage\'a, który zapisał utracone pliki shuffle.' },
       { q: 'What runs on the driver?', a: 'Planning, scheduling and coordination. The distributed work runs on executors, but the driver still handles data: it receives whatever I collect or convert with toPandas, and it can evaluate small local queries itself.', pl: 'collect() na dużych danych zabija driver.' },
       { q: 'Is the number of tasks the same as the parallelism?', a: 'No. A stage has one task per partition, but only as many run at once as there are free executor cores. Twelve partitions on three cores means twelve tasks, three at a time.', pl: 'Taski to kolejka pracy, rdzenie to okienka.' },
       { q: 'What does local[3] mean?', a: 'Spark runs in a single process with three worker threads. There are no separate executors.', pl: 'To wątki, nie executory.' },
       { q: 'Where do you look when a job is slow?', a: 'In the Spark UI: the slowest stage first, then the distribution of task durations and shuffle read sizes inside it.', pl: 'Job, stage, task: zawsze ta sama ścieżka w dół.' }
     ],
     mistakes: [
+      'Twierdzenie, że jedna akcja to zawsze dokładnie jeden job. Liczba jobów zależy od planu i konfiguracji, np. AQE.',
       'Twierdzenie, że driver przetwarza cały zbiór, albo odwrotnie, że nigdy nie dotyka danych. collect, toPandas i dane lokalne trafiają właśnie do niego.',
       'Mylenie liczby tasków z liczbą tasków działających naraz. To drugie ogranicza liczba rdzeni.',
       'Mówienie, że każdy stage zapisuje pliki shuffle. Ostatni zwraca wynik albo zapisuje go do celu.',
       'Opisywanie local[N] jako N executorów.'
+    ]
+  },
+  {
+    id: 'spark-session-vs-context',
+    topicId: 'spark.execution-model',
+    labIds: ['spark-execution-architecture-lab'],
+    area: 'spark',
+    priority: 'P1',
+    title: 'SparkSession a SparkContext',
+    question: {
+      pl: 'Czym różni się SparkSession od SparkContext?',
+      en: 'What is the difference between SparkSession and SparkContext?'
+    },
+    answer: {
+      pl: 'SparkSession to wejście do API DataFrame i SQL. Przez sesję czytam dane, wysyłam SQL, rejestruję widoki i ustawiam konfigurację SQL. SparkContext to obiekt niższego poziomu pod spodem: reprezentuje połączenie aplikacji z klastrem i jest wejściem do API RDD, zmiennych broadcast i akumulatorów. Aktywny SparkContext jest jeden na aplikację, a sesji może być kilka. Każda ma własną konfigurację SQL i własne widoki tymczasowe, ale wszystkie dzielą ten sam kontekst, czyli te same executory. W codziennej pracy na DataFrame\'ach dotykam tylko sesji. Jedno praktyczne zastrzeżenie: w Spark Connect, którego używa serverless w Databricks, klient nie ma dostępu do SparkContext, więc kod oparty na nim albo na RDD tam nie zadziała.',
+      en: "SparkSession is the entry point to the DataFrame and SQL API. I use the session to read data, run SQL, register views and set SQL configuration. SparkContext is the lower-level object underneath: it represents the application's connection to the cluster, and it's the entry point to the RDD API, broadcast variables and accumulators. There's one active SparkContext per application, but there can be several sessions. Each has its own SQL configuration and temporary views, and they all share the same context, so the same executors. In day-to-day DataFrame work I only touch the session. One practical caveat: with Spark Connect, which Databricks serverless uses, the client has no access to SparkContext, so code that relies on it or on RDDs won't work there."
+    },
+    senior: {
+      pl: 'Sesja pojawiła się w Sparku 2.0 i zastąpiła SQLContext jako jedno wejście do danych tabelarycznych. getOrCreate zwraca istniejącą sesję, więc biblioteka i mój kod pracują na tej samej. newSession daje izolację konfiguracji SQL i widoków tymczasowych, ale nie zasobów: kontekst i cache tabel są wspólne. Oba obiekty żyją w driverze. To, gdzie działa driver, zależy od trybu uruchomienia: w trybie client w procesie, który wysłał aplikację, a w trybie cluster wewnątrz klastra.',
+      en: "The session arrived in Spark 2.0 and replaced SQLContext as the single entry point for structured data. getOrCreate returns the existing session, so a library and my own code end up on the same one. newSession isolates SQL configuration and temporary views, but not resources: the context and the table cache are shared. Both objects live in the driver. Where the driver runs depends on the deploy mode: in client mode it's the process that submitted the application, in cluster mode it's launched inside the cluster."
+    },
+    explain: [
+      'Aplikacja Sparka to jeden <term id="driver">driver</term> i jego <term id="executor">executory</term>. Połączenie drivera z klastrem reprezentuje <b>SparkContext</b>. Dokumentacja opisuje go jako główne wejście do funkcji Sparka, przez które tworzy się <term id="rdd">RDD</term> i zmienne broadcast, i zastrzega, że w jednej <term id="jvm">JVM</term> powinien być aktywny tylko jeden.',
+      '<b>SparkSession</b> to warstwa, przez którą pracujesz na co dzień: DataFrame\'y, SQL, tabele, konfiguracja zapytań. Zmienna <code>spark</code> w przykładach to właśnie sesja, a kontekst jest dostępny jako <code>spark.sparkContext</code>.',
+      'Pomiar lokalny: drugie wywołanie <code>getOrCreate()</code> zwróciło tę samą sesję. <code>newSession()</code> dało inną sesję z tym samym SparkContextem. Widok tymczasowy z pierwszej sesji nie był widoczny w drugiej, a zmiana <code>spark.sql.shuffle.partitions</code> w drugiej nie zmieniła pierwszej.',
+      'W <term id="spark-connect">Spark Connect</term> Twój program jest klientem serwera i nie ma dostępu do SparkContext. Dokumentacja wymienia SparkContext i RDD jako nieobsługiwane w tym trybie.'
+    ],
+    keywords: ['SparkSession', 'SparkContext', 'getOrCreate', 'newSession', 'RDD', 'Spark Connect'],
+    followUps: [
+      { q: 'Can you have more than one SparkContext in an application?', a: "Not at the same time. Only one SparkContext should be active per JVM, and I'd have to stop it before creating another. What I can have is several SparkSessions on top of that one context.", pl: 'Jeden aktywny kontekst na JVM. Sesji może być kilka.' },
+      { q: 'What does newSession() give you?', a: "A separate session with its own SQL configuration, temporary views and registered UDFs, on the same SparkContext and table cache. It isolates settings and names, not resources. It's useful when several users or workloads share one application.", pl: 'Izolacja ustawień SQL i widoków tymczasowych, nie zasobów.' },
+      { q: 'What happened to SQLContext and HiveContext?', a: "They were the Spark 1.x entry points for structured data. Since Spark 2.0 SparkSession replaces them, and SQLContext is kept only for backward compatibility. In new code I use SparkSession.builder.getOrCreate.", pl: 'Od Sparka 2.0 jedno wejście: SparkSession. SQLContext został dla zgodności wstecznej.' },
+      { q: 'Where does the driver run?', a: "It depends on the deploy mode. In client mode the driver runs in the process that submitted the application, outside the cluster. In cluster mode it's launched inside the cluster, which keeps it close to the executors. Either way the session and the context live in the driver.", pl: 'Tryb client: w procesie wysyłającym. Tryb cluster: wewnątrz klastra.' }
+    ],
+    mistakes: [
+      'Mówienie, że SparkContext został usunięty albo zastąpiony. W klasycznym trybie nadal istnieje pod każdą sesją.',
+      'Twierdzenie, że każda sesja ma własne executory. Sesje dzielą jeden SparkContext.',
+      'Zakładanie, że spark.sparkContext działa wszędzie. W Spark Connect klient nie ma do niego dostępu.'
+    ]
+  },
+  {
+    id: 'spark-query-plans',
+    topicId: 'spark.execution-model',
+    labIds: ['spark-execution-architecture-lab'],
+    area: 'spark',
+    priority: 'P1',
+    title: 'Plan logiczny, zoptymalizowany i fizyczny',
+    question: {
+      pl: 'Jakie plany tworzy Spark dla zapytania i jak je czytasz?',
+      en: 'What plans does Spark build for a query, and how do you read them?'
+    },
+    answer: {
+      pl: 'Spark przechodzi przez cztery plany, a explain w trybie extended wypisuje wszystkie. Parsed logical plan to moje zapytanie tak, jak je napisałem, z niesprawdzonymi nazwami. W planie analyzed każda kolumna i tabela jest już rozwiązana i ma typ. Optimized logical plan to wynik reguł Catalysta: filtry przesunięte bliżej źródła, wycięte niepotrzebne kolumny, uproszczone wyrażenia. Te trzy mówią, co policzyć. Plan fizyczny mówi, jak: którym algorytmem joina, gdzie dane są przenoszone między partycjami i jak czytane jest źródło. Ten czytam pod kątem wydajności, od dołu, od skanu do wyniku. Każdy shuffle, czyli Exchange, to granica stage\'a. Z AQE plan fizyczny może się jeszcze zmienić w trakcie, więc sprawdzam plan końcowy po wykonaniu.',
+      en: "Spark goes through four plans, and explain in extended mode prints all of them. The parsed logical plan is my query as I wrote it, with names not checked yet. In the analyzed plan every column and table is resolved and typed. The optimized logical plan is the result of Catalyst's rules: filters pushed toward the source, unused columns pruned, expressions simplified. Those three say what to compute. The physical plan says how: which join algorithm, where data moves between partitions, and how the source is scanned. That's the one I read for performance, bottom up, from the scan to the result. Every shuffle Exchange is a stage boundary. With AQE the physical plan can still change at runtime, so I check the final plan after the query has run."
+    },
+    senior: {
+      pl: 'W planie fizycznym patrzę na trzy rzeczy. Skan: ReadSchema i PushedFilters, przy czym PushedFilters mówi, co przekazano źródłu, a nie ile pominięto. Joiny: czy to BroadcastHashJoin, czy SortMergeJoin. I węzły Exchange: hashpartitioning to shuffle, BroadcastExchange nie. Z AQE plan zaczyna się od AdaptiveSparkPlan z isFinalPlan=false, a po wykonaniu ma true. W klasycznym Sparku analiza dzieje się od razu przy definicji DataFrame, a w Spark Connect jest odłożona do wykonania.',
+      en: "In the physical plan I look at three things. The scan: ReadSchema and PushedFilters, keeping in mind that PushedFilters shows what was passed to the source, not how much was skipped. The joins: whether it's a BroadcastHashJoin or a SortMergeJoin. And the Exchange nodes: hashpartitioning is a shuffle, BroadcastExchange is not. With AQE the plan starts with AdaptiveSparkPlan and isFinalPlan=false, and it shows true after execution. In classic Spark analysis happens eagerly when I define the DataFrame, while on Spark Connect it's deferred until execution."
+    },
+    explain: [
+      'Zapytanie w SQL albo na DataFrame mówi, <b>co</b> chcesz dostać. Zanim Spark cokolwiek uruchomi, musi ustalić, <b>jak</b> to policzyć. Robi to w kilku krokach, a każdy ma własny plan. <code>df.explain(extended=True)</code> wypisuje wszystkie cztery.',
+      'Parsed: zapis zapytania, nazwy jeszcze niesprawdzone. Analyzed: nazwy rozwiązane ze <term id="schema">schematem</term>, kolumny mają typy. Optimized: <term id="optimizer">optymalizator</term> przepisał plan na tańszy. W lokalnym teście dopisał <code>Project</code> z dwiema potrzebnymi kolumnami i warunek <code>isnotnull</code>.',
+      'Physical: konkretne operatory. W tym samym teście był to <code>FileScan parquet</code>, <code>Filter</code>, <code>HashAggregate</code> z <code>partial_sum</code>, potem <code>Exchange hashpartitioning(order_date, 200)</code> i końcowy <code>HashAggregate</code>. Plan czyta się od dołu: źródło jest na dole, wynik na górze.',
+      '<term id="exchange">Exchange</term> z podziałem na partycje to <term id="shuffle">shuffle</term> i granica <term id="stage">stage\'a</term>, więc ten plan dał 2 stage\'e. Z włączonym <term id="aqe">AQE</term> plan fizyczny jest początkowy (<code>isFinalPlan=false</code>) i może się zmienić w trakcie wykonania.'
+    ],
+    keywords: ['explain', 'logical plan', 'physical plan', 'Catalyst', 'Exchange', 'AdaptiveSparkPlan'],
+    followUps: [
+      { q: 'How do you see the plans?', a: "df.explain() prints the physical plan, and explain with extended set to true prints all four. In SQL it's EXPLAIN EXTENDED, and EXPLAIN FORMATTED gives an outline with node details, which is easier to read for big plans. For a query that already ran I use the SQL tab in the Spark UI.", pl: 'explain(), explain(extended=True), EXPLAIN FORMATTED, a po wykonaniu zakładka SQL w Spark UI.' },
+      { q: 'What is the difference between Exchange and BroadcastExchange?', a: "An Exchange with a partitioning, like hashpartitioning, is a shuffle: data is redistributed across partitions and a new stage starts. A BroadcastExchange ships one small table to every executor for a broadcast join. The large side isn't redistributed, so it's not a shuffle.", pl: 'Nie każdy Exchange to shuffle. BroadcastExchange rozsyła małą tabelę.' },
+      { q: 'Does the plan you see before running always match what executes?', a: "Not with adaptive query execution. Before the run I see the initial plan, marked isFinalPlan=false. At runtime Spark can merge shuffle partitions or change a join strategy once it knows the real sizes. So for diagnosis I look at the final plan after execution.", pl: 'Z AQE plan sprzed wykonania jest początkowy. Lab: po akcji isFinalPlan=true.' },
+      { q: 'Which plan would show you that a filter was pushed down?', a: "The optimized logical plan shows the filter moved next to the source, and the physical plan shows it in the scan node under PushedFilters. That tells me the filter was passed to the source. Whether data was actually skipped depends on the format and the file statistics.", pl: 'PushedFilters w skanie: „przekazano", nie „pominięto".' }
+    ],
+    mistakes: [
+      'Mylenie planu logicznego z fizycznym. Rodzaj joina i Exchange są dopiero w fizycznym.',
+      'Czytanie planu od góry. Źródło jest na dole, wynik na górze.',
+      'Traktowanie planu sprzed wykonania jako ostatecznego przy włączonym AQE.',
+      'Twierdzenie, że każdy Exchange to shuffle. BroadcastExchange nim nie jest.'
     ]
   },
   {
