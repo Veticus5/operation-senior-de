@@ -15,26 +15,29 @@ function Group({ n, g, limit }: { n: number; g: RowGroup; limit: number }) {
         <b style={{ left: `${(100 * limit) / SCALE}%` }} />
       </span>
       <span className="rg-range">min {g.min} · max {g.max}</span>
-      <span className="rg-verdict">{skipped ? `pominięta: max ${g.max} nie przekracza ${limit}` : `czytana: max ${g.max} przekracza ${limit}`}</span>
+      <span className="rg-verdict">{skipped ? `można pominąć: max ${g.max} nie przekracza ${limit}` : `do rozważenia: max ${g.max} przekracza ${limit}`}</span>
     </li>
   );
 }
 
 /**
  * Ilustracja koncepcyjna pomijania row groups na podstawie min i max. To nie jest pomiar:
- * wartości są dobrane tak, żeby mechanizm było widać. Pomiar na prawdziwym pliku jest pod spodem.
+ * wartości są dobrane tak, żeby mechanizm było widać. Domyślna ścieżka to pytanie, grupy, licznik
+ * i krótki wniosek. Pomiar, plan i analogia są zwinięte, każde osobno.
  */
 export function RowGroups() {
   const [limit, setLimit] = useState(pushdown.defaultFilter);
   const [sorted, setSorted] = useState(true);
   const groups = sorted ? pushdown.sorted : pushdown.scattered;
   const read = groups.filter(g => g.max > limit).length;
+  const skip = groups.length - read;
   return (
     <section className="zoom" aria-labelledby="zoom-title">
       <h2 id="zoom-title">{pushdown.title}</h2>
       {pushdown.intro.map((html, i) => <Html as="p" key={i} html={html} />)}
 
       <span className="badge sim">Symulacja koncepcyjna · nie pomiar</span>
+      <Html as="p" className="small rg-assume" html={pushdown.assumptions} />
       <div className="rg-controls">
         <span className="segc" role="group" aria-label="Warunek filtra">
           {pushdown.filters.map(f => (
@@ -46,19 +49,41 @@ export function RowGroups() {
           <button type="button" aria-pressed={!sorted} onClick={() => setSorted(false)}>dane rozsiane</button>
         </span>
       </div>
+      <div className="rg-count" role="status" aria-live="polite" aria-atomic="true">
+        <p>
+          <b>{read}</b>
+          <span>z {groups.length} grup<br />do rozważenia</span>
+        </p>
+        <p className="skip">
+          <b>{skip}</b>
+          <span>z {groups.length} grup<br />można pominąć</span>
+        </p>
+        {skip === 0 && <p className="rg-none">{pushdown.nothingToSkip}</p>}
+      </div>
       <ul className="rgs">
         {groups.map((g, i) => <Group key={i} n={i + 1} g={g} limit={limit} />)}
       </ul>
-      <p className="rg-sum" aria-live="polite">
-        Filtr <code>amount &gt; {limit}</code>: czytnik musi przeczytać {read} z {groups.length} grup.
-        {read === groups.length && ' Warunek został przekazany, ale nie ma czego pominąć.'}
-      </p>
-      <p className="small">{pushdown.afterSkip}</p>
+      {pushdown.takeaway.map((html, i) => <Html as="p" key={i} className="takeaway" html={html} />)}
 
-      <h3>{pushdown.measuredTitle}</h3>
-      <span className="badge">Rzeczywiste wykonanie · PySpark 4.0.1 · local[3]</span>
-      {pushdown.measured.map((html, i) => <Html as="p" key={i} html={html} />)}
-      <ConceptBridge bridge={pushdown.bridge} here="W Parquet" />
+      <details className="deeper">
+        <summary>{pushdown.measuredTitle}</summary>
+        <div>
+          <span className="badge">Rzeczywiste wykonanie · PySpark 4.0.1 · local[3]</span>
+          {pushdown.measured.map((html, i) => <Html as="p" key={i} html={html} />)}
+        </div>
+      </details>
+      <details className="deeper">
+        <summary>{pushdown.planTitle}</summary>
+        <div>
+          {pushdown.plan.map((html, i) => <Html as="p" key={i} html={html} />)}
+        </div>
+      </details>
+      <details className="deeper">
+        <summary>{pushdown.bridgeTitle}</summary>
+        <div>
+          <ConceptBridge bridge={pushdown.bridge} here="W Parquet" />
+        </div>
+      </details>
     </section>
   );
 }

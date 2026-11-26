@@ -24,7 +24,7 @@ export const meta: LessonMeta = {
   minutes: 40
 };
 
-export interface Beat { html: string; next: string | null; bridge?: Bridge }
+export interface Beat { html: string; next: string | null; bridge?: Bridge; /** Zwinięte pogłębienie, poza domyślną ścieżką. */ more?: { title: string; html: string[] } }
 export const beats: Beat[] = [
   {
     html: '<h1>Cztery linijki, dwa miliardy wierszy.</h1>\n<p class="lede">W S3 leży tabela zdarzeń: 2 mld wierszy, 80 kolumn. Chcesz policzyć przychód z aktywnych subskrypcji per publisher. Piszesz to tak:</p>\n<pre class="code">events  = spark.read.parquet(<span class="k">"s3://.../events"</span>)\nactive  = events.filter(col(<span class="k">"status"</span>) == <span class="k">"active"</span>)\nslim    = active.select(<span class="k">"publisher_id"</span>, <span class="k">"price"</span>)\nrevenue = slim.groupBy(<span class="k">"publisher_id"</span>).sum(<span class="k">"price"</span>)</pre>\n<p>Pytanie, od którego zaczyna się cały Spark: <b>co ma się stać po każdej z tych linijek?</b></p>',
@@ -39,11 +39,15 @@ export const beats: Beat[] = [
     next: 'Więc co robi?'
   },
   {
-    html: '<h2>Zapisuje plan i czeka.</h2>\n<p>Każda z tych czterech linijek tylko dopisuje krok do planu. Żaden wiersz nie jest przetwarzany. Dopiero gdy poprosisz o wynik, np. <code>revenue.show()</code>, Spark ma w ręku całe zapytanie. Upraszcza je tak, jak zrobiłby to Snowflake, i wykonuje.</p>\n<div class="cmp" id="cmp">\n  <div class="cmp-lane"><div class="lab">Linijka po linijce</div><div class="cmp-bars">\n    <div class="bar" style="--w:100%;--d:0s"><i></i><span>filter: wszystkie wiersze, 80 kolumn</span></div>\n    <div class="bar" style="--w:62%;--d:1s"><i></i><span>select: wynik pośredni, 80 kolumn</span></div>\n    <div class="bar" style="--w:9%;--d:2s"><i></i><span>groupBy</span></div>\n  </div></div>\n  <div class="cmp-lane"><div class="lab">Najpierw cały plan</div><div class="cmp-bars">\n    <div class="bar acc" style="--w:9%;--d:3s"><i></i><span>jedno przejście, 3 kolumny z 80</span></div>\n  </div></div>\n</div>\n<p class="small">Ilustracja proporcji, nie pomiar.</p>\n<p>Skąd „3 kolumny z 80"? Dane leżą w plikach <b>Parquet</b>. To format kolumnowy: wartości każdej kolumny są zapisane osobno, więc da się przeczytać trzy kolumny i nie ruszyć pozostałych. Snowflake przechowuje dane na tej samej zasadzie.</p>\n<p>I jedno zastrzeżenie, żeby „nic nie czyta" nie stało się mitem. Spark musi wiedzieć, czy kolumna <code>status</code> w ogóle istnieje, więc potrzebuje <b>schematu</b>: listy kolumn i ich typów. Czytając Parquet ze ścieżki, zagląda po niego do opisu na końcu pliku już w pierwszej linijce. To odczyt opisu danych, nie wierszy.</p>\n<p>Stąd trzy słowa, które usłyszysz na każdej rozmowie. Operacje, które tylko dopisują krok, to <b>transformacje</b>. Te, które żądają wyniku, to <b>akcje</b>. A cała strategia czekania nazywa się <b>lazy evaluation</b>.</p>',
+    html: '<h2>Zapisuje plan i czeka.</h2>\n<p>Każda z tych czterech linijek tylko dopisuje krok do planu. Żaden wiersz nie jest przetwarzany. Dopiero gdy poprosisz o wynik, np. <code>revenue.show()</code>, Spark ma w ręku całe zapytanie. Upraszcza je tak, jak zrobiłby to Snowflake, i wykonuje.</p>\n<div class="cmp" id="cmp">\n  <div class="cmp-lane"><div class="lab">Linijka po linijce</div><div class="cmp-bars">\n    <div class="bar" style="--w:100%;--d:0s"><i></i><span>filter: wszystkie wiersze, 80 kolumn</span></div>\n    <div class="bar" style="--w:62%;--d:1s"><i></i><span>select: wynik pośredni, 80 kolumn</span></div>\n    <div class="bar" style="--w:9%;--d:2s"><i></i><span>groupBy</span></div>\n  </div></div>\n  <div class="cmp-lane"><div class="lab">Najpierw cały plan</div><div class="cmp-bars">\n    <div class="bar acc" style="--w:9%;--d:3s"><i></i><span>jedno przejście, 3 kolumny z 80</span></div>\n  </div></div>\n</div>\n<p class="small">Ilustracja proporcji, nie pomiar.</p>\n<p>Stąd trzy słowa, które usłyszysz na każdej rozmowie. Operacje, które tylko dopisują krok, to <b>transformacje</b>. Te, które żądają wyniku, to <b>akcje</b>. A cała strategia czekania nazywa się <b>lazy evaluation</b>.</p>\n<p>Jedno zastrzeżenie, żeby „nic nie czyta" nie stało się mitem. Spark musi wiedzieć, czy kolumna <code>status</code> w ogóle istnieje, więc potrzebuje <b>schematu</b>: listy kolumn i ich typów. Czytając plik <term id="parquet">Parquet</term> ze ścieżki, zagląda po niego do opisu na końcu pliku już w pierwszej linijce. To odczyt opisu danych, nie wierszy.</p>',
+    more: {
+      title: 'Skąd „3 kolumny z 80"?',
+      html: ['Dane leżą w plikach <b>Parquet</b>. To format kolumnowy: wartości każdej kolumny są zapisane osobno, więc da się przeczytać trzy kolumny i nie ruszyć pozostałych. Snowflake przechowuje dane na tej samej zasadzie.']
+    },
     next: 'Gdzie ja to już widziałem?'
   },
   {
-    html: '<h2>W dbt, codziennie</h2>\n<p>Model dbt to SELECT, który sam niczego nie liczy. CTE też nie. Pracę uruchamia dopiero <code>dbt run</code> albo zapytanie do widoku. DataFrame w Sparku to taki łańcuch CTE, tylko budowany w Pythonie.</p>\n<p>Z analogią przenosi się jedna ważna rzecz: widok nie przechowuje wyniku, więc silnik liczy go przy każdym zapytaniu. DataFrame domyślnie też nie przechowuje. Zaraz zobaczysz, co to znaczy w praktyce i gdzie są wyjątki.</p>',
+    html: '<h2>W dbt, codziennie</h2>\n<p>Model dbt to SELECT, który sam niczego nie liczy. CTE też nie. Pracę uruchamia dopiero <code>dbt run</code> albo zapytanie do widoku. DataFrame w Sparku to taki łańcuch CTE, tylko budowany w Pythonie.</p>\n<p>Co się z tej analogii przenosi, a gdzie się kończy, masz w ramce. Skutki zobaczysz za chwilę w symulatorze.</p>',
     bridge: {
       from: 'dbt i Snowflake',
       known: 'Model zmaterializowany jako <code>view</code>: definicja, którą silnik wykonuje dopiero przy zapytaniu.',
@@ -53,6 +57,12 @@ export const beats: Beat[] = [
     next: 'Zobacz to na żywo'
   }
 ];
+
+/** Etap Mechanizm: pytanie nad symulatorem i krótki wniosek pod nim. Szczegóły są w simNotes. */
+export const mechanism = {
+  question: 'Co dzieje się z wierszami, kiedy dopisujesz operacje?',
+  takeaway: '<b>Wniosek.</b> Transformacja tylko wydłuża plan. Wiersze płyną dopiero przy akcji, po uproszczeniu całego planu. Bez <code>cache()</code> kolejna akcja może policzyć część albo całość planu od nowa.'
+};
 
 /** Co w etapie Mechanizm jest symulacją, a co pochodzi z uruchomienia Sparka. */
 export const simNotes: string[] = [
@@ -64,29 +74,41 @@ export const simNotes: string[] = [
 ];
 
 /**
- * Zbliżenie na predicate pushdown. Cztery row groups to ilustracja koncepcyjna (wartości wymyślone,
- * żeby mechanizm było widać na pierwszy rzut oka). Pomiar na prawdziwym pliku jest w `measured`.
+ * Zbliżenie na predicate pushdown. Domyślna ścieżka: pytanie, cztery row groups, licznik, krótki wniosek.
+ * Cztery row groups to ilustracja koncepcyjna (wartości wymyślone, żeby mechanizm było widać na pierwszy
+ * rzut oka). Pomiar z labu, interpretacja planu i most do Snowflake są w `details`, zwinięte i niezależne.
  */
 export interface RowGroup { min: number; max: number }
 export const pushdown = {
-  title: 'Zbliżenie: co czytnik może zrobić z filtrem',
+  title: 'Czy musimy przeczytać cały plik?',
   intro: [
-    'Symulator pokazuje napis „filtr przekazany do czytnika". Co czytnik może z nim zrobić? Plik Parquet nie jest jednym blokiem. Jest podzielony na <b>row groups</b>, czyli grupy wierszy zapisane jedna za drugą. Dla każdej grupy plik może przechowywać najmniejszą i największą wartość każdej kolumny.',
-    'Jeśli filtr brzmi <code>amount &gt; 1000</code>, a największa wartość w grupie to 850, czytnik wie bez zaglądania do środka, że nic tam nie znajdzie. Przekazanie warunku do źródła nazywa się <b>predicate pushdown</b>.'
+    'Symulator pokazał napis „filtr przekazany do czytnika". Co czytnik może z nim zrobić? Plik <term id="parquet">Parquet</term> jest podzielony na <b>row groups</b>, czyli grupy wierszy zapisane jedna za drugą. Dla każdej grupy może przechowywać najmniejszą i największą wartość kolumny. Zmień filtr albo ułożenie danych i patrz na licznik.'
   ],
+  /** Założenia uproszczonego modelu. Zawsze widoczne obok etykiety symulacji. */
+  assumptions: 'Model uproszczony: cztery grupy z wymyślonymi wartościami, plik ma statystyki min i max dla <code>amount</code>, a filtr jest takim, który czytnik potrafi z nimi porównać.',
   /** Dane ułożone po amount: zakresy grup prawie się nie nakładają. */
   sorted: [{ min: 10, max: 400 }, { min: 410, max: 850 }, { min: 900, max: 1800 }, { min: 1900, max: 5000 }] as RowGroup[],
   /** Te same wartości rozsiane po całym pliku: każda grupa ma pełny zakres. */
   scattered: [{ min: 10, max: 5000 }, { min: 15, max: 4990 }, { min: 12, max: 4960 }, { min: 20, max: 4985 }] as RowGroup[],
   filters: [300, 1000, 2000],
   defaultFilter: 1000,
-  afterSkip: 'Grupa, której nie da się wykluczyć, jest czytana w całości. Wiersze, które nie spełniają warunku, Spark odrzuca potem sam, w węźle Filter.',
-  measuredTitle: 'To samo na prawdziwym pliku',
+  nothingToSkip: 'Warunek został przekazany, ale nie ma czego pominąć: każda grupa może zawierać pasujący wiersz.',
+  takeaway: [
+    'Przekazanie warunku do źródła nazywa się <b>predicate pushdown</b>. Jeśli największa wartość w grupie nie przekracza progu, żaden jej wiersz nie spełni warunku, więc czytnik może ją pominąć bez zaglądania do środka.',
+    'Grupa „do rozważenia" jest czytana w całości i nadal może zawierać wiersze, które warunku nie spełniają. Te Spark odrzuca potem sam, w węźle Filter. Dlatego przekazanie filtra to jeszcze nie oszczędność: ile grup odpadnie, zależy od statystyk i ułożenia danych.'
+  ],
+  measuredTitle: 'Pomiar: to samo na prawdziwym pliku',
   measured: [
     'Lab <code>labs/lazy_evaluation/pushdown_lab.py</code>: 400 000 wierszy w 31 row groups, filtr <code>amount &gt; 4500</code>, wynik 39 920 wierszy.',
-    'Dane posortowane po <code>amount</code>: skan oddał Sparkowi 46 138 wierszy, dokładnie tyle, ile mają 4 grupy, których max przekracza 4500. Dane nieposortowane: 400 000, bo każda grupa miała zakres 0..4999.',
-    'W obu przypadkach linia <code>PushedFilters</code> w planie była identyczna. Była taka sama nawet po wyłączeniu pushdownu w konfiguracji (<code>spark.sql.parquet.filterPushdown=false</code>), kiedy skan oddał wszystkie 400 000 wierszy. Wniosek: <code>PushedFilters</code> mówi, co Spark przekazał źródłu. Nie mówi, ile dzięki temu pominięto.'
+    'Dane posortowane po <code>amount</code>: skan oddał Sparkowi 46 138 wierszy, dokładnie tyle, ile mają 4 grupy, których max przekracza 4500. Dane nieposortowane: 400 000, bo każda grupa miała zakres 0..4999.'
   ],
+  planTitle: 'W planie: czego dowodzi linia PushedFilters',
+  plan: [
+    'W planie fizycznym przekazany warunek widać w linii <code>PushedFilters</code>. W labie <code>pushdown_lab.py</code> była identyczna dla danych posortowanych i nieposortowanych, choć skan oddał odpowiednio 46 138 i 400 000 wierszy.',
+    'Była taka sama nawet po wyłączeniu pushdownu w konfiguracji (<code>spark.sql.parquet.filterPushdown=false</code>), kiedy skan oddał wszystkie 400 000 wierszy. Wniosek: <code>PushedFilters</code> mówi, co Spark przekazał źródłu. Nie mówi, ile dzięki temu pominięto.',
+    'Cały plan, linia po linii, przeczytasz w eksperymencie 2 w etapie Praktyka.'
+  ],
+  bridgeTitle: 'Analogia: pruning mikropartycji w Snowflake',
   bridge: {
     from: 'Snowflake',
     known: 'Pruning mikropartycji: Snowflake trzyma dla każdej mikropartycji zakres wartości kolumn i pomija te, które nie mogą pasować do filtra.',
