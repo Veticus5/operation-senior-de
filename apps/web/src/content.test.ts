@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { lessons, questions } from '@content/index';
 import { glossary } from '@content/glossary';
 import type { Bridge } from '@content/types';
-import { beats, experiments, interview, plans, pushdown, simNotes, tasks } from '@content/spark/lazy-evaluation/lesson';
+import { beats, experiments, interview, mechanism, plans, pushdown, simNotes, tasks } from '@content/spark/lazy-evaluation/lesson';
 import { parseRich, plainText, termIds } from './lib/richText';
 
 const words = (text: string) => plainText(text).split(/\s+/).filter(Boolean).length;
@@ -10,10 +10,14 @@ const words = (text: string) => plainText(text).split(/\s+/).filter(Boolean).len
 /** Wszystkie fragmenty lekcji, które przechodzą przez komponent Html. */
 const lessonBridges: Bridge[] = [...beats.flatMap(b => (b.bridge ? [b.bridge] : [])), ...experiments.flatMap(e => (e.bridge ? [e.bridge] : [])), pushdown.bridge];
 const lessonRich: string[] = [
-  ...beats.map(b => b.html),
+  ...beats.flatMap(b => [b.html, ...(b.more?.html ?? [])]),
+  mechanism.takeaway,
   ...simNotes,
   ...pushdown.intro,
+  pushdown.assumptions,
+  ...pushdown.takeaway,
   ...pushdown.measured,
+  ...pushdown.plan,
   ...experiments.flatMap(e => [e.ask, e.setup, e.scope, e.output ?? '', ...e.notes, ...(e.more?.html ?? []), ...(e.explainers ?? []).flatMap(x => x.lines.map(l => l.text))]),
   ...lessonBridges.flatMap(b => [b.known, b.fresh, b.breaks])
 ];

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { beats, experiments, interview, meta, simNotes, type Experiment } from '@content/spark/lazy-evaluation/lesson';
+import { beats, experiments, interview, mechanism, meta, simNotes, type Experiment } from '@content/spark/lazy-evaluation/lesson';
 import { questionsByTopic } from '@content/index';
 import labCode from '../../../../../labs/lazy_evaluation/lazy_lab.py?raw';
 import { CodeExplainer } from '../../components/CodeExplainer';
@@ -44,6 +44,14 @@ function Intuition({ onNext }: { onNext: () => void }) {
         <div className="beat on" key={i}>
           {i === 0 && <p className="eyebrow">Etap 1 · Intuicja</p>}
           <Html html={b.html} />
+          {b.more && (
+            <details className="deeper">
+              <summary>{b.more.title}</summary>
+              <div>
+                {b.more.html.map((h, j) => <Html as="p" key={j} html={h} />)}
+              </div>
+            </details>
+          )}
           {b.bridge && <ConceptBridge bridge={b.bridge} />}
           {i === shown - 1 && b.next && (
             <button type="button" className={i === beats.length - 1 ? 'cta' : 'more'} onClick={() => (i === beats.length - 1 ? onNext() : setShown(shown + 1))}>
@@ -188,8 +196,10 @@ export function LazyLesson({ stage }: { stage?: string }) {
       <section className="stage" hidden={hidden('mechanizm')}>
         <div className="wide">
           <p className="eyebrow">Etap 2 · Mechanizm</p>
+          <h2>{mechanism.question}</h2>
           <span className="badge sim">Symulacja w przeglądarce · plany z prawdziwego explain()</span>
           <LazySim />
+          <Html as="p" className="takeaway" html={mechanism.takeaway} />
           <details className="simnote">
             <summary>Co tu jest symulacją, a co pochodzi z prawdziwego Sparka</summary>
             <ul>
