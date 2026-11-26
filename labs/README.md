@@ -9,7 +9,7 @@ cd labs
 uv run lazy_evaluation/lazy_lab.py
 ```
 
-Lab z rejestru `registry.json` da się też uruchomić z interfejsu: `npm run dev:labs` w katalogu głównym, potem przycisk „Uruchom lab" w lekcji albo w pytaniu. Runner wykonuje dokładnie to samo polecenie co wyżej. Na razie w rejestrze jest jeden lab: `lazy_evaluation/lazy_lab.py`.
+Lab z rejestru `registry.json` da się też uruchomić z interfejsu: `npm run dev:labs` w katalogu głównym, potem przycisk „Uruchom lab" w lekcji albo w pytaniu. Runner wykonuje dokładnie to samo polecenie co wyżej. W rejestrze są dwa laby: `lazy_evaluation/lazy_lab.py` i `partitioning_shuffle/shuffle_lab.py`.
 
 Inny skrypt uruchamiasz tak samo, podając jego ścieżkę. Żeby sprawdzić inną wersję Sparka bez zmiany projektu:
 
@@ -22,6 +22,7 @@ uv run --no-project --with pyspark==4.3.0 python lazy_evaluation/lazy_lab.py
 | `lazy_evaluation/lazy_lab.py` | lekcja Lazy Evaluation, eksperymenty 1–5 | czas definicji a akcji, plan po optymalizacji, ponowne wykonanie i cache, moment zgłoszenia błędu, liczba jobów na akcję |
 | `lazy_evaluation/lazy_conditions_lab.py` | ta sama lekcja, rozwinięcia pod eksperymentami | kiedy druga akcja liczy od nowa, a kiedy używa ponownie wyników shuffle'u; częściowe wypełnianie cache; od czego zależy moment błędu (ANSI, użycie kolumny); kiedy sama definicja uruchamia joba; skąd liczba jobów w `show()` |
 | `lazy_evaluation/pushdown_lab.py` | ta sama lekcja, zbliżenie w etapie Mechanizm | ile wierszy skan Parquet faktycznie oddaje przy danych posortowanych i nieposortowanych oraz czy `PushedFilters` o tym mówi |
+| `partitioning_shuffle/shuffle_lab.py` | lekcja Partitioning & Shuffle, symulacja i eksperymenty 1–5 | gdzie leży każdy wiersz przed operacją i po niej, liczba stage'y i tasków, rekordy zapisane do shuffle'u, podział hashem i round-robin, coalesce, liczba tasków po shuffle'u z AQE i bez |
 | `interview_bank/spark_checks.py` | Interview Bank, pytania o Sparku | wartości domyślne, hint broadcast a typ joina, co wędruje przez shuffle, trzy sposoby podziału na partycje, taski a równoległość, praca wykonana przez driver |
 
 Zasada: jeśli lekcja albo pytanie w banku podaje liczbę „z uruchomienia", musi istnieć lab, który ją odtwarza.
