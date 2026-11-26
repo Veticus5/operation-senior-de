@@ -1,0 +1,9 @@
+[project]
+name = "osde-labs"
+version = "0.1.0"
+description = "Laby PySpark do Operation Senior DE. Każdy skrypt uruchamia się samodzielnie."
+requires-python = ">=3.10"
+dependencies = ["pyspark==4.0.1"]
+
+[tool.uv]
+package = false
