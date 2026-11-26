@@ -52,7 +52,8 @@ print(f"   joby w count(): {jobs() - before}\n")
 print("2. Plan po optymalizacji i skan pliku")
 qe = per_pub._jdf.queryExecution()
 print(qe.optimizedPlan().toString())
-scan = [l.strip() for l in qe.executedPlan().toString().split("\n") if "FileScan" in l][0]
+scan = [l[l.index("FileScan"):] for l in qe.executedPlan().toString().split("\n") if "FileScan" in l][0]
+print("\n  ", scan[:scan.index(" Batched")])
 print("  ", scan[scan.index("PushedFilters"):], "\n")
 
 # --- 3. Ile razy Spark przerabia wiersze -------------------------------------
