@@ -7,6 +7,14 @@
       "summary": "Pięć małych eksperymentów na 9 wierszach: czas definicji a czas akcji, plan po optymalizacji, ponowne wykonanie i cache, moment zgłoszenia błędu, liczba jobów na akcję.",
       "scope": "To uruchomienie lokalne: <code>local[3]</code>, czyli jeden proces z trzema wątkami, bez klastra. Czasy będą inne przy każdym uruchomieniu. Liczniki wierszy i jobów zależą od wersji Sparka, planu i konfiguracji, więc traktuj je jako obserwację, nie gwarancję.",
       "timeoutSec": 300
+    },
+    {
+      "id": "spark-data-skew-aqe-lab",
+      "script": "data_skew/skew_aqe_lab.py",
+      "title": "Data skew i AQE na prawdziwym Sparku",
+      "summary": "Osiem eksperymentów na 2 000 000 wymyślonych zamówień, z których 80% ma jeden klucz: rozmiary partycji, rekordy z shuffle'u na task w joinie, AQE z progami domyślnymi i obniżonymi, typy joina, sklejanie partycji, zmiana strategii joina, salting i NULL w kluczu.",
+      "scope": "To uruchomienie lokalne: <code>local[3]</code>, czyli jeden proces z trzema wątkami, bez klastra i bez sieci. Liczby rekordów powtarzają się przy każdym uruchomieniu, czasy tasków nie. Dane są małe, więc progi AQE są w części eksperymentów celowo obniżone: wynik pokazuje, kiedy mechanizm się włącza, a nie ile czasu oszczędza na klastrze.",
+      "timeoutSec": 300
     }
   ]
 }

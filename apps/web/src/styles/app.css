@@ -352,3 +352,89 @@ pre.code.labr-out{height:340px;overflow:auto;font-size:13px;line-height:1.6;marg
   pre.code.labr-out{height:300px;font-size:12px;padding:14px}
   .labr details.labr-src>div{padding:8px}
 }
+
+/* ---------- lekcja Data Skew & AQE (prefiks sk-) ---------- */
+.sk,.sk-keys,.sk-metrics,.sk-moves,.sk-limits{margin:26px 0 0}
+.sk-controls{margin:6px 0 18px}
+.sk-controls .viz-k,.sk-moves .viz-k,.sk-limits .viz-k{margin:0 0 8px}
+.sk-fix{margin-top:16px}
+.sk-gap{margin-top:16px!important}
+.sk-chips{display:flex;flex-wrap:wrap;gap:8px}
+.sk-chip{border:1px solid var(--line-2);background:transparent;border-radius:9px;padding:6px 12px;font-size:14px;color:var(--ink-2)}
+.sk-chip:hover{border-color:var(--ink-2)}
+.sk-chip[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+.sk-count{display:flex;flex-wrap:wrap;gap:8px 36px;align-items:center;margin:0 0 18px}
+.sk-count p{display:flex;align-items:center;gap:12px;margin:0;font-size:15px;line-height:1.3;color:var(--ink-2)}
+.sk-count b{font:600 44px/1 var(--display);color:var(--ink);white-space:nowrap}
+.sk-count p.hot b{color:var(--accent)}
+.sk-scene{border:1px solid var(--line);border-radius:16px;background:var(--bg-2);padding:16px 18px}
+.sk-clock{display:flex;justify-content:space-between;gap:4px 16px;flex-wrap:wrap;margin:0 0 12px}
+.sk-clock span:last-child{letter-spacing:0;text-transform:none;color:var(--ink-2)}
+.sk-tasks{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;min-height:186px}
+.sk-tasks.dense{gap:3px}
+.sk-task{position:relative;display:grid;grid-template-columns:26px minmax(0,1fr) 70px;gap:10px;align-items:center;font:500 12px var(--mono);color:var(--ink-3)}
+.sk-track{display:block;height:18px;border-radius:5px;background:var(--bg-3)}
+.sk-tasks.dense .sk-track{height:12px}
+.sk-bar{position:relative;display:block;height:100%;min-width:3px}
+.sk-ghost,.sk-fill{position:absolute;inset:0;display:flex;border-radius:5px;overflow:hidden}
+.sk-ghost{opacity:.3}
+.sk-bar i{display:block;height:100%;flex-basis:0}
+.sk-bar i.rest{background:var(--ink-2)}
+.sk-bar i.hot{background:var(--accent)}
+.sk-t{color:var(--ink-2);white-space:nowrap}
+.sk-task.done .sk-t{color:var(--good)}
+.sk-legend{display:flex;gap:16px;flex-wrap:wrap;margin:12px 0 0;font:400 12px var(--mono);color:var(--ink-3);max-width:none}
+.sk-legend span{display:inline-flex;gap:6px;align-items:center}
+.sk-legend span::before{content:"";width:10px;height:10px;border-radius:3px;background:var(--ink-2)}
+.sk-legend .hot::before{background:var(--accent)}
+.sk-out{min-height:8em;margin-top:16px}
+.sk-verdict{font-size:16.5px;line-height:1.55;margin:0 0 10px;padding-left:16px;border-left:2px solid var(--accent);color:var(--ink);max-width:none}
+.sk-verdict.muted{border-color:var(--line-2);color:var(--ink-2)}
+.sk-verdict.ok{border-color:var(--good)}
+.sk-verdict.no{border-color:var(--bad)}
+.sk-cost{font-size:15.5px;line-height:1.55;margin:0;padding-left:18px;color:var(--ink-2);max-width:none}
+.sk-cost b{color:var(--ink);font-weight:600}
+.sk-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+/* rozkład klucza */
+.sk-query{margin:0 0 14px;font-size:13.5px;padding:14px 18px}
+.sk-keyrows{list-style:none;margin:0 0 12px;padding:0;display:flex;flex-direction:column;gap:7px}
+.sk-keyrows li{display:grid;grid-template-columns:minmax(0,210px) minmax(0,1fr) 84px;gap:12px;align-items:center;font:500 12.5px var(--mono);color:var(--ink-2)}
+.sk-keytrack{display:block;height:12px;border-radius:4px;background:var(--bg-3)}
+.sk-keytrack i{display:block;height:100%;border-radius:4px;background:var(--ink-2)}
+.sk-keyrows li.hot{color:var(--ink)}
+.sk-keyrows li.hot .sk-keytrack i{background:var(--accent)}
+.sk-keycount{text-align:right;white-space:nowrap}
+/* tabele: metryki i wynik labu */
+.sk-table{width:100%;max-width:560px;margin:16px 0 14px}
+.sk-table td.sk-flag{color:var(--accent)}
+.sk-metrics [role="status"]{min-height:14.5em}
+/* AQE: trzy ruchy i granice */
+.sk-move{margin-top:18px;min-height:25em}
+.sk-move p{font-size:16.5px;line-height:1.6;max-width:none;margin:0 0 14px}
+.sk-move p.small{font-size:15px;color:var(--ink-3)}
+.sk-ba{border:1px solid var(--line);border-radius:14px;background:var(--bg-2);padding:14px 16px 16px;margin:0 0 16px}
+.sk-ba .viz-k{margin:0 0 6px}
+.sk-ba .viz-k:not(:first-child){margin-top:14px}
+.sk-parts{display:flex;gap:2px;height:20px}
+.sk-parts i{display:block;flex-basis:0;border-radius:3px;background:var(--ink-3)}
+.sk-parts i.big{background:var(--accent)}
+.sk-node{font:500 14px var(--mono);color:var(--ink)}
+.sk-move p.sk-measured{border-left:2px solid var(--good);padding-left:16px;color:var(--ink)}
+.sk-checks{margin-top:18px;min-height:13em}
+.sk-checks ul{list-style:none;margin:0 0 14px;padding:0;display:flex;flex-direction:column;gap:6px;font:400 13.5px var(--mono);color:var(--ink-2)}
+.sk-checks .ok{color:var(--good)}
+.sk-checks .no{color:var(--bad)}
+.read .labr+.badge{margin-top:8px}
+@media (max-width:640px){
+  .sk-scene{padding:12px}
+  .sk-count{gap:8px 20px}.sk-count b{font-size:32px}
+  .sk-task{grid-template-columns:22px minmax(0,1fr) 58px;gap:6px;font-size:11px}
+  .sk-chip,.sk .segc button,.sk-metrics .segc button,.sk-limits .segc button{font-size:13px;padding:6px 9px}
+  .sk-keyrows li{grid-template-columns:minmax(0,1fr) 84px}
+  .sk-keytrack{grid-column:1 / -1;grid-row:2}
+  .sk-out{min-height:14em}
+  .sk-metrics [role="status"]{min-height:19em}
+  .sk-move{min-height:40em}
+  .sk-checks{min-height:19em}
+  .sk-checks ul{font-size:12.5px}
+}

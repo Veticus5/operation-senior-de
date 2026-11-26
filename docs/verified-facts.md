@@ -98,6 +98,32 @@ Liczba wierszy pochodzi z metryki `numOutputRows` węzła skanu, a min i max gru
 | 12 partycji na `local[3]` | 12 tasków, jednocześnie najwyżej 3 |
 | `SELECT … FROM VALUES … WHERE …` + `collect()` | 0 jobów, plan `LocalTableScan` (policzone przez driver) |
 
+### `labs/data_skew/skew_aqe_lab.py` (lekcja 05: Data Skew & AQE), uruchomienie z 2026-11-27
+
+Dane wymyślone: 2 000 000 zamówień, z czego 80% (1 600 000) ma `customer_id = 0`, pozostałe klucze po około 400 wierszy; 1000 klientów, po jednym wierszu na klucz. 8 partycji po shuffle'u, `spark.sql.autoBroadcastJoinThreshold = -1` (żeby join szedł przez shuffle), o ile wiersz nie mówi inaczej. Metryki tasków z REST API Sparka (`taskList`). „Max" i „mediana" to rekordy przeczytane z shuffle'u przez jeden task.
+Liczby rekordów wyszły identycznie w trzech uruchomieniach na PySpark 4.0.1 i w jednym na 4.3.0. Czasy tasków różniły się między uruchomieniami i nie są cytowane jako wynik (gorący task: ok. 170–260 ms przy medianie 2–50 ms).
+
+| Fakt | Wynik |
+| --- | --- |
+| `repartition(8, customer_id)`, klucz równy (1000 kluczy po 2000 wierszy) | partycje od 220 000 do 290 000 wierszy |
+| `repartition(8, customer_id)`, klucz skośny | siedem partycji 44 451–58 059 wierszy, ósma 1 643 654 |
+| `repartition(64, customer_id)`, klucz skośny | największa partycja 1 605 606, mediana 6 008 |
+| Sort-merge join, AQE wyłączone, klucz równy | 8 tasków, mediana 242 121, max 290 145 |
+| To samo, klucz skośny | 8 tasków, mediana 52 583, max 1 643 764 |
+| To samo, klucz skośny, 64 partycje shuffle'u | 64 taski, mediana 6 023, max 1 605 621 |
+| AQE włączone (sklejanie partycji wyłączone), progi skew domyślne | `SortMergeJoin` bez znacznika skew, max 1 643 764 (gorąca partycja jest dużo mniejsza niż 256 MB) |
+| AQE, `skewedPartitionThresholdInBytes = 1MB`, `advisoryPartitionSizeInBytes = 2MB` | `SortMergeJoin(skew=true)`, 10 tasków, max 547 996. Łącznie 2 001 220 rekordów z shuffle'u przy 2 001 000 na wejściu: partycja klientów (110 wierszy) przeczytana 3 razy |
+| Te same progi, skośna strona lewa: inner / left / right / full | `skew=true`, max 547 996 / `skew=true`, max 547 996 / brak, max 1 643 764 / brak, max 1 643 764 |
+| Te same progi, `row_number()` w oknie po `customer_id` | max 1 643 654 (bez podziału) |
+| `groupBy` na kluczu równym, `shuffle.partitions = 200` | AQE wyłączone: 200 tasków. AQE włączone: 1 task, w planie `AQEShuffleRead coalesced` |
+| Join z tabelą 3 000 000 wierszy, z której filtr zostawia 31; próg broadcastu domyślny (10 MB) | plan przed wykonaniem `SortMergeJoin` w obu przypadkach; plan po wykonaniu: bez AQE `SortMergeJoin`, z AQE `BroadcastHashJoin` |
+| Salting, sól 0..15 (`rand(seed=7)`), AQE wyłączone, 8 partycji | mediana 251 270, max 450 939; strona klientów 16 000 wierszy zamiast 1000; wynik (liczba wierszy i suma) identyczny jak bez soli |
+| 80% zamówień z `customer_id = NULL`, left join, AQE wyłączone | max 1 650 981, mediana 50 173, w planie brak filtra `isnotnull` |
+| To samo, inner join | filtr `isnotnull` w planie, max 58 204 |
+
+Zakres: `local[3]`, kilka megabajtów danych, jedna maszyna. Wyniki pokazują, jak rozkłada się praca i kiedy AQE zmienia plan, ale nie mówią nic o czasie na klastrze ani o spillu i błędach pamięci, których przy tak małych danych nie ma. Progi AQE są w części eksperymentów obniżone celowo: przy domyślnych 256 MB obsługa skew na tych danych się nie włącza. Lab nie mierzy shuffle hash joina, Databricks ani Photona.
+Obserwacja poza labem: w pierwszej wersji eksperymentu ze zmianą strategii joina wszystkie wiersze małej strony miały ten sam klucz (1 niepusta partycja z 8) i AQE nie zmieniło joina na broadcast. Pasuje to do opisu `spark.sql.adaptive.nonEmptyPartitionRatioForBroadcastJoin` w dokumentacji Databricks, ale skrypt tego nie odtwarza, więc lekcja o tym nie mówi.
+
 ### Lokalny runner labów (`apps/lab-runner`), uruchomienie kontrolne z 2026-11-27
 
 Środowisko: Linux x64, uv 0.13.7, CPython 3.15.2, PySpark 4.0.1, Java 21.0.13 (Temurin JRE), `local[3]`.
@@ -179,12 +205,31 @@ Strony Apache Spark i PySpark to dokumentacja wersji **4.3.0**. Lekcja nie ma w�
 | Snowflake: trzy warstwy (storage, compute, cloud services). Zapytania przetwarzają klastry MPP; „Each virtual warehouse is an independent compute cluster". Snowflake zarządza wszystkimi aspektami przechowywania danych (organizacja, rozmiar plików, kompresja, statystyki). Tabele Iceberg trzymają pliki w zewnętrznym storage | [Snowflake: Key concepts and architecture](https://docs.snowflake.com/en/user-guide/intro-key-concepts) |
 | Rozmiar warehouse określa zasoby obliczeniowe klastra; każdy kolejny rozmiar podwaja zużycie kredytów na godzinę | [Snowflake: Overview of warehouses](https://docs.snowflake.com/en/user-guide/warehouses-overview) |
 
+### Lekcja 05: Data Skew & AQE (sprawdzone 2026-11-27)
+
+Strony Apache Spark to dokumentacja wersji **4.3.0**. Pomiary są w tabeli `labs/data_skew/skew_aqe_lab.py` wyżej. Symulacja stage'a, tabele metryk „Stage A / Stage B", rysunki trzech ruchów AQE i liczby w scenariuszach diagnozy są ilustracjami z wymyślonymi liczbami i tak są podpisane.
+
+| Fakt | Źródło |
+| --- | --- |
+| AQE „makes use of the runtime statistics to choose the most efficient query execution plan, which is enabled by default since Apache Spark 3.2.0"; przełącznik `spark.sql.adaptive.enabled` | [Spark: Performance Tuning](https://spark.apache.org/docs/latest/sql-performance-tuning.html) |
+| Sklejanie: „coalesce contiguous shuffle partitions according to the target size (`advisoryPartitionSizeInBytes`), to avoid too many small tasks". `coalescePartitions.parallelismFirst` domyślnie true: Spark ignoruje wtedy 64 MB i pilnuje tylko `minPartitionSize` (1 MB); „It's recommended to set this config to false on a busy cluster". `initialPartitionNum` domyślnie równe `spark.sql.shuffle.partitions` | tamże |
+| Zmiana joina: „AQE converts sort-merge join to broadcast hash join when the runtime statistics of any join side are smaller than the adaptive broadcast hash join threshold. This is not as efficient as planning a broadcast hash join in the first place, but it's better than continuing the sort-merge join". `spark.sql.adaptive.autoBroadcastJoinThreshold`: domyślnie ta sama wartość co `spark.sql.autoBroadcastJoinThreshold` | tamże |
+| Skew join: „dynamically handles skew in sort-merge join by splitting (and replicating if needed) skewed tasks into roughly evenly sized tasks". Partycja jest skośna, gdy jest większa niż `skewedPartitionFactor` (5.0) × mediana i jednocześnie większa niż `skewedPartitionThresholdInBytes` (256MB); próg „should be set larger than `advisoryPartitionSizeInBytes`". `forceOptimizeSkewedJoin` (false): wymusza regułę „even if it introduces extra shuffle" | tamże |
+| Na tej stronie nie ma nic o AQE w Structured Streaming ani o skew w agregacjach i funkcjach okna. Opis skew dotyczy tylko sort-merge joina | tamże (brak wzmianki) |
+| Databricks: cztery funkcje AQE (zmiana sort merge join na broadcast hash join, sklejanie partycji, skew w sort merge join i shuffle hash join, propagacja pustych relacji). AQE włączone domyślnie; warunki: zapytanie nie jest streamingowe i zawiera exchange albo podzapytanie | [Databricks: Adaptive query execution](https://docs.databricks.com/aws/en/optimizations/aqe) (2026-10-12) |
+| Databricks, czytanie planu: węzeł `AdaptiveSparkPlan` z flagą `isFinalPlan` (false przed i w trakcie, true po zakończeniu); sklejanie jako `CustomShuffleReader` z własnością `Coalesced`; skew jako `SortMergeJoin` z polem `isSkew` ustawionym na true; `SQL EXPLAIN` nie wykonuje zapytania, więc AQE go nie zmienia | tamże |
+| Databricks FAQ: skew tylko w joinach przez shuffle (sort merge i shuffle hash), nigdy w broadcast joinach. Strona dzielona: inner i cross obie, left outer / left semi / left anti lewa, right outer prawa, full outer żadna. „AQE doesn't reorder joins at runtime". Zaplanowany broadcast (hint) zwykle działa lepiej niż ten wybrany przez AQE w trakcie | tamże |
+| Skew join hints na Databricks: strona wycofana; „Skew join hints are not required. Databricks handles skew by default by using adaptive query execution (AQE)" | [Databricks: Skew join optimization using skew hints](https://docs.databricks.com/aws/en/optimizations/skew-join) (2024-05-13, strona oznaczona jako wycofana) |
+| Strona stage'a w Spark UI: „Summary metrics for all tasks are represented in a table and in a timeline", m.in. Duration, GC time, „Shuffle Read Size / Records", Shuffle spill (memory / disk). Te same metryki są w tabeli tasków | [Spark: Web UI](https://spark.apache.org/docs/latest/web-ui.html) (4.3.0) |
+
 Wpisy bez daty (liquid clustering, VACUUM, deployment modes, DLT, Submitting Applications) pochodzą z pierwszej wersji tego pliku i nie były ponownie otwierane 2026-11-26.
 
 ## Niezweryfikowane
 
 - Lekcja 00, rzeczy podane z wiedzy ogólnej albo jako ocena, a nie cytat: dbt kompiluje modele do SQL i wysyła je do hurtowni; hurtownia potrafi ładować JSON; instalacja PySparka wystarcza do uruchomienia trybu lokalnego (tak działają laby w tym repozytorium, ale lekcja nie cytuje dokumentacji); „jedna dużo większa partycja potrafi zdominować czas zapytania". Wybór narzędzia w scenariuszach i zdanie „kilkaset GB i SQL to zwykłe zadanie dla hurtowni" to ocena inżynierska, nie fakt z dokumentacji.
 - Lekcja 00, czego nie udało się potwierdzić i dlatego nie ma w treści: definicja Databricks Runtime jako zestawu komponentów oraz informacja o założycielach Databricks (na otwartych stronach dokumentacji ich nie było).
+- Lekcja 05, rzeczy podane z wiedzy ogólnej albo jako wniosek, a nie cytat: numer partycji jako `hash(klucz) mod liczba_partycji` (lab potwierdza tylko skutek: jeden klucz w jednej partycji); kolumny min / mediana / max w podsumowaniu stage'a w Spark UI (dokumentacja mówi tylko o tabeli i osi czasu, mediany i maksimum lab bierze z REST API); bardzo duża partycja kończąca się spillem albo błędem braku pamięci; lista innych przyczyn wolnego taska (wolna maszyna, GC, kosztowna funkcja, zewnętrzny system); wyjaśnienie, dlaczego w right outer joinie nie wolno dzielić lewej strony (powielenie prawej zdublowałoby jej niedopasowane wiersze); to, że broadcast join usuwa problem skew, bo duża strona nie jest przegrupowywana po kluczu; „domyślnie AQE rezygnuje z podziału, jeśli wymagałby dodatkowego shuffle'u" (wniosek z opisu `forceOptimizeSkewedJoin`); obsługa wierszy z `NULL` przez osobną gałąź i `unionByName` oraz solenie tylko gorących kluczy (propozycje projektowe, niemierzone); testy `not_null` w dbt i automatycznie utrzymywane statystyki w Snowflake (mosty).
+- Lekcja 05, różnica nazw: lab na Apache Spark 4.0.1 i 4.3.0 wypisuje `SortMergeJoin(skew=true)` i `AQEShuffleRead coalesced`, a dokumentacja Databricks mówi o polu `isSkew` i węźle `CustomShuffleReader`. Lekcja podaje oba zapisy ze wskazaniem źródła. Jak plan wygląda na aktualnym Databricks Runtime, nie sprawdzałem.
 - Rozmiar partycji „100–200 MB" w pytaniu o repartition: reguła praktyczna, nie cytat z dokumentacji. W treści jest tak opisana.
 - Fakty o Snowflake użyte w mostach (result cache, pruning mikropartycji, automatic clustering, offset w Streams, Time Travel i Fail-safe): podane z wiedzy ogólnej, bez otwierania dokumentacji Snowflake.
 - Warianty, których laby nie uruchamiają: Spark Connect, Databricks serverless, Photon, prawdziwy klaster z wieloma executorami. Wszystko, co treść o nich mówi, pochodzi z dokumentacji, nie z pomiaru.

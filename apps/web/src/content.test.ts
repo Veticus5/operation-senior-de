@@ -135,7 +135,7 @@ describe('lekcje', () => {
     for (const l of lessons) expect(questions.some(q => q.topicId === l.topicId), l.id).toBe(true);
   });
   it('kolejność nauki: Spark Fundamentals jest przed Lazy Evaluation', () => {
-    expect(lessons.map(l => l.id)).toEqual(['spark-fundamentals', 'spark-lazy-evaluation']);
+    expect(lessons.map(l => l.id)).toEqual(['spark-fundamentals', 'spark-lazy-evaluation', 'spark-data-skew-aqe']);
   });
   it('spark fundamentals: ilustracje są spójne z opisem', () => {
     expect(f.beats.length).toBe(3);
@@ -198,7 +198,7 @@ describe('lekcje', () => {
 
 describe('laby uruchamiane z interfejsu', () => {
   it('nie zmieniły identyfikatorów, którymi wiążą się lekcje i pytania', () => {
-    expect(labs.map(l => l.id)).toEqual(['spark-lazy-evaluation-lab']);
+    expect(labs.map(l => l.id)).toEqual(['spark-lazy-evaluation-lab', 'spark-data-skew-aqe-lab']);
   });
   it('każdy lab ma opis, zakres wyniku i kod do pokazania', () => {
     for (const l of labs) {
