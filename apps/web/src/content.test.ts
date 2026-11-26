@@ -3,12 +3,25 @@ import { lessons, questions } from '@content/index';
 import { glossary } from '@content/glossary';
 import type { Bridge } from '@content/types';
 import { beats, experiments, interview, mechanism, plans, pushdown, simNotes, tasks } from '@content/spark/lazy-evaluation/lesson';
+import * as fundamentals from '@content/spark/fundamentals/lesson';
 import { parseRich, plainText, termIds } from './lib/richText';
 
 const words = (text: string) => plainText(text).split(/\s+/).filter(Boolean).length;
 
 /** Wszystkie fragmenty lekcji, które przechodzą przez komponent Html. */
-const lessonBridges: Bridge[] = [...beats.flatMap(b => (b.bridge ? [b.bridge] : [])), ...experiments.flatMap(e => (e.bridge ? [e.bridge] : [])), pushdown.bridge];
+/** Lekcja 00 (Spark Fundamentals): mosty i wszystkie fragmenty HTML. */
+const f = fundamentals;
+const fundamentalsBridges: Bridge[] = [...f.beats.flatMap(b => (b.bridge ? [b.bridge] : [])), f.cluster.bridge, f.dataframe.bridge, f.stack.bridge];
+const fundamentalsRich: string[] = [
+  ...f.beats.flatMap(b => [b.html, b.after ?? '', ...(b.more?.html ?? [])]),
+  f.fit.assumptions,
+  f.cluster.intro, f.cluster.assumptions, ...f.cluster.takeaway, ...f.cluster.simNotes, ...f.cluster.measured, ...f.cluster.failure, ...f.cluster.collect, ...f.cluster.where,
+  f.dataframe.intro, f.dataframe.takeaway, ...f.dataframe.lines.map(l => l.text),
+  ...f.stack.places.map(p => p.text), f.stack.takeaway, ...f.stack.python,
+  f.choose.takeaway, ...f.choose.more.html,
+  ...f.quiz.flatMap(q => [q.q, q.why])
+];
+const lessonBridges: Bridge[] = [...beats.flatMap(b => (b.bridge ? [b.bridge] : [])), ...experiments.flatMap(e => (e.bridge ? [e.bridge] : [])), pushdown.bridge, ...fundamentalsBridges];
 const lessonRich: string[] = [
   ...beats.flatMap(b => [b.html, ...(b.more?.html ?? [])]),
   mechanism.takeaway,
@@ -19,7 +32,8 @@ const lessonRich: string[] = [
   ...pushdown.measured,
   ...pushdown.plan,
   ...experiments.flatMap(e => [e.ask, e.setup, e.scope, e.output ?? '', ...e.notes, ...(e.more?.html ?? []), ...(e.explainers ?? []).flatMap(x => x.lines.map(l => l.text))]),
-  ...lessonBridges.flatMap(b => [b.known, b.fresh, b.breaks])
+  ...lessonBridges.flatMap(b => [b.known, b.fresh, b.breaks]),
+  ...fundamentalsRich
 ];
 
 describe('baza pytań', () => {
@@ -29,6 +43,7 @@ describe('baza pytań', () => {
   });
   it('nie zmieniła identyfikatorów, na których wisi zapisany postęp', () => {
     expect(questions.map(q => q.id)).toEqual([
+      'spark-architecture-basics', 'spark-vs-pandas-warehouse',
       'spark-transformations-actions', 'spark-narrow-wide-shuffle', 'spark-job-stage-task', 'spark-slow-job', 'spark-data-skew', 'spark-aqe',
       'spark-salting', 'spark-broadcast-join', 'spark-repartition-coalesce', 'delta-acid-log', 'delta-merge-idempotency', 'delta-optimize-vacuum',
       'delta-liquid-clustering', 'delta-change-data-feed', 'delta-medallion', 'databricks-bundles-cicd', 'databricks-unity-catalog', 'databricks-structured-streaming'
@@ -116,6 +131,36 @@ describe('lekcje', () => {
   });
   it('każda lekcja ma co najmniej jedno powiązane pytanie', () => {
     for (const l of lessons) expect(questions.some(q => q.topicId === l.topicId), l.id).toBe(true);
+  });
+  it('kolejność nauki: Spark Fundamentals jest przed Lazy Evaluation', () => {
+    expect(lessons.map(l => l.id)).toEqual(['spark-fundamentals', 'spark-lazy-evaluation']);
+  });
+  it('spark fundamentals: ilustracje są spójne z opisem', () => {
+    expect(f.beats.length).toBe(3);
+    expect(f.fit.verdicts.length).toBe(f.fit.sizes.length);
+    expect(f.fit.sizes).toContain(f.fit.defaultSize);
+    // Werdykt „ponad 6 razy większy" musi wynikać z liczb ilustracji.
+    expect(Math.max(...f.fit.sizes) / f.fit.ramGb).toBeGreaterThan(6);
+    expect(f.cluster.executors).toContain(f.cluster.defaultExecutors);
+    expect(f.cluster.partitions).toContain(f.cluster.defaultPartitions);
+    expect(f.stack.places.some(p => p.id === f.stack.defaultPlace)).toBe(true);
+  });
+  it('spark fundamentals: scenariusze i sprawdzian mają poprawne odpowiedzi oraz wyjaśnienia', () => {
+    expect(f.choose.cases.length).toBe(3);
+    // Każde narzędzie jest dobrą odpowiedzią dokładnie raz, żeby ćwiczenie nie sugerowało rankingu.
+    expect(f.choose.cases.map(c => c.correct).sort()).toEqual([0, 1, 2]);
+    for (const c of f.choose.cases) for (const text of [c.setup, c.why, c.scope]) expect(words(text), c.setup).toBeGreaterThanOrEqual(8);
+    expect(f.quiz.length).toBe(5);
+    for (const q of f.quiz) {
+      expect(q.correct, q.q).toBeLessThan(q.options.length);
+      expect(new Set(q.options).size, q.q).toBe(q.options.length);
+      expect(words(q.why), q.q).toBeGreaterThanOrEqual(12);
+    }
+  });
+  it('spark fundamentals: etap Interview nie dubluje banku i ma dwa pytania z banku', () => {
+    expect('questionPl' in f.interview).toBe(false);
+    expect('followUps' in f.interview).toBe(false);
+    expect(questions.filter(q => q.topicId === f.meta.topicId).map(q => q.id)).toEqual(['spark-architecture-basics', 'spark-vs-pandas-warehouse']);
   });
   it('lazy evaluation: treść jest kompletna', () => {
     expect(beats.length).toBe(5);

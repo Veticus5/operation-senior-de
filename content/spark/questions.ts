@@ -12,6 +12,82 @@ import type { Question } from '../types';
  */
 export const sparkQuestions: Question[] = [
   {
+    id: 'spark-architecture-basics',
+    topicId: 'spark.fundamentals',
+    area: 'spark',
+    priority: 'P0',
+    title: 'Czym jest Spark: driver, executory, partycje',
+    question: {
+      pl: 'Czym jest Apache Spark i co się dzieje, gdy uruchamiasz aplikację? Opisz rolę drivera, executorów i partycji.',
+      en: 'What is Apache Spark, and what happens when you run a Spark application? Walk me through the driver, the executors and partitions.'
+    },
+    answer: {
+      pl: 'Spark to rozproszony silnik do przetwarzania danych, które są za duże albo za wolne dla jednej maszyny. Opisuję zapytanie w SQL albo na DataFrame\'ach, a Spark rozkłada pracę na klaster. Aplikacja ma jeden driver i zestaw executorów. Driver wykonuje mój program, buduje plan, dzieli go na taski i je rozdziela. Executory to procesy robocze, które faktycznie czytają i liczą dane. Same dane są pocięte na partycje, a w ramach stage\'a jeden task przetwarza jedną partycję, więc partycja jest jednostką równoległości. Naraz działa najwyżej tyle tasków, ile jest wolnych rdzeni na executorach, domyślnie jeden rdzeń na task, więc równoległość ograniczają i partycje, i rdzenie. Driver głównie koordynuje, dlatego nie ściągam do niego dużych wyników, tylko zapisuję je do storage.',
+      en: "Spark is a distributed engine for processing data that's too big or too slow for one machine. I describe a query in SQL or with DataFrames, and Spark splits the work across a cluster. An application has one driver and a set of executors. The driver runs my program, builds the plan, breaks it into tasks and schedules them. Executors are worker processes that read and compute the data. The data is split into partitions, and within a stage one task processes one partition, so a partition is the unit of parallelism. At most as many tasks run at once as there are free executor cores, one core per task by default, so parallelism is capped by both partitions and cores. The driver mostly coordinates, so I write large results to storage instead of pulling them back."
+    },
+    senior: {
+      pl: 'Kilka zastrzeżeń. Jeden task na partycję obowiązuje w ramach stage\'a: zapytanie z joinem albo agregacją ma często kilka stage\'y, z shuffle\'em tam, gdzie dane trzeba przegrupować. Broadcast join albo dane już podzielone po kluczu pozwalają go uniknąć. Driver to nie tylko koordynator, bo odbiera też zebrane wyniki i może zabraknąć mu pamięci. W trybie lokalnym nie ma osobnych executorów, są wątki w jednym procesie. Na Spark Connect, którego używa serverless w Databricks, mój kod jest cienkim klientem, a driver działa po stronie serwera. Awarie są obsługiwane na poziomie taska: nieudany task jest ponawiany, a utracone partycje są liczone od nowa z planu.',
+      en: "A few qualifications. One task per partition holds within a stage: a query with a join or an aggregation often has several stages, with a shuffle wherever data has to be redistributed. A broadcast join or data already partitioned on the key can avoid it. The driver isn't only a coordinator, because it also receives collected results and can run out of memory. In local mode there are no separate executors, just threads in one process. With Spark Connect, which Databricks serverless uses, my code is a thin client and the driver lives on the server. And failures are handled per task: a failed task is retried, and lost partitions are recomputed from the plan."
+    },
+    explain: [
+      'Jedna maszyna ma sufit: pamięć i czas. Spark obchodzi go, tnąc dane na <term id="partition">partycje</term> i licząc je równolegle na wielu maszynach. Żeby nie pisać tego ręcznie, opisujesz zapytanie na DataFrame, czyli tabeli z nazwanymi kolumnami, albo w SQL. Oba zapisy wykonuje ten sam silnik.',
+      'Aplikacja to jeden <b>driver</b> i wiele <b>executorów</b>. Driver to proces z Twoim programem: układa plan, dzieli go na taski i wysyła je executorom. Executor to proces roboczy na maszynie klastra, który wykonuje taski i trzyma dane. Każda aplikacja ma własne executory. Domyślnie działają przez cały czas jej życia, a przy włączonej dynamicznej alokacji Spark dodaje je i usuwa w trakcie. Maszyny przydziela <term id="cluster-manager">menedżer klastra</term>.',
+      'W ramach etapu jeden task liczy jedną partycję. Liczba partycji wyznacza więc liczbę tasków, a jednocześnie działa ich najwyżej tyle, ile jest wolnych rdzeni (domyślnie jeden rdzeń na task). Pomiar lokalny: 12 partycji przy <term id="local-mode">local[3]</term> dało 12 tasków, naraz najwyżej 3. Dokumentacja podaje jako punkt wyjścia 2–4 partycje na rdzeń.',
+      'Driver zwykle nie przetwarza wierszy, ale <code>collect()</code> i <code>toPandas()</code> ściągają do niego cały wynik. Apache Spark przerywa job, gdy wyniki akcji przekroczą <code>spark.driver.maxResultSize</code>, domyślnie 1 GB.'
+    ],
+    keywords: ['driver', 'executor', 'partition', 'task', 'cluster manager', 'DataFrame'],
+    followUps: [
+      { q: 'What is the difference between Apache Spark, PySpark and Databricks?', a: "Spark is the open-source engine. PySpark is its Python API, so my Python code describes the query and the engine, which runs on the JVM, executes it. Databricks is a commercial platform built on Spark: it manages the clusters and adds its own pieces, such as notebooks, jobs and the Photon engine. Code is largely portable, but defaults and available features differ.", pl: 'Silnik, API w Pythonie, platforma. Kod się przenosi, wartości domyślne i funkcje niekoniecznie.' },
+      { q: 'You have 100 executor cores and a DataFrame with 4 partitions. How many tasks run in parallel?', a: "Four at most for that stage, because there's one task per partition. The other cores sit idle. I'd look at how the input is split and repartition if the amount of work justifies it.", pl: 'Najwyżej 4. Partycji jest mniej niż rdzeni, więc reszta stoi.' },
+      { q: 'What happens if an executor dies in the middle of a job?', a: "Its running tasks fail and Spark reschedules them on other executors, up to a retry limit per task. Data that lived only on that executor, such as cached partitions, is recomputed from the plan. So the job usually slows down rather than fails.", pl: 'Taski są ponawiane, a utracone partycje liczone od nowa. W Apache Spark job przerywa domyślnie czwarta z rzędu porażka tego samego taska.' },
+      { q: 'Why is collect() dangerous on a large DataFrame?', a: "Because it brings every row from the executors into the driver, which is a single process with limited memory. The docs warn that it can throw an out-of-memory error. I use take or show to look at data, aggregate before collecting, and write large results to storage.", pl: 'Cały wynik trafia do jednego procesu. Do podglądu take albo show, duże wyniki do storage.' },
+      { q: 'Does the driver ever process data?', a: "Yes, sometimes. It holds collected results, and in open-source Spark it builds the small side of a broadcast join. A very small query can even be answered on the driver without launching any tasks. So saying the driver never touches data is too strong.", pl: 'Tak: zebrane wyniki, mała strona broadcast joina, bardzo małe zapytania lokalne.' }
+    ],
+    mistakes: [
+      'Mówienie, że liczba partycji to liczba tasków działających jednocześnie. Partycje wyznaczają liczbę tasków w etapie, a naraz działa ich najwyżej tyle, ile jest wolnych rdzeni.',
+      'Twierdzenie, że driver nigdy nie przetwarza danych. Zebrane wyniki trafiają właśnie do niego.',
+      'Nazywanie wątków w trybie local[N] executorami. To jeden proces z N wątkami roboczymi.',
+      'Utożsamianie Sparka z Databricks albo traktowanie PySparka jak osobnego silnika napisanego w Pythonie.'
+    ]
+  },
+  {
+    id: 'spark-vs-pandas-warehouse',
+    topicId: 'spark.fundamentals',
+    area: 'spark',
+    priority: 'P1',
+    title: 'Spark, pandas czy hurtownia',
+    question: {
+      pl: 'Kiedy wybrałbyś Sparka, a kiedy pandas albo hurtownię danych taką jak Snowflake?',
+      en: 'When would you choose Spark over pandas or a data warehouse like Snowflake?'
+    },
+    answer: {
+      pl: 'Zaczynam od trzech pytań: ile jest danych, gdzie leżą i czy wystarczy SQL. Jeśli dane swobodnie mieszczą się w pamięci jednej maszyny, pandas jest najprostszy, a klaster to tylko narzut. Jeśli dane są już w hurtowni, a transformacje to SQL, zostawiam je tam. Hurtownia też jest rozproszona, a wyciąganie danych oznacza drugi system do utrzymania. Spark ma sens, gdy dane to pliki w object storage w skali większej niż jedna maszyna, gdy logika wychodzi poza SQL w stronę własnego kodu w Pythonie albo gdy te same dane mają zasilać batch, streaming i machine learning. Daje więcej kontroli, a ceną jest to, że partycje, rozmiar klastra i strojenie stają się moim problemem.',
+      en: "I'd start from three questions: how much data, where it lives, and whether SQL is enough. If the data fits comfortably in memory on one machine, pandas is the simplest tool and a cluster only adds overhead. If the data is already in a warehouse and the transformations are SQL, I'd keep it there. A warehouse is distributed too, and moving the data out means a second system to run. Spark earns its place when the data is files in object storage at a scale beyond one machine, when the logic goes past SQL into custom Python, or when the same data has to feed batch, streaming and machine learning. It gives me more control, and the price is that partitions, cluster sizing and tuning become my problem."
+    },
+    senior: {
+      pl: 'Granice się zacierają, więc argumentuję od obciążenia, a nie od marki. Spark ma pandas API wykonywane rozproszenie, Databricks oferuje SQL warehouses na Sparku, a Snowflake obsługuje tabele Iceberg przechowywane poza usługą. Biorę też pod uwagę kompetencje zespołu i utrzymanie: platforma zarządzana zdejmuje dużą część pracy przy klastrze, ale układ danych i koszty nadal są moje. Samo „big data" nie jest powodem, żeby sięgać po Sparka. Kilkaset gigabajtów ustrukturyzowanych danych i transformacje w SQL to zwykłe zadanie dla hurtowni.',
+      en: "The lines are blurring, so I argue from the workload, not the brand. Spark has a pandas API that runs distributed, Databricks offers SQL warehouses on top of Spark, and Snowflake can work with Iceberg tables stored outside the service. I also weigh team skills and operations: a managed platform removes much of the cluster work, but data layout and cost are still mine. And big data alone isn't a reason to reach for Spark. A few hundred gigabytes of structured data with SQL transformations is a normal warehouse job."
+    },
+    explain: [
+      'W zwykłym użyciu pandas wczytuje cały zbiór do pamięci jednego procesu. Jego dokumentacja mówi wprost, że zbiory większe niż pamięć są kłopotliwe, a nieporęczne robią się już te, które zajmują jej znaczną część, bo niektóre operacje tworzą kopie pośrednie. Czytanie porcjami pomaga przy prostych operacjach, ale np. <code>groupby</code> jest wtedy dużo trudniejsze. Dopóki danych jest mało, pandas to zaleta: zero infrastruktury i wynik od razu.',
+      'Hurtownia taka jak Snowflake jest rozproszona, tylko tego nie widać. Virtual warehouse to klaster obliczeniowy, a usługa sama decyduje o zapisie i podziale danych. Jeśli dane już tam są i wystarcza SQL, dostajesz skalę bez zarządzania klastrem.',
+      'Spark to sam silnik obliczeń. Czyta pliki z Twojego storage (Parquet, JSON, CSV i inne), pozwala mieszać SQL z kodem w Pythonie i tym samym silnikiem obsługuje batch, streaming i machine learning. W zamian widzisz i stroisz to, co hurtownia ukrywa: <term id="partition">partycje</term>, <term id="executor">executory</term> i pamięć <term id="driver">drivera</term>.',
+      'Granice się zacierają. Spark ma pandas API on Spark, Databricks ma SQL warehouses napędzane Sparkiem, a Snowflake obsługuje tabele Iceberg w zewnętrznym storage. Dlatego dobra odpowiedź zaczyna się od obciążenia, a nie od nazwy narzędzia.'
+    ],
+    keywords: ['pandas', 'data warehouse', 'Snowflake', 'object storage', 'scale out', 'pandas API on Spark'],
+    followUps: [
+      { q: 'Your pandas job no longer fits in memory. What are your options before moving to Spark?', a: "First I'd reduce what I load: only the columns I need, more compact data types, and processing in chunks when the logic needs little coordination between chunks. A bigger machine is a legitimate short-term fix. If the data keeps growing or the job has to run reliably every day, I'd move it to an engine that scales out: the warehouse if the data belongs there, otherwise Spark.", pl: 'Najpierw mniej danych w pamięci (kolumny, typy, porcje), potem większa maszyna, na końcu silnik rozproszony.' },
+      { q: 'The data is already in Snowflake. Someone suggests moving the pipeline to Spark because it is faster. What do you say?', a: "I'd ask what problem we're solving. A warehouse already runs queries on a distributed cluster, so Spark being faster isn't a given. Moving means exporting data, running a second platform and retraining the team. I'd want a concrete need the warehouse can't meet, like custom code, streaming, or an open table format shared with other engines.", pl: 'Najpierw pytanie o problem. Hurtownia też jest rozproszona, a migracja to drugi system i koszt.' },
+      { q: 'What does Spark give you that a warehouse does not?', a: "Control and breadth. It works on open file formats in my own storage, it lets me mix SQL with arbitrary Python or Scala, and one engine covers batch, streaming and machine learning. The cost is operational: I have to think about partitions, executors and failures that a warehouse hides from me.", pl: 'Kontrola i zakres zastosowań w zamian za pracę operacyjną, którą hurtownia ukrywa.' },
+      { q: 'What is the pandas API on Spark and when would you use it?', a: "It's a pandas-style API that executes on Spark, so pandas-like code can run distributed across a cluster. It's useful for scaling existing pandas code without a full rewrite. I wouldn't treat it as identical to pandas: the data lives on many machines, so the index and some operations behave differently and can be expensive.", pl: 'Składnia pandas na silniku Sparka. Przydatne przy migracji, ale to nie jest to samo co pandas.' }
+    ],
+    mistakes: [
+      'Odpowiedź „Spark, bo big data" bez pytania o rozmiar danych, miejsce, w którym leżą, i rodzaj logiki.',
+      'Twierdzenie, że hurtownia nie jest rozproszona albo że Spark jest z definicji szybszy.',
+      'Pomijanie kosztu operacyjnego: drugi system, strojenie partycji i klastra, kompetencje zespołu.'
+    ]
+  },
+  {
     id: 'spark-transformations-actions',
     topicId: 'spark.lazy-evaluation',
     area: 'spark',
