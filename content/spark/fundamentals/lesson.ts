@@ -40,7 +40,16 @@ export const beats: Beat[] = [
   {
     html: '<h1>Dane urosły. Maszyna nie.</h1>\n<p class="lede">Masz skrypt w pandas, który liczy dzienny przychód z pliku zamówień. Działa od roku, a plik rośnie.</p>\n<p>Pytanie, od którego zaczyna się Spark: <b>co się stanie z tym skryptem, gdy danych będzie dziesięć, a potem sto razy więcej?</b> Wybierz rozmiar zbioru i porównaj dwa podejścia.</p>',
     visual: 'fit',
-    after: '<b>Wniosek.</b> pandas trzyma cały zbiór w pamięci jednego procesu, więc jego sufitem jest jedna maszyna. Gdy dane pociąć na kawałki, rozmiar całości przestaje decydować o tym, czy się zmieszczą. Zostaje pytanie, kto te kawałki przeliczy i ile to potrwa.',
+    after: '<b>Wniosek.</b> W zwykłym użyciu pandas wczytuje cały zbiór do pamięci jednego procesu, więc jego sufitem jest jedna maszyna. Gdy dane liczy się kawałek po kawałku, o powodzeniu decyduje rozmiar kawałka, a nie całości. Zostaje pytanie, kto te kawałki przeliczy i ile to potrwa.',
+    more: {
+      title: 'Co ta ilustracja upraszcza',
+      html: [
+        'Rozmiary oznaczają dane już wczytane do pamięci. Plik na dysku, zwłaszcza skompresowany, bywa dużo mniejszy niż te same dane w pamięci.',
+        'pandas też potrafi czytać porcjami. Według jego dokumentacji działa to dobrze, gdy porcje wymagają niewielkiej koordynacji albo żadnej, a operacje takie jak <code>groupby</code> są w ten sposób dużo trudniejsze. Wtedy poleca inne biblioteki.',
+        'Samo pocięcie niczego nie gwarantuje. Kawałek może okazać się za duży dla pamięci, a nie każda operacja liczy kawałki niezależnie: grupowanie i łączenie tabel wymagają zestawienia danych z wielu kawałków. Tę koordynację bierze na siebie silnik.',
+        '128 MB to wartość domyślna ustawienia <code>spark.sql.files.maxPartitionBytes</code> w Apache Spark: limit bajtów pakowanych do jednej partycji przy czytaniu plików. To parametr planowania odczytu, a nie ogólne ograniczenie rozmiaru partycji ani zużycia pamięci.'
+      ]
+    },
     next: 'A większa maszyna?'
   },
   {
@@ -68,22 +77,22 @@ export const beats: Beat[] = [
 
 /** Ilustracja z pierwszego kroku: zbiór danych kontra pamięć jednej maszyny. Wartości są wymyślone. */
 export const fit = {
-  assumptions: 'Ilustracja: jedna maszyna z 64 GB pamięci. Kawałki mają ok. 128 MB, bo taki jest domyślny górny rozmiar partycji przy czytaniu plików w Apache Spark.',
+  assumptions: 'Ilustracja: jedna maszyna z 64 GB pamięci, a rozmiary oznaczają dane po wczytaniu do pamięci. Kawałki po ok. 128 MB to przykład: tyle wynosi domyślny limit bajtów na partycję przy czytaniu plików w Apache Spark.',
   ramGb: 64,
   /** Szerokość toru w GB: tyle mieści się na pasku, reszta jest „poza skalą". */
   trackGb: 100,
   chunkMb: 128,
   sizes: [4, 40, 400],
   defaultSize: 4,
-  wholeLabel: 'Cały zbiór w pamięci jednej maszyny (tak działa pandas)',
-  chunksLabel: 'Ten sam zbiór pocięty na kawałki (tak działa Spark)',
+  wholeLabel: 'Cały zbiór wczytany do pamięci jednej maszyny (zwykły tryb pandas)',
+  chunksLabel: 'Ten sam zbiór liczony kawałek po kawałku (podejście Sparka)',
   /** Werdykt dla podejścia „całość w pamięci", w kolejności `sizes`. */
   verdicts: [
     { state: 'ok', text: 'Mieści się z dużym zapasem. pandas wystarczy i jest tu najprostszym narzędziem.' },
     { state: 'risk', text: 'Formalnie się mieści, ale to już ryzyko. Część operacji pandas tworzy kopie pośrednie, więc potrzeba więcej pamięci, niż zajmuje sam zbiór.' },
     { state: 'no', text: 'Nie mieści się: zbiór jest ponad 6 razy większy niż pamięć tej maszyny. Zwykłe wczytanie całości nie ma szans się udać.' }
   ] as { state: 'ok' | 'risk' | 'no'; text: string }[],
-  chunksText: 'Każdy kawałek mieści się w pamięci z zapasem, niezależnie od rozmiaru całości. Kawałki są od siebie niezależne, więc można je rozdać wielu maszynom.'
+  chunksText: 'Kawałek tej wielkości mieści się tu w pamięci z zapasem, bez względu na rozmiar całości. Przy prostych operacjach, takich jak filtr, kawałki liczy się niezależnie, więc można je rozdać wielu maszynom.'
 };
 
 /**
@@ -111,7 +120,7 @@ export const cluster = {
     done: 'Wszystkie taski zakończone. Driver dostał ich statusy, a nie wiersze.'
   },
   takeaway: [
-    '<b>Wniosek.</b> Liczba partycji wyznacza liczbę tasków. Liczba wolnych rdzeni na executorach wyznacza, ile z nich liczy się jednocześnie. To dwie różne liczby i trzeba pilnować obu.',
+    '<b>Wniosek.</b> W jednym etapie liczba partycji wyznacza liczbę tasków. Jednocześnie liczy się ich najwyżej tyle, ile jest wolnych rdzeni na executorach, i nigdy więcej, niż jest tasków. Równoległość ograniczają więc obie liczby naraz.',
     'Driver w tym zapytaniu nie dotyka wierszy: rozdaje taski i odbiera informację, że się skończyły. Zmienia się to, gdy poprosisz o wynik u siebie, np. przez <code>collect()</code>. Wtedy wszystkie wiersze wracają do jednego procesu.'
   ],
   simTitle: 'Co tu jest uproszczeniem',
@@ -119,8 +128,9 @@ export const cluster = {
     'To animacja w JavaScripcie. Nie działa tu żaden Spark.',
     '„Tury" są uproszczeniem. Prawdziwe taski kończą się w różnym czasie, a zwolniony rdzeń od razu bierze następny task.',
     'Partycje rzadko są równe. Jedna wyraźnie większa od reszty potrafi zdominować czas całego zapytania.',
-    'Zapytanie z grupowaniem albo joinem ma kilka etapów, a między nimi dane są przegrupowywane między partycjami (<term id="shuffle">shuffle</term>). Każdy etap ma własne taski, więc „jeden task na partycję" obowiązuje w ramach etapu.',
-    'Liczbę rdzeni executora ustawia się w konfiguracji (<code>spark.executor.cores</code>). Dwa rdzenie to założenie tej ilustracji, a nie wartość domyślna.'
+    'Zapytanie z grupowaniem albo joinem ma często kilka etapów. Nowy etap zaczyna się tam, gdzie dane trzeba przegrupować między partycjami (<term id="shuffle">shuffle</term>), i ma własne taski, więc „jeden task na partycję" obowiązuje w ramach etapu. Nie każdy join tego wymaga: mała tabela może zostać rozesłana do executorów w całości, a dane bywają już odpowiednio podzielone.',
+    'Liczbę rdzeni executora ustawia się w konfiguracji (<code>spark.executor.cores</code>). Dwa rdzenie to założenie tej ilustracji, a nie wartość domyślna. „Jeden rdzeń na task" to z kolei wartość domyślna <code>spark.task.cpus</code>, którą też da się zmienić.',
+    'Liczba executorów nie musi być stała. Dynamiczna alokacja, w Apache Spark domyślnie wyłączona, dokłada executory, gdy taski czekają w kolejce, i usuwa te, które stoją bezczynnie.'
   ],
   measuredTitle: 'Pomiar: ta sama zasada w lokalnym Sparku',
   measured: [
@@ -171,7 +181,7 @@ export const dataframe = {
     {
       code: 'daily = paid.groupBy("order_date").sum("amount")',
       label: 'SELECT order_date, SUM(amount) … GROUP BY order_date',
-      text: 'Grupowanie i suma. Żeby wiersze z tą samą datą spotkały się w jednym miejscu, Spark musi przegrupować dane między partycjami. Zrobi to sam, Ty podajesz tylko klucz.'
+      text: 'Grupowanie i suma. Żeby wiersze z tą samą datą spotkały się w jednym miejscu, Spark zwykle musi przegrupować dane między partycjami, chyba że są już podzielone po tej kolumnie. Decyduje o tym sam, Ty podajesz tylko klucz.'
     },
     {
       code: 'daily.write.parquet("s3://shop/daily_revenue/")',
@@ -293,7 +303,7 @@ export const quiz: QuizItem[] = [
     setup: 'Założenia: jeden etap bez przegrupowania danych, jeden rdzeń liczy jeden task naraz.',
     options: ['4', '8', '32'],
     correct: 0,
-    why: 'Cztery. Jeden task liczy jedną partycję, więc tasków jest 4, a 28 rdzeni nie ma nic do roboty. Liczba partycji wyznacza liczbę tasków, a liczba rdzeni to, ile z nich działa naraz.'
+    why: 'Cztery. Jeden task liczy jedną partycję, więc tasków jest 4, a 28 rdzeni nie ma nic do roboty. Naraz działa najwyżej tyle tasków, ile jest wolnych rdzeni, ale nigdy więcej, niż jest tasków. Tutaj ograniczeniem są partycje.'
   },
   {
     q: 'Co robi driver w zapytaniu, które czyta pliki, filtruje je i zapisuje wynik?',
