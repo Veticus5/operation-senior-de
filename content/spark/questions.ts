@@ -370,6 +370,44 @@ export const sparkQuestions: Question[] = [
     ]
   },
   {
+    id: 'spark-join-strategies',
+    topicId: 'spark.broadcast-join',
+    area: 'spark',
+    priority: 'P0',
+    title: 'Strategie joina',
+    question: {
+      pl: 'Jakie strategie joina ma Spark i jak między nimi wybiera?',
+      en: 'What join strategies does Spark have, and how does it choose between them?'
+    },
+    answer: {
+      pl: 'Dla joina z warunkiem równości Spark ma trzy główne strategie. Broadcast hash join rozsyła małą tabelę do każdego executora, więc duża strona nie jest ani shuffle\'owana, ani sortowana. Sort merge join robi shuffle obu stron po kluczu, sortuje je i łączy. To typowy wybór dla dwóch dużych tabel, bo nie wymaga całej strony w pamięci. Shuffled hash join też robi shuffle obu stron, ale zamiast sortować buduje w każdej partycji tablicę hashującą. Spark patrzy najpierw na hinty, potem na szacowany rozmiar: stronę poniżej progu, w Apache Spark domyślnie 10 MB, rozsyła, jeśli typ joina na to pozwala, a w pozostałych przypadkach wybiera sort merge. To szacunki, więc zanim cokolwiek zmienię hintem, czytam plan fizyczny, a przy AQE plan końcowy.',
+      en: 'For an equi-join Spark has three main strategies. A broadcast hash join ships the small table to every executor, so the large side is neither shuffled nor sorted. A sort-merge join shuffles both sides by the key, sorts them and merges them. It is the usual choice for two large tables, because it never needs a whole side in memory. A shuffled hash join also shuffles both sides, but builds a hash table in each partition instead of sorting. Spark looks at hints first, then at estimated size: a side below the threshold, 10 megabytes by default in Apache Spark, is broadcast if the join type allows it, and otherwise it picks sort-merge. Those are estimates, so before I change anything with a hint I read the physical plan, and with AQE the final plan.'
+    },
+    senior: {
+      pl: 'Shuffled hash join rzadko pojawia się sam, bo w Apache Spark preferSortMergeJoin jest domyślnie włączone. Widzę go po hincie albo gdy AQE zamieni join w trakcie. Szacunek rozmiaru pochodzi z plików albo ze statystyk w katalogu i może nie uwzględniać filtra, więc nietypowa strategia to najczęściej błędny szacunek, a nie błąd Sparka.',
+      en: 'A shuffled hash join rarely shows up on its own, because preferSortMergeJoin is on by default in Apache Spark. I see it after a hint or when AQE converts the join at runtime. The size estimate comes from files or catalog statistics and may not reflect a filter, so an odd strategy is usually a wrong estimate rather than a Spark bug.'
+    },
+    explain: [
+      'Żeby połączyć dwie tabele po kluczu, Spark musi sprawić, żeby pasujące wiersze znalazły się w jednym miejscu. Może przenieść wiersze obu tabel tak, żeby ten sam klucz trafił do tej samej <term id="partition">partycji</term> (<term id="shuffle">shuffle</term>), albo dać każdemu <term id="executor">executorowi</term> pełną kopię mniejszej tabeli (broadcast).',
+      'Po shuffle\'u są dwa sposoby łączenia w partycji. Sort merge sortuje obie strony po kluczu i przechodzi przez nie równocześnie. Shuffled hash buduje z mniejszej strony tablicę hashującą, czyli słownik w pamięci, i wyszukuje w niej wiersze drugiej strony. Pierwszy płaci sortowaniem, drugi pamięcią.',
+      'Pomiar lokalny (lab, 200 000 transakcji i 2 000 klientów): broadcast hash join nie zapisał do shuffle\'u nic, a sort merge i shuffled hash zapisały każdy wiersz obu stron. W planie różnią się tym, że shuffled hash nie ma węzłów <code>Sort</code>.',
+      'Wybór opiera się na szacunku. W labie zmiana progu o jeden bajt wokół szacunku zmieniła strategię z broadcast na sort merge, a filtr, który zostawił 84 wiersze z 2 000, szacunku nie zmienił. Dopiero <term id="aqe">AQE</term>, znając prawdziwy rozmiar po shuffle\'u, zamieniło join na broadcast w trakcie wykonania.'
+    ],
+    keywords: ['sort merge join', 'shuffled hash join', 'broadcast hash join', 'preferSortMergeJoin', 'join hint', 'build side', 'statistics'],
+    followUps: [
+      { q: 'Why does Spark prefer sort-merge over shuffled hash by default?', a: 'Both shuffle both sides. The difference is memory: a shuffled hash join holds one partition of the build side in a hash table, which can fail if that partition is large or skewed, while sort-merge does not need a whole side in memory. That is why spark.sql.join.preferSortMergeJoin is true by default.', pl: 'Oba robią shuffle. Sort merge jest bezpieczniejszy pamięciowo, więc jest domyślny.' },
+      { q: 'Why can broadcasting be the wrong choice even when the table fits?', a: 'In Apache Spark the table is collected to the driver and a copy goes to every executor, so the cost grows with table size times cluster size, and it has to fit in memory in every one of those places. For a multi-gigabyte table a shuffle is often cheaper and safer, and Spark refuses to broadcast a table of 8 gigabytes or more.', pl: 'Koszt to rozmiar tabeli razy liczba executorów plus pamięć drivera. Limit w Apache Spark: 8 GB.' },
+      { q: 'One side is tiny after a filter, but the plan shows a sort-merge join. Why?', a: 'The planner works from a size estimate, and the estimate may not reflect the filter. With AQE the join can be converted to a broadcast join at runtime, once the real size is known, so I check the final plan. Up-to-date statistics or a broadcast hint fix it at planning time.', pl: 'Decyduje szacunek, nie rzeczywisty rozmiar. Sprawdź plan końcowy z AQE.' },
+      { q: 'How do you tell from a plan which strategy was used?', a: 'By the join node name, and by what sits under it: a BroadcastExchange on one side means broadcast hash, a hash-partitioned Exchange plus Sort on both sides means sort-merge, and Exchange on both sides without Sort means shuffled hash.', pl: 'Nazwa węzła joina plus Exchange i Sort pod nim.' }
+    ],
+    mistakes: [
+      '„Broadcast jest zawsze najszybszy", bez warunku rozmiaru i pamięci.',
+      'Mylenie shuffled hash join z broadcast hash join. Oba używają tablicy hashującej, ale tylko pierwszy robi shuffle obu stron.',
+      'Mówienie o progu 10 MB tak, jakby dotyczył rzeczywistego rozmiaru tabeli, a nie szacunku.'
+    ],
+    labIds: ['spark-join-strategies-lab']
+  },
+  {
     id: 'spark-repartition-coalesce',
     topicId: 'spark.repartition-coalesce',
     area: 'spark',

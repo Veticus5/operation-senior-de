@@ -47,7 +47,7 @@ describe('baza pytań', () => {
     expect(questions.map(q => q.id)).toEqual([
       'spark-architecture-basics', 'spark-vs-pandas-warehouse',
       'spark-transformations-actions', 'spark-narrow-wide-shuffle', 'spark-job-stage-task', 'spark-slow-job', 'spark-data-skew', 'spark-aqe',
-      'spark-salting', 'spark-broadcast-join', 'spark-repartition-coalesce', 'delta-acid-log', 'delta-merge-idempotency', 'delta-optimize-vacuum',
+      'spark-salting', 'spark-broadcast-join', 'spark-join-strategies', 'spark-repartition-coalesce', 'delta-acid-log', 'delta-merge-idempotency', 'delta-optimize-vacuum',
       'delta-liquid-clustering', 'delta-change-data-feed', 'delta-medallion', 'databricks-bundles-cicd', 'databricks-unity-catalog', 'databricks-structured-streaming'
     ]);
   });
@@ -135,7 +135,7 @@ describe('lekcje', () => {
     for (const l of lessons) expect(questions.some(q => q.topicId === l.topicId), l.id).toBe(true);
   });
   it('kolejność nauki: Spark Fundamentals jest przed Lazy Evaluation', () => {
-    expect(lessons.map(l => l.id)).toEqual(['spark-fundamentals', 'spark-lazy-evaluation']);
+    expect(lessons.map(l => l.id).slice(0, 2)).toEqual(['spark-fundamentals', 'spark-lazy-evaluation']);
   });
   it('spark fundamentals: ilustracje są spójne z opisem', () => {
     expect(f.beats.length).toBe(3);
@@ -198,7 +198,7 @@ describe('lekcje', () => {
 
 describe('laby uruchamiane z interfejsu', () => {
   it('nie zmieniły identyfikatorów, którymi wiążą się lekcje i pytania', () => {
-    expect(labs.map(l => l.id)).toEqual(['spark-lazy-evaluation-lab']);
+    expect(labs.map(l => l.id)).toEqual(['spark-lazy-evaluation-lab', 'spark-join-strategies-lab']);
   });
   it('każdy lab ma opis, zakres wyniku i kod do pokazania', () => {
     for (const l of labs) {
@@ -214,7 +214,7 @@ describe('laby uruchamiane z interfejsu', () => {
   it('lekcje i pytania wskazują tylko laby z rejestru', () => {
     expect(labById(labId)).toBeDefined();
     for (const q of questions) for (const id of q.labIds ?? []) expect(labById(id), `${q.id}: ${id}`).toBeDefined();
-    expect(questions.filter(q => q.labIds?.length).map(q => q.id)).toEqual(['spark-transformations-actions']);
+    expect(questions.filter(q => q.labIds?.length).map(q => q.id)).toEqual(['spark-transformations-actions', 'spark-join-strategies']);
   });
   it('pytanie i lekcja o lazy evaluation prowadzą do tego samego labu', () => {
     const q = questions.find(x => x.topicId === 'spark.lazy-evaluation');

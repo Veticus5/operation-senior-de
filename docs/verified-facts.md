@@ -98,6 +98,31 @@ Liczba wierszy pochodzi z metryki `numOutputRows` węzła skanu, a min i max gru
 | 12 partycji na `local[3]` | 12 tasków, jednocześnie najwyżej 3 |
 | `SELECT … FROM VALUES … WHERE …` + `collect()` | 0 jobów, plan `LocalTableScan` (policzone przez driver) |
 
+### `labs/join_strategies/join_strategies_lab.py` (lekcja 04: Spark Join Strategies)
+
+Uruchomienia z 2026-11-27: PySpark 4.0.1 (przypięta) i 4.3.0 (kontrolne), `local[3]`, Java 21, klasyczny PySpark.
+Dane wymyślone, zapisane jako Parquet: `customers` 2 000 wierszy (1 plik), `transactions` 200 000 wierszy (3 partycje wejścia), każda transakcja ma klienta.
+Join: `transactions.join(customers, "customer_id")` z wyborem czterech kolumn. Plany czytane z `executedPlan`, AQE wyłączone, o ile wiersz nie mówi inaczej.
+
+| Fakt | Wynik |
+| --- | --- |
+| Wartości domyślne: `autoBroadcastJoinThreshold`, `join.preferSortMergeJoin`, `shuffle.partitions`, `broadcastTimeout`, `adaptive.enabled`, `cbo.enabled` | 10485760b, true, 200, 300000ms, true, false |
+| Szacunek rozmiaru (`optimizedPlan.stats.sizeInBytes`): cała tabela customers / tylko kolumny potrzebne w joinie / transactions | 4.0.1: 9 259 b / 5 952 b / 2 034 290 b. 4.3.0: 9 211 b / 5 921 b / 2 033 936 b |
+| Ustawienia domyślne | `BroadcastHashJoin … Inner, BuildRight`, `BroadcastExchange` tylko po stronie customers, 0 rekordów zapisanych do shuffle'u |
+| Próg = -1, bez hintu | `SortMergeJoin`, po obu stronach `Sort` nad `Exchange hashpartitioning(customer_id, 200)`; rekordy zapisane do shuffle'u: 200 000 i 2 000 |
+| Próg = -1, hint `SHUFFLE_HASH` na customers | `ShuffledHashJoin … Inner, BuildRight`, `Exchange hashpartitioning` po obu stronach, bez `Sort`; rekordy zapisane do shuffle'u: 200 000 i 2 000 |
+| Wynik każdej z trzech strategii | 200 000 wierszy |
+| Próg ustawiony na szacunek całej tabeli, szacunek strony +1 b, równo szacunek strony, szacunek strony −1 b | BroadcastHashJoin, BroadcastHashJoin, BroadcastHashJoin, SortMergeJoin (tak samo w obu wersjach, mimo innych liczb bajtów) |
+| Filtr `country = 'PL' AND segment = 'premium'` na customers | zostają 84 wiersze z 2 000; szacunek strony po filtrze bez zmian (5 952 b / 5 921 b) |
+| Ten filtr, próg o 1 b poniżej szacunku: AQE wyłączone / AQE włączone przed wykonaniem / AQE włączone po `collect()` | SortMergeJoin / SortMergeJoin / BroadcastHashJoin (`AdaptiveSparkPlan isFinalPlan=true`, pod joinem `AQEShuffleRead local` nad `ShuffleQueryStage` oraz `BroadcastQueryStage`), 8 400 wierszy wyniku |
+| Hint broadcast na customers, próg -1: inner; `transactions LEFT JOIN customers` | BroadcastHashJoin |
+| Ten sam hint: `customers LEFT JOIN transactions`; `FULL OUTER JOIN` | SortMergeJoin (hint nie został spełniony) |
+| `FULL OUTER JOIN` z hintem `SHUFFLE_HASH` na customers | ShuffledHashJoin |
+| Inner, hint `MERGE`, próg domyślny (tabela poniżej progu) | SortMergeJoin |
+| Inner, broadcast na customers i `SHUFFLE_HASH` na transactions | BroadcastHashJoin |
+
+Zakres: jedna maszyna, tryb lokalny, tabele bez statystyk w katalogu, optymalizator kosztowy wyłączony (wartość domyślna). Lab pokazuje, co Spark zaplanował i ile rekordów zapisał do shuffle'u. Nie mierzy czasu ani pamięci, więc nie rozstrzyga, która strategia jest szybsza. Różnica między wersjami: w 4.3.0 węzeł `BroadcastHashJoin` wypisuje jedną flagę więcej, a szacunki w bajtach są inne. Plany w lekcji pochodzą z 4.0.1, a linie `FileScan` są w niej skrócone do listy kolumn.
+
 ### Lokalny runner labów (`apps/lab-runner`), uruchomienie kontrolne z 2026-11-27
 
 Środowisko: Linux x64, uv 0.13.7, CPython 3.15.2, PySpark 4.0.1, Java 21.0.13 (Temurin JRE), `local[3]`.
@@ -179,12 +204,34 @@ Strony Apache Spark i PySpark to dokumentacja wersji **4.3.0**. Lekcja nie ma w�
 | Snowflake: trzy warstwy (storage, compute, cloud services). Zapytania przetwarzają klastry MPP; „Each virtual warehouse is an independent compute cluster". Snowflake zarządza wszystkimi aspektami przechowywania danych (organizacja, rozmiar plików, kompresja, statystyki). Tabele Iceberg trzymają pliki w zewnętrznym storage | [Snowflake: Key concepts and architecture](https://docs.snowflake.com/en/user-guide/intro-key-concepts) |
 | Rozmiar warehouse określa zasoby obliczeniowe klastra; każdy kolejny rozmiar podwaja zużycie kredytów na godzinę | [Snowflake: Overview of warehouses](https://docs.snowflake.com/en/user-guide/warehouses-overview) |
 
+### Lekcja 04: Spark Join Strategies (sprawdzone 2026-11-27)
+
+Strony Apache Spark to dokumentacja wersji **4.3.0** (`/docs/latest/`). Wiersze oznaczone „kod źródłowy" pochodzą z gałęzi `branch-4.0` repozytorium apache/spark, czyli z innej wersji niż dokumentacja: to stałe i komentarze w kodzie, a nie obietnice z dokumentacji użytkownika, i mogą się zmienić między wersjami.
+
+| Fakt | Źródło |
+| --- | --- |
+| `spark.sql.autoBroadcastJoinThreshold`: domyślnie 10485760 (10 MB), „the maximum size in bytes for a table that will be broadcast to all worker nodes when performing a join. By setting this value to -1, broadcasting can be disabled." `spark.sql.broadcastTimeout`: domyślnie 300, „Timeout in seconds for the broadcast wait time in broadcast joins" | [Spark: Performance Tuning](https://spark.apache.org/docs/latest/sql-performance-tuning.html) |
+| Hinty strategii: BROADCAST, MERGE, SHUFFLE_HASH, SHUFFLE_REPLICATE_NL. Priorytet w tej kolejności. Hint BROADCAST jest uwzględniany „even if the size of table […] suggested by the statistics is above the configuration spark.sql.autoBroadcastJoinThreshold". Gdy obie strony mają hint BROADCAST albo SHUFFLE_HASH, stronę build Spark dobiera z typu joina i rozmiarów | tamże oraz [Spark: Hints](https://spark.apache.org/docs/latest/sql-ref-syntax-qry-select-hints.html) |
+| AQE zamienia sort merge na broadcast hash join, gdy statystyki z wykonania którejś strony są poniżej progu adaptacyjnego. „This is not as efficient as planning a broadcast hash join in the first place, but it’s better than continuing the sort-merge join". `spark.sql.adaptive.autoBroadcastJoinThreshold` domyślnie równy `spark.sql.autoBroadcastJoinThreshold`. Lokalny odczyt shuffle'u: `spark.sql.adaptive.localShuffleReader.enabled`, domyślnie true | [Spark: Performance Tuning](https://spark.apache.org/docs/latest/sql-performance-tuning.html) |
+| AQE może też zamienić sort merge na shuffled hash join, gdy wszystkie partycje po shuffle'u są mniejsze niż `spark.sql.adaptive.maxShuffledHashJoinLocalMapThreshold` (domyślnie 0) | tamże |
+| Trzy źródła statystyk: źródło danych (np. liczniki i min/max w metadanych Parquet), katalog (zbierane przez `ANALYZE TABLE`), wykonanie (`isRuntime=true` w planie). „Missing or inaccurate statistics will hinder Spark’s ability to select an optimal plan" | tamże, sekcja Leveraging Statistics; [Spark: ANALYZE TABLE](https://spark.apache.org/docs/latest/sql-ref-syntax-aux-analyze-table.html) |
+| Broadcast hash join: tylko warunek równości, wszystkie typy joina poza full outer; „broadcasting tables is a network-intensive operation and it could cause OOM or perform badly in some cases, especially when the build/broadcast side is big". Shuffle hash join: warunek równości, wszystkie typy joina; „Building hash map from table is a memory-intensive operation and it could cause OOM when the build side is big". Sort merge join: warunek równości i klucze sortowalne, wszystkie typy joina | kod źródłowy: komentarz nad `JoinSelection` w [SparkStrategies.scala](https://github.com/apache/spark/blob/branch-4.0/sql/core/src/main/scala/org/apache/spark/sql/execution/SparkStrategies.scala) |
+| Kolejność wyboru dla joina z warunkiem równości. Hinty: broadcast, sort merge, shuffle hash, shuffle replicate NL. Bez hintu: broadcast hash (strona mieści się w progu i typ joina obsługiwany), shuffle hash (tylko gdy `preferSortMergeJoin` jest false, strona jest dość mała na lokalną tablicę i dużo mniejsza od drugiej), sort merge (klucze sortowalne), iloczyn kartezjański (inner), broadcast nested loop join | tamże, komentarze w `JoinSelection.apply` |
+| Strona build w broadcast hash join: lewa dla inner i right outer; prawa dla inner, left outer, left semi, left anti (oraz typów wewnętrznych LeftSingle i ExistenceJoin). Shuffled hash join: obie strony dla inner, left outer, right outer i full outer. Warunek rozmiaru broadcastu: `sizeInBytes <= autoBroadcastJoinThreshold`. Lokalna tablica hashująca: `sizeInBytes < autoBroadcastJoinThreshold * numShufflePartitions`; „dużo mniejsza": rozmiar razy `spark.sql.shuffledHashJoinFactor` (domyślnie 3) nie większy niż druga strona | kod źródłowy: `JoinSelectionHelper` w [joins.scala](https://github.com/apache/spark/blob/branch-4.0/sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/optimizer/joins.scala), [SQLConf.scala](https://github.com/apache/spark/blob/branch-4.0/sql/catalyst/src/main/scala/org/apache/spark/sql/internal/SQLConf.scala) |
+| `spark.sql.join.preferSortMergeJoin`: ustawienie wewnętrzne, domyślnie true. „Sort merge join consumes less memory than shuffled hash join and it works efficiently when both join tables are large. On the other hand, shuffled hash join can improve performance (e.g., of full outer joins) when one of join tables is much smaller." `spark.sql.cbo.enabled`: domyślnie false | kod źródłowy: [SQLConf.scala](https://github.com/apache/spark/blob/branch-4.0/sql/catalyst/src/main/scala/org/apache/spark/sql/internal/SQLConf.scala); wartości potwierdzone labem |
+| Limity broadcastu: `MAX_BROADCAST_TABLE_BYTES = 8L << 30` (8 GiB, błąd przy `dataSize >=`), wiersze: 512 000 000, a dla tablicy hashującej z kluczem innym niż pojedynczy long ok. 341 mln. Komunikat przy braku pamięci: „Not enough memory to build and broadcast the table to all worker nodes. As a workaround, you can either disable broadcast by setting [autoBroadcastJoinThreshold] to -1 or increase the spark driver memory" | kod źródłowy: [BroadcastExchangeExec.scala](https://github.com/apache/spark/blob/branch-4.0/sql/core/src/main/scala/org/apache/spark/sql/execution/exchange/BroadcastExchangeExec.scala) i `error-conditions.json`. Samego błędu lab nie wywołuje |
+| Databricks: `spark.databricks.adaptive.autoBroadcastJoinThreshold` domyślnie 30MB. „A broadcast join that the optimizer plans before the query runs usually performs better than one that AQE plans at runtime." „AQE can't broadcast the left side of a LEFT OUTER JOIN." Hinty: ta sama kolejność priorytetów i brak gwarancji | [Databricks: Adaptive query execution](https://docs.databricks.com/aws/en/optimizations/aqe), [Databricks: Hints](https://docs.databricks.com/aws/en/sql/language-manual/sql-ref-syntax-qry-select-hints) (obie 2026-10-12) |
+
+Obie wizualizacje lekcji 04 (krok po kroku i rachunek rozmiarów) są ilustracjami. Rachunek rozmiarów to arytmetyka na jawnych założeniach (20 executorów, 200 partycji, równy rozkład kluczy), a nie pomiar i nie model optymalizatora.
+
 Wpisy bez daty (liquid clustering, VACUUM, deployment modes, DLT, Submitting Applications) pochodzą z pierwszej wersji tego pliku i nie były ponownie otwierane 2026-11-26.
 
 ## Niezweryfikowane
 
 - Lekcja 00, rzeczy podane z wiedzy ogólnej albo jako ocena, a nie cytat: dbt kompiluje modele do SQL i wysyła je do hurtowni; hurtownia potrafi ładować JSON; instalacja PySparka wystarcza do uruchomienia trybu lokalnego (tak działają laby w tym repozytorium, ale lekcja nie cytuje dokumentacji); „jedna dużo większa partycja potrafi zdominować czas zapytania". Wybór narzędzia w scenariuszach i zdanie „kilkaset GB i SQL to zwykłe zadanie dla hurtowni" to ocena inżynierska, nie fakt z dokumentacji.
 - Lekcja 00, czego nie udało się potwierdzić i dlatego nie ma w treści: definicja Databricks Runtime jako zestawu komponentów oraz informacja o założycielach Databricks (na otwartych stronach dokumentacji ich nie było).
+- Lekcja 04, rzeczy podane z wiedzy ogólnej albo jako ocena: w Snowflake silnik sam dobiera algorytm joina (most w etapie Intuicja, bez otwierania dokumentacji Snowflake); `ColumnarToRow` zamienia paczki kolumn z czytnika Parquet na wiersze, a gwiazdka z numerem w planie grupuje operatory wykonywane razem; `false` w węźle `Sort` oznacza sortowanie wewnątrz partycji; „dla dwóch dużych tabel sort merge to typowy wybór" oraz zalecenia w czterech scenariuszach to ocena inżynierska oparta na opisach z kodu źródłowego, a nie pomiar. Lab nie mierzy czasu ani pamięci żadnej strategii.
+- Lekcja 04, czego nie sprawdzono i dlatego jest w treści tylko jako zastrzeżenie: zachowanie na prawdziwym klastrze, na Databricks i w Photonie; faktyczne wywołanie błędu braku pamięci albo limitu 8 GB; wpływ statystyk kolumn i optymalizatora kosztowego na szacunek po filtrze.
 - Rozmiar partycji „100–200 MB" w pytaniu o repartition: reguła praktyczna, nie cytat z dokumentacji. W treści jest tak opisana.
 - Fakty o Snowflake użyte w mostach (result cache, pruning mikropartycji, automatic clustering, offset w Streams, Time Travel i Fail-safe): podane z wiedzy ogólnej, bez otwierania dokumentacji Snowflake.
 - Warianty, których laby nie uruchamiają: Spark Connect, Databricks serverless, Photon, prawdziwy klaster z wieloma executorami. Wszystko, co treść o nich mówi, pochodzi z dokumentacji, nie z pomiaru.

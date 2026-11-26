@@ -100,5 +100,9 @@ export const glossary: Record<string, GlossaryEntry> = {
   accumulator: {
     term: 'Akumulator',
     def: 'Licznik, do którego zadania mogą tylko dodawać, a wynik odczytuje driver. Dobry do diagnostyki. Gdy Spark ponawia zadanie, licznik użyty w transformacji może zostać zwiększony więcej niż raz.'
+  },
+  'join-hint': {
+    term: 'Hint (wskazówka joina)',
+    def: 'Dopisek w zapytaniu albo w kodzie, którym prosisz Sparka o konkretny sposób łączenia tabel, np. broadcast. Spark go uwzględnia, jeśli ten sposób obsługuje dany typ joina. To prośba, nie gwarancja.'
   }
 };
