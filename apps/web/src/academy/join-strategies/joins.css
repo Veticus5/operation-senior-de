@@ -42,7 +42,7 @@
 .js-cards{display:flex;flex-direction:column;gap:10px;margin:0 0 16px}
 .js-card{border:1px solid var(--line-2);border-radius:14px;padding:16px 18px;background:var(--bg-2)}
 .js-card h3{font:600 19px var(--display);margin:0 0 10px}
-.js-card dl{display:grid;grid-template-columns:132px minmax(0,1fr);gap:4px 14px;margin:0 0 14px;font-size:15.5px;line-height:1.45}
+.js-card dl{display:grid;grid-template-columns:156px minmax(0,1fr);gap:4px 14px;margin:0 0 14px;font-size:15.5px;line-height:1.45}
 .js-card dt{font:500 12px/1.9 var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3)}
 .js-card dd{margin:0;color:var(--ink)}
 .js-card .fit-verdict{font-size:15.5px;color:var(--ink-2)}
