@@ -73,7 +73,7 @@ export function SkewSim() {
       <div className="sk-count">
         <p><b>{scenario.tasks.length}</b><span>liczba<br />tasków</span></p>
         <p><b>{fmt(mid)} s</b><span>mediana<br />czasu taska</span></p>
-        <p className={stage > mid * 2 ? 'hot' : undefined}><b>{fmt(stage)} s</b><span>najdłuższy task<br />= czas stage'a</span></p>
+        <p className={stage > mid * 2 ? 'hot' : undefined}><b>{fmt(stage)} s</b><span>najdłuższy task<br />= czas stage'a w tym modelu</span></p>
       </div>
 
       <div className="sk-scene">

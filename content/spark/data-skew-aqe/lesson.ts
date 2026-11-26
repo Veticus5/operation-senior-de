@@ -146,7 +146,7 @@ export const sim = {
     {
       id: 'aqe', label: 'AQE: skew join', skewed: true,
       tasks: [...repeat(7, { rest: 0.9, hot: 0 }), ...repeat(5, { rest: 0.18, hot: 1.76 })],
-      verdict: 'Po shuffle\'u Spark zna rozmiary partycji. Tę za dużą dzieli na 5 kawałków i każdemu daje osobny task. Pasująca partycja klientów jest czytana przez każdy z nich. Stage trwa 19,4 s.',
+      verdict: 'Po shuffle\'u Spark zna rozmiary partycji. W tym modelu partycja spełnia warunki, więc AQE dzieli ją na 5 kawałków i każdemu daje osobny task. Pasująca partycja klientów jest czytana przez każdy z nich. Stage trwa 19,4 s.',
       cost: 'Działa samo, ale pod warunkami: tylko w joinie przez shuffle, tylko gdy partycja przekroczy progi i tylko po tej stronie, którą dany typ joina pozwala dzielić. Szczegóły w etapie Praktyka.'
     },
     {
@@ -157,15 +157,15 @@ export const sim = {
     }
   ] as SimScenario[],
   takeaway: [
-    '<b>Wniosek.</b> Stage kończy się wtedy, gdy kończy się jego najdłuższy task. Przy skośnym kluczu o czasie decyduje więc jedna partycja, a nie ilość danych ani rozmiar klastra.',
+    '<b>Wniosek.</b> Stage nie skończy się przed swoim najdłuższym taskiem. W tej symulacji wszystkie taski startują jednocześnie, więc czas stage\'a jest równy czasowi najdłuższego taska. W prawdziwym Sparku to dolna granica: gdy tasków jest więcej niż wolnych rdzeni, dochodzi czekanie w kolejce. Przy skośnym kluczu tę granicę wyznacza jedna partycja, a nie ilość danych ani rozmiar klastra.',
     'Samo repartycjonowanie po kluczu tego nie naprawi, bo wiele wierszy z tym samym kluczem zawsze trafi razem. Skuteczne środki robią jedną z trzech rzeczy: omijają shuffle dużej strony (broadcast), dzielą gotową partycję po fakcie (AQE) albo zmieniają sam klucz (salting).'
   ],
   simTitle: 'Co tu jest uproszczeniem',
   simNotes: [
     'To animacja w JavaScripcie. Nie działa tu żaden Spark, a czasy są wymyślone.',
     'Prawdziwy task nie zwalnia liniowo. Bardzo duża partycja może nie zmieścić się w pamięci taska: wtedy Spark zrzuca dane pośrednie na dysk (spill) albo task kończy się błędem braku pamięci. Skew bywa więc przyczyną awarii, a nie tylko wolnej pracy.',
-    'Rdzeni rzadko jest tyle co tasków. Gdy tasków jest więcej, czekają w kolejce, ale wniosek zostaje ten sam: gorąca partycja to jeden task, którego nie da się zrównoleglić.',
-    'W scenariuszu z AQE liczba kawałków zależy od rozmiaru docelowego partycji, a nie od stałej liczby 5.',
+    'Rdzeni rzadko jest tyle co tasków. Gdy tasków jest więcej, czekają w kolejce i stage trwa dłużej niż jego najdłuższy task. Równość „czas stage\'a = najdłuższy task" obowiązuje więc tylko w tym modelu. Wniosek o gorącej partycji zostaje: to jeden task, którego nie da się zrównoleglić.',
+    'Scenariusz z AQE zakłada, że partycja spełnia warunki i że podział się udał. W prawdziwym Sparku to nie jest pewne, a liczba kawałków zależy od rozmiaru docelowego partycji i od tego, jak dane zapisały taski poprzedniego etapu, a nie od stałej liczby 5. Dlatego zawsze sprawdza się plan końcowy.',
     'Salting i broadcast wyglądają tu identycznie, bo model pokazuje tylko rozkład pracy. Różnią się kosztem, który jest opisany pod sceną.'
   ],
   measuredTitle: 'Pomiar: to samo na lokalnym Sparku',
@@ -206,10 +206,10 @@ export const metrics = {
         { metric: 'Shuffle read: rekordy', median: '0,4 mln', max: '0,4 mln', flag: false },
         { metric: 'Spill na dysk', median: '0', max: '0', flag: false }
       ],
-      verdict: 'Wolny task dostał tyle samo danych co pozostałe. To nie wygląda na skew rozmiaru partycji. Szukaj gdzie indziej: wolna maszyna, kosztowna funkcja dla części wierszy, długie pauzy odśmiecania pamięci, czekanie na zewnętrzny system.'
+      verdict: 'Wolny task przeczytał tyle samo bajtów i rekordów co pozostałe, więc nierówny rozmiar partycji tego nie tłumaczy. Nierównej pracy to jeszcze nie wyklucza: join może dla jednego klucza zwracać bardzo dużo wierszy, a funkcja może być kosztowna tylko dla części danych. Sprawdź liczbę wierszy na wyjściu taska, a potem maszynę, pauzy odśmiecania pamięci i czekanie na zewnętrzny system.'
     }
   ] as MetricsCase[],
-  takeaway: '<b>Wniosek.</b> Czas mówi, że coś jest nie tak. Rozmiar i liczba rekordów z shuffle\'u mówią, czy to nierówny podział danych. Dopiero rozkład klucza mówi, który klucz za to odpowiada i ile ma wierszy.',
+  takeaway: '<b>Wniosek.</b> Czas mówi, że coś jest nie tak. Rozmiar i liczba rekordów z shuffle\'u to przesłanka za nierównym podziałem danych albo przeciw niemu, a nie dowód. Rozkład klucza mówi, który klucz za to odpowiada i ile ma wierszy.',
   codeTitle: 'Potwierdzenie: rozkład klucza',
   lines: [
     {
@@ -225,14 +225,14 @@ export const metrics = {
     {
       code: 'orders.filter(F.col("customer_id").isNull()).count()',
       label: 'WHERE customer_id IS NULL',
-      text: 'Osobno policz <code>NULL</code>. W joinie z równością <code>NULL</code> nigdy do niczego nie pasuje, ale w left joinie te wiersze trzeba zachować, więc wszystkie trafiają do jednej partycji.'
+      text: 'Osobno policz <code>NULL</code>. W joinie ze zwykłą równością (<code>=</code>, a nie null-safe <code>&lt;=&gt;</code>) <code>NULL</code> nigdy do niczego nie pasuje, ale w left joinie te wiersze trzeba zachować, więc wszystkie trafiają do jednej partycji.'
     }
   ] as ExplainedLine[],
   nullTitle: 'Pomiar: NULL w kluczu joina',
   nulls: [
     'W labie 80% zamówień dostało <code>customer_id = NULL</code>. W left joinie najbardziej obciążony task przeczytał 1 650 981 rekordów przy medianie 50 173: wszystkie wiersze z <code>NULL</code> trafiły razem, choć żaden nie znajdzie pary.',
     'W inner joinie optymalizator sam dodał filtr <code>isnotnull</code> przed shuffle\'em i najbardziej obciążony task przeczytał 58 204 rekordy. Problem dotyczy więc joinów, które muszą zachować niedopasowane wiersze.',
-    'Typowa naprawa w left joinie: wiersze z <code>NULL</code> w kluczu obsłużyć osobno, bez joina, i dołączyć do wyniku przez <code>unionByName</code>. To propozycja projektowa: lab jej nie mierzy.'
+    'Typowa naprawa w left joinie ze zwykłą równością: wiersze z <code>NULL</code> w kluczu obsłużyć osobno, bez joina, i dołączyć do wyniku przez <code>unionByName</code>. To propozycja projektowa: lab jej nie mierzy.'
   ],
   otherTitle: 'Gdzie tego szukać poza Spark UI',
   other: [
@@ -284,7 +284,7 @@ export const moves = {
     {
       id: 'skew', label: 'Jedna ogromna partycja',
       sees: 'W joinie przez shuffle jedna partycja jest wielokrotnie większa od mediany. To skew z poprzedniego etapu.',
-      does: 'Dzieli tę partycję na kawałki o rozmiarze zbliżonym do docelowego i każdemu daje osobny task. Pasującą partycję drugiej strony czyta każdy z tych tasków.',
+      does: 'Jeśli partycja spełnia warunki reguły skew join, AQE dzieli ją na kawałki o rozmiarze zbliżonym do docelowego i każdemu daje osobny task. Pasującą partycję drugiej strony czyta każdy z tych tasków.',
       beforeLabel: 'Plan: 1 gorąca partycja', afterLabel: 'Po AQE: gorąca podzielona',
       before: [2, 2, 2, 2, 2, 2, 2, 24], after: [2, 2, 2, 2, 2, 2, 2, 8, 8, 8],
       measured: 'Ten sam skośny join z progiem obniżonym do 1 MB: węzeł <code>SortMergeJoin(skew=true)</code>, 10 tasków zamiast 8, najbardziej obciążony przeczytał 547 996 rekordów zamiast 1 643 764.',
@@ -304,7 +304,7 @@ export const moves = {
     from: 'Snowflake',
     known: 'Optymalizator hurtowni korzysta ze statystyk tabel, które usługa utrzymuje sama. Ty piszesz SQL i nie stroisz liczby partycji ani strategii joina.',
     fresh: 'AQE przybliża Sparka do tego doświadczenia: część decyzji, które kiedyś ustawiało się ręcznie, silnik podejmuje sam na podstawie rozmiarów zmierzonych w trakcie wykonania.',
-    breaks: 'AQE poprawia tylko to, co da się zmienić po shuffle\'u: liczbę partycji, strategię joina i podział skośnej partycji w joinie. Nie zmienia kolejności joinów, a gorącego klucza w agregacji albo w funkcji okna nie rozbije. Kiedy przestaje wystarczać, wracasz do ręcznych technik.'
+    breaks: 'AQE poprawia tylko to, co da się zmienić po shuffle\'u: liczbę partycji, strategię joina i podział skośnej partycji w joinie. Nie zmienia kolejności joinów, a jego reguła skew join nie rozbije gorącego klucza w agregacji ani w funkcji okna. Kiedy przestaje wystarczać, wracasz do ręcznych technik.'
   } as Bridge
 };
 
@@ -315,7 +315,7 @@ export interface LimitOp { id: string; label: string; ok: boolean; why: string }
  */
 export const limits = {
   title: 'Kiedy AQE nie rozbije skośnej partycji',
-  intro: 'Obsługa skew w AQE ma dwa rodzaje warunków: partycja musi być wystarczająco duża i operacja musi być joinem, w którym tę stronę wolno dzielić. Ustaw oba i sprawdź werdykt.',
+  intro: 'Reguła skew join w AQE ma dwa rodzaje warunków: partycja musi być wystarczająco duża i operacja musi być joinem, w którym tę stronę wolno dzielić. Spełnienie obu oznacza, że partycja kwalifikuje się do podziału, a nie że na pewno zostanie podzielona. Ustaw oba i sprawdź werdykt.',
   assumptions: 'Reguła z dokumentacji przy ustawieniach domyślnych: partycja jest skośna, gdy jest większa niż 5 × mediana rozmiaru partycji i jednocześnie większa niż 256 MB. W tym przykładzie mediana to 40 MB.',
   medianMb: 40,
   factor: 5,
@@ -333,18 +333,18 @@ export const limits = {
     { id: 'left', label: 'Zamówienia LEFT JOIN klienci', ok: true, why: 'W left outer joinie wolno dzielić lewą stronę, a tu skośna jest właśnie lewa.' },
     { id: 'right', label: 'Zamówienia RIGHT JOIN klienci', ok: false, why: 'W right outer joinie wolno dzielić tylko prawą stronę, a skośna jest lewa. Żeby podzielić lewą, trzeba by powielić partycję prawej, a jej niedopasowane wiersze pojawiłyby się wtedy w wyniku kilka razy.' },
     { id: 'full', label: 'Full outer join', ok: false, why: 'W full outer joinie nie wolno dzielić żadnej strony.' },
-    { id: 'agg', label: 'groupBy albo funkcja okna', ok: false, why: 'Obsługa skew w AQE dotyczy joinów. Gorącego klucza w agregacji ani w funkcji okna nie rozbija.' },
+    { id: 'agg', label: 'groupBy albo funkcja okna', ok: false, why: 'Reguła skew join dotyczy joinów. Gorącego klucza w <code>groupBy</code> ani w funkcji okna nie rozbija: w labie funkcja okna została bez podziału. AQE ma osobną regułę, która dzieli skośne partycje po jawnej operacji rebalance, ale to inna sytuacja niż gorący klucz w agregacji.' },
     { id: 'broadcast', label: 'Broadcast hash join', ok: false, why: 'AQE obsługuje skew tylko w joinach przez shuffle. W broadcast joinie duża strona nie jest przegrupowywana po kluczu, więc skośnej partycji po shuffle\'u zwykle w ogóle nie ma.' },
-    { id: 'stream', label: 'Zapytanie streamingowe', ok: false, why: 'Według dokumentacji Databricks AQE obejmuje tylko zapytania, które nie są streamingowe.' }
+    { id: 'stream', label: 'Zapytanie streamingowe', ok: false, why: 'Nie zakładaj tego. Strona o AQE w dokumentacji Databricks podaje jako warunek, że zapytanie nie jest streamingowe. Osobna strona mówi, że od Databricks Runtime 18.0 AQE działa dla bezstanowych zapytań streamingowych, ale nie wymienia przy tym obsługi skew. Dokumentacja Apache Spark o AQE w streamingu nie mówi nic.' }
   ] as LimitOp[],
   defaultOp: 'inner',
   verdicts: {
-    yes: 'AQE podzieli tę partycję.',
+    yes: 'Partycja kwalifikuje się do podziału. Czy AQE ją podzieliło, pokaże dopiero plan końcowy.',
     size: 'AQE jej nie podzieli: partycja nie spełnia progów.',
     op: 'AQE jej nie podzieli: ta operacja nie pozwala.',
     both: 'AQE jej nie podzieli: ani progi, ani operacja na to nie pozwalają.'
   },
-  takeaway: '<b>Wniosek.</b> „AQE rozwiązuje skew" jest prawdą tylko dla joinów przez shuffle, dla partycji powyżej obu progów i dla strony, którą dany typ joina pozwala dzielić. Partycja 220 MB przy medianie 40 MB jest pięć i pół raza większa od typowej, a mimo to AQE ją zostawi.',
+  takeaway: '<b>Wniosek.</b> Reguła skew join może zadziałać tylko w joinie przez shuffle, dla partycji powyżej obu progów i dla strony, którą dany typ joina pozwala dzielić. Partycja 220 MB przy medianie 40 MB jest pięć i pół raza większa od typowej, a mimo to AQE ją zostawi. Nawet gdy warunki są spełnione, o tym, czy podział nastąpił, mówi plan końcowy, a nie konfiguracja.',
   measuredTitle: 'Pomiar: typ joina i funkcja okna',
   measured: [
     'Lab, progi obniżone do 1 MB, skośna strona po lewej. Inner i left join: <code>SortMergeJoin(skew=true)</code>, najbardziej obciążony task 547 996 rekordów. Right i full join: zwykły <code>SortMergeJoin</code>, najbardziej obciążony task 1 643 764 rekordy, czyli tyle samo co bez AQE.',
@@ -354,7 +354,8 @@ export const limits = {
   tuneTitle: 'Co da się ustawić',
   tune: [
     '<code>spark.sql.adaptive.skewJoin.skewedPartitionFactor</code> (domyślnie 5) i <code>spark.sql.adaptive.skewJoin.skewedPartitionThresholdInBytes</code> (domyślnie 256 MB) to oba progi. Obniżenie drugiego sprawia, że AQE zajmie się też mniejszymi partycjami. Dokumentacja radzi trzymać go powyżej rozmiaru docelowego partycji.',
-    '<code>spark.sql.adaptive.forceOptimizeSkewedJoin</code> (domyślnie <code>false</code>) wymusza obsługę skew nawet wtedy, gdy wymaga to dodatkowego shuffle\'u. Wniosek z opisu tego ustawienia: domyślnie AQE rezygnuje, jeśli podział miałby taki shuffle dołożyć.',
+    '<code>spark.sql.adaptive.forceOptimizeSkewedJoin</code> (domyślnie <code>false</code>) wymusza obsługę skew nawet wtedy, gdy wymaga to dodatkowego shuffle\'u. Wniosek z opisu tego ustawienia: domyślnie AQE rezygnuje, jeśli podział miałby taki shuffle dołożyć. To jeden z powodów, dla których partycja spełniająca progi może zostać niepodzielona.',
+    'Poza joinami: <code>spark.sql.adaptive.optimizeSkewsInRebalancePartitions.enabled</code> (domyślnie <code>true</code>) dzieli skośne partycje powstałe po jawnej operacji rebalance. Nie pomaga to na gorący klucz w <code>groupBy</code> ani w funkcji okna, gdzie wszystkie wiersze klucza muszą zostać razem.',
     'Zakres platformy: dokumentacja Apache Spark opisuje obsługę skew dla sort-merge joina. Dokumentacja Databricks wymienia sort-merge join i shuffle hash join, czyli join przez shuffle, który zamiast sortować buduje tablicę hashującą z jednej strony.'
   ]
 };
@@ -362,7 +363,7 @@ export const limits = {
 /** Etap Praktyka, część 3: salting linia po linii. Kod jest taki sam jak w eksperymencie 7 labu, z N = 16. */
 export const salting = {
   title: 'Salting: gdy klucz trzeba zmienić samemu',
-  intro: 'Zostaje przypadek, w którym broadcast nie wchodzi w grę, a AQE nie pomoże. Hash wysyła jeden klucz w jedno miejsce, więc trzeba sprawić, żeby gorący klucz przestał być jednym kluczem. Do klucza doklejasz losową liczbę, czyli <b>sól</b>. Kliknij kolejne linie.',
+  intro: 'Zostaje przypadek, w którym broadcast nie wchodzi w grę, a AQE nie pomoże. Hash wysyła jeden klucz w jedno miejsce, więc trzeba sprawić, żeby gorący klucz przestał być jednym kluczem. Do klucza doklejasz losową liczbę, czyli <b>sól</b>. Przykład dotyczy inner joina z równością: sól jest losowa po skośnej stronie, a druga strona jest powielana. Kliknij kolejne linie.',
   codeTitle: 'Join z solą w PySparku',
   lines: [
     {
@@ -388,7 +389,7 @@ export const salting = {
     {
       code: 'joined = orders_s.join(customers_s, ["customer_id", "salt"])',
       label: 'JOIN ... USING (customer_id, salt)',
-      text: 'Join po kluczu złożonym. Hash liczy się teraz z pary, więc części gorącego klucza trafiają do różnych partycji. Wynik jest ten sam co bez soli: w labie 2 000 000 wierszy i identyczna suma.'
+      text: 'Join po kluczu złożonym. Hash liczy się teraz z pary, więc części gorącego klucza trafiają do różnych partycji. W labie join z solą dał tę samą liczbę wierszy (2 000 000) i tę samą sumę kwot co join bez soli. To kontrola zgodności, a nie dowód, że wyniki są identyczne wiersz po wierszu.'
     }
   ] as ExplainedLine[],
   takeaway: '<b>Wniosek.</b> Salting działa tam, gdzie AQE się poddaje, bo zmienia dane, a nie plan. Płacisz za to większą drugą stroną joina, dodatkowym kodem i koniecznością utrzymania go, gdy rozkład danych się zmieni. Dlatego jest ostatnim krokiem, nie pierwszym.',
@@ -400,7 +401,8 @@ export const salting = {
   ],
   moreTitle: 'Salting w agregacji i solenie tylko gorących kluczy',
   more: [
-    'W agregacji nie ma drugiej strony do powielenia. Robisz dwa kroki: najpierw <code>groupBy</code> po kluczu i soli, potem po samym kluczu. Działa to dla wyników, które da się złożyć z części, np. sumy, liczby, minimum i maksimum. Dokładnej liczby unikalnych wartości tak nie policzysz.',
+    'W agregacji nie ma drugiej strony do powielenia. Robisz dwa kroki: najpierw <code>groupBy</code> po kluczu i soli, potem po samym kluczu. Działa to dla wyników, które da się złożyć z części, np. sumy, liczby, minimum i maksimum. Dokładnej liczby unikalnych wartości nie dostaniesz przez zsumowanie liczb z poszczególnych grup, bo ta sama wartość może wystąpić w kilku. Trzeba innego podejścia, np. najpierw usunąć duplikaty par klucz i wartość.',
+    'W joinach zewnętrznych salting wymaga ostrożności. Powielana strona nie może być tą, której niedopasowane wiersze trafiają do wyniku, bo każdy taki wiersz pojawiłby się tyle razy, ile jest wartości soli. To rozumowanie, a nie wynik labu.',
     'Jeśli gorących kluczy jest kilka, sól można nadać tylko im, a reszcie wpisać 0. Druga strona rośnie wtedy tylko dla tych kilku kluczy. To propozycja projektowa: lab jej nie mierzy.'
   ]
 };
@@ -439,10 +441,10 @@ export const troubleshoot = {
     },
     {
       setup: 'Inny stage: mediana czasu taska to 10 s, jeden task trwa 12 minut. Shuffle read tego taska to 61 MB przy medianie 60 MB.',
-      options: ['To skew, włączam salting', 'To nie wygląda na skew danych, sprawdzam ten task i jego executor', 'Obniżam próg skew w AQE'],
+      options: ['To skew, włączam salting', 'Rozmiar partycji tego nie tłumaczy, sprawdzam ten task i jego executor', 'Obniżam próg skew w AQE'],
       correct: 1,
-      why: 'Wolny task dostał tyle samo danych co pozostałe, więc nierówny podział tego nie tłumaczy. Trzeba sprawdzić, czym ten task różni się od reszty: executor, na którym działał, czas odśmiecania pamięci, kosztowna funkcja dla części wierszy albo czekanie na zewnętrzny system.',
-      scope: 'Jeden wolny task to poszlaka, nie diagnoza. Skew potwierdza rozmiar danych, a nie sam czas.'
+      why: 'Wolny task przeczytał tyle samo co pozostałe, więc nierówny rozmiar partycji tego nie tłumaczy. Trzeba sprawdzić, czym ten task różni się od reszty: liczba wierszy na wyjściu (join może mnożyć wiersze jednego klucza), kosztowna funkcja dla części wierszy, executor, na którym działał, czas odśmiecania pamięci albo czekanie na zewnętrzny system.',
+      scope: 'Jeden wolny task to poszlaka, nie diagnoza. Podobny shuffle read też niczego nie przesądza: jest przesłanką przeciw skew rozmiaru partycji, a nie dowodem, że praca rozłożyła się równo.'
     },
     {
       setup: 'Sort-merge join, AQE włączone, ustawienia domyślne Apache Spark. Jedna partycja ma 180 MB przy medianie 10 MB i jej task trwa wielokrotnie dłużej. W planie końcowym nie ma znacznika skew.',
@@ -452,11 +454,11 @@ export const troubleshoot = {
       scope: 'Przy 180 MB warto najpierw zapytać, czy ten task w ogóle jest problemem. Próg 256 MB istnieje po to, żeby nie dzielić partycji, które i tak liczą się szybko.'
     },
     {
-      setup: 'Zamówienia LEFT JOIN klienci. 40% zamówień ma customer_id = NULL. Jeden task czyta większość danych, a żaden z tych wierszy nie znajduje pary.',
+      setup: 'Zamówienia LEFT JOIN klienci, warunek to zwykła równość customer_id. 40% zamówień ma customer_id = NULL. Jeden task czyta większość danych, a żaden z tych wierszy nie znajduje pary.',
       options: ['Zamieniam join na inner', 'Solę klucz po obu stronach', 'Wiersze z NULL obsługuję osobno, bez joina, i dołączam do wyniku'],
       correct: 2,
-      why: 'Wiersze z NULL w kluczu nie pasują do niczego, więc join nic do nich nie wnosi poza pustymi kolumnami klienta. Można je odfiltrować przed joinem, dopisać im te puste kolumny i połączyć z wynikiem przez unionByName. Inner join zmieniłby wynik, bo te zamówienia by zniknęły. Salting zadziała, ale jest droższy i bardziej skomplikowany niż usunięcie przyczyny.',
-      scope: 'Jeśli AQE spełnia swoje warunki (partycja ponad progi, skośna strona po lewej), podzieli tę partycję samo. Usunięcie przyczyny nie zależy od progów i działa też bez AQE.'
+      why: 'Przy zwykłej równości wiersze z NULL w kluczu nie pasują do niczego, więc join nic do nich nie wnosi poza pustymi kolumnami klienta. Można je odfiltrować przed joinem, dopisać im te puste kolumny i połączyć z wynikiem przez unionByName. Inner join zmieniłby wynik, bo te zamówienia by zniknęły. Salting zadziała, ale jest droższy i bardziej skomplikowany niż usunięcie przyczyny.',
+      scope: 'Jeśli warunki AQE są spełnione (partycja ponad progi, skośna strona po lewej), AQE może podzielić tę partycję samo, co trzeba potwierdzić w planie końcowym. Usunięcie przyczyny nie zależy od progów i działa też bez AQE.'
     }
   ] as Scenario[],
   takeaway: '<b>Wniosek.</b> Kolejność, którą warto umieć powiedzieć: potwierdź skew w danych, usuń przyczynę, jeśli się da, sprawdź broadcast, pozwól działać AQE i sprawdź, czy naprawdę zadziałało, a po salting sięgnij na końcu.'
@@ -468,8 +470,8 @@ export const troubleshoot = {
  */
 export const interview = {
   honestIntro: 'Jeśli znasz skew z labu i z dokumentacji, a nie z własnego incydentu, nie udawaj. Powiedz, skąd wiesz i co byś sprawdził. Na przykład tak:',
-  honestEn: '“I haven’t had to fix a skewed join in production yet, so I’ll tell you how I’d approach it. I’d start from the task metrics, not from a config change: if one task reads far more shuffle data than the median, I’d count rows per key to find the hot key. In a local test with eighty percent of rows on one key, adding partitions didn’t move the largest partition at all, and AQE only split it once the partition crossed its size threshold. So I’d check the final plan before assuming AQE handled it.”',
-  honestPl: 'Po polsku: nie naprawiałem jeszcze skośnego joina na produkcji, więc powiem, jak bym do tego podszedł. Zacząłbym od metryk tasków, a nie od zmiany konfiguracji: jeśli jeden task czyta z shuffle\'u dużo więcej niż mediana, liczę wiersze na klucz i szukam gorącego klucza. W lokalnym teście z 80% wierszy w jednym kluczu dokładanie partycji w ogóle nie zmniejszyło największej, a AQE podzieliło ją dopiero wtedy, gdy przekroczyła próg rozmiaru. Dlatego sprawdziłbym plan końcowy, zanim założę, że AQE to załatwiło.'
+  honestEn: '“I haven’t had to fix a skewed join in production yet, so I’ll tell you how I’d approach it. I’d start from the task metrics, not from a config change: if one task reads far more shuffle data than the median, I’d count rows per key to find the hot key. In a local test with eighty percent of rows on one key, adding partitions didn’t split the hot key or meaningfully shrink the largest task, and AQE only split that partition once I lowered its size threshold. So I’d check the final plan before assuming AQE handled it.”',
+  honestPl: 'Po polsku: nie naprawiałem jeszcze skośnego joina na produkcji, więc powiem, jak bym do tego podszedł. Zacząłbym od metryk tasków, a nie od zmiany konfiguracji: jeśli jeden task czyta z shuffle\'u dużo więcej niż mediana, liczę wiersze na klucz i szukam gorącego klucza. W lokalnym teście z 80% wierszy w jednym kluczu dokładanie partycji nie rozbiło gorącego klucza i nie zmniejszyło istotnie największego taska, a AQE podzieliło tę partycję dopiero po obniżeniu progu rozmiaru. Dlatego sprawdziłbym plan końcowy, zanim założę, że AQE to załatwiło.'
 };
 
 export interface QuizItem { q: string; setup?: string; options: string[]; correct: number; why: string }
@@ -480,13 +482,13 @@ export const quiz: QuizItem[] = [
     setup: 'Założenia: join przez shuffle, podział hashem klucza, AQE nie dzieli partycji.',
     options: ['Zmaleje mniej więcej 10 razy', 'Nadal będzie zawierać wszystkie wiersze tego klienta', 'Zniknie, bo wiersze rozłożą się po równo'],
     correct: 1,
-    why: 'Hash jednej wartości klucza wskazuje jedną partycję, bez względu na ich liczbę. Zmaleją tylko partycje ze zwykłymi kluczami. W lokalnym teście przy 8 partycjach największa miała 1 643 654 wiersze, a przy 64 nadal 1 605 606.'
+    why: 'Hash jednej wartości klucza wskazuje jedną partycję, bez względu na ich liczbę. Zmaleją tylko partycje ze zwykłymi kluczami. W lokalnym teście po <code>repartition</code> po kluczu największa partycja miała 1 643 654 wiersze przy 8 partycjach i 1 605 606 przy 64 (to liczba wierszy w partycji, a nie rekordy z shuffle\'u w joinie, stąd inne wartości niż w tabeli labu).'
   },
   {
     q: 'W stage\'u jeden task trwa 30 razy dłużej niż mediana. Co najlepiej potwierdza, że przyczyną jest skew?',
     options: ['Sam czas tego taska', 'Shuffle read tego taska wielokrotnie większy od mediany i rozkład wierszy na klucz', 'To, że pozostałe rdzenie stoją bezczynnie'],
     correct: 1,
-    why: 'Czas jest objawem, który ma wiele przyczyn. Skew oznacza nierówny podział danych, więc potwierdza go to, ile danych task dostał, oraz liczba wierszy na klucz. Wolny task z typowym shuffle read to inny problem.'
+    why: 'Czas jest objawem, który ma wiele przyczyn. Skew oznacza nierówny podział danych, więc potwierdza go to, ile danych task dostał, oraz liczba wierszy na klucz. Wolny task z typowym shuffle read wymaga innych hipotez, choć nierównej pracy samo to nie wyklucza.'
   },
   {
     q: 'Sort-merge join, AQE z ustawieniami domyślnymi. Mediana partycji to 30 MB, jedna ma 200 MB. Czy AQE ją podzieli?',
@@ -497,9 +499,9 @@ export const quiz: QuizItem[] = [
   },
   {
     q: 'Gorący klucz spowalnia funkcję okna <code>row_number()</code> liczoną po <code>customer_id</code>. AQE jest włączone. Czego się spodziewasz?',
-    options: ['AQE podzieli skośną partycję tak jak w joinie', 'AQE jej nie podzieli, bo jego obsługa skew dotyczy joinów', 'AQE zamieni okno na broadcast'],
+    options: ['AQE podzieli skośną partycję tak jak w joinie', 'AQE jej nie podzieli, bo reguła skew join dotyczy joinów', 'AQE zamieni okno na broadcast'],
     correct: 1,
-    why: 'Obsługa skew w AQE jest opisana dla joinów przez shuffle. W lokalnym teście funkcja okna przy obniżonych progach dalej miała task z 1 643 654 rekordami. AQE może tu najwyżej skleić małe partycje.'
+    why: 'Reguła skew join jest opisana dla joinów przez shuffle. W lokalnym teście funkcja okna przy obniżonych progach dalej miała task, który przeczytał z shuffle\'u 1 643 654 rekordy. AQE może tu najwyżej skleić małe partycje.'
   },
   {
     q: 'Solisz skośną stronę joina liczbą od 0 do 9. Co musisz zrobić z drugą stroną?',
@@ -515,8 +517,9 @@ export const quiz: QuizItem[] = [
   },
   {
     q: 'Zamówienia LEFT JOIN klienci, połowa zamówień ma <code>customer_id = NULL</code>. Dlaczego te wiersze obciążają jeden task?',
+    setup: 'Założenia: join przez shuffle, warunek to zwykła równość customer_id (nie null-safe).',
     options: ['Bo NULL pasuje do każdego klienta', 'Bo left join musi je zachować, a wszystkie mają ten sam klucz, więc trafiają do jednej partycji', 'Bo Spark nie umie hashować NULL i liczy je na driverze'],
     correct: 1,
-    why: 'NULL nie pasuje do niczego, ale left join musi oddać te wiersze w wyniku. Wszystkie mają tę samą wartość klucza, więc lądują razem. W lokalnym teście inner join odfiltrował je przed shuffle\'em, a left join wysłał je do jednego taska.'
+    why: 'Przy zwykłej równości NULL nie pasuje do niczego, ale left join musi oddać te wiersze w wyniku. Wszystkie mają tę samą wartość klucza, więc lądują razem. W lokalnym teście inner join odfiltrował je przed shuffle\'em, a left join wysłał je do jednego taska.'
   }
 ];

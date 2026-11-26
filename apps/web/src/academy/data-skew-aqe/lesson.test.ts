@@ -16,7 +16,7 @@ const rich: string[] = [
   l.sim.intro, l.sim.assumptions, ...l.sim.takeaway, ...l.sim.simNotes, ...l.sim.measured,
   l.metrics.intro, l.metrics.takeaway, ...l.metrics.lines.map(x => x.text), ...l.metrics.nulls, ...l.metrics.other,
   ...l.moves.intro, l.moves.takeaway, ...l.moves.plan, ...l.moves.items.flatMap(m => [m.sees, m.does, m.measured, m.note]),
-  l.limits.takeaway, ...l.limits.measured, ...l.limits.tune,
+  l.limits.takeaway, ...l.limits.measured, ...l.limits.tune, ...l.limits.ops.map(o => o.why),
   l.salting.intro, l.salting.takeaway, ...l.salting.lines.map(x => x.text), ...l.salting.measured, ...l.salting.more,
   l.lab.intro, l.lab.note, l.troubleshoot.takeaway,
   ...l.quiz.flatMap(q => [q.q, q.why]),

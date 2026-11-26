@@ -157,7 +157,7 @@ stage, tasks, plan = run(total(salted_orders.join(salted_customers, ["customer_i
 salt_n, salt_s = total(salted_orders.join(salted_customers, ["customer_id", "salt"])).first()
 print(f"   join po (customer_id, salt): {describe(tasks)}")
 print(f"   strona klientów po powieleniu: {salted_customers.count()} wierszy zamiast {CUSTOMERS}")
-print(f"   wynik bez soli: {plain_n} wierszy, suma {plain_s}; z solą: {salt_n} wierszy, suma {salt_s}; identyczny: {(plain_n, plain_s) == (salt_n, salt_s)}")
+print(f"   wynik bez soli: {plain_n} wierszy, suma {plain_s}; z solą: {salt_n} wierszy, suma {salt_s}; liczba wierszy i suma zgodne: {(plain_n, plain_s) == (salt_n, salt_s)}")
 print()
 
 # --- 8. NULL w kluczu ---------------------------------------------------------

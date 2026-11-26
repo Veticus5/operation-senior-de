@@ -131,7 +131,7 @@ export function AqeLimits() {
           <li>Operacja pozwala dzielić tę stronę: {mark(op.ok)}</li>
         </ul>
         <p className={`sk-verdict ${sizeOk && op.ok ? 'ok' : 'no'}`}>{verdict}</p>
-        <p className="sk-cost">{op.why}</p>
+        <Html as="p" className="sk-cost" html={op.why} />
       </div>
     </div>
   );
