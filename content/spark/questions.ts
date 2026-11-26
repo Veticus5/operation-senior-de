@@ -90,6 +90,7 @@ export const sparkQuestions: Question[] = [
   {
     id: 'spark-transformations-actions',
     topicId: 'spark.lazy-evaluation',
+    labIds: ['spark-lazy-evaluation-lab'],
     area: 'spark',
     priority: 'P0',
     title: 'Transformacje, akcje i lazy evaluation',

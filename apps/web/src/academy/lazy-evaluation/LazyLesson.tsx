@@ -1,11 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { beats, experiments, interview, mechanism, meta, simNotes, type Experiment } from '@content/spark/lazy-evaluation/lesson';
+import { beats, experiments, interview, labHint, labId, mechanism, meta, simNotes, type Experiment } from '@content/spark/lazy-evaluation/lesson';
 import { questionsByTopic } from '@content/index';
-import labCode from '../../../../../labs/lazy_evaluation/lazy_lab.py?raw';
 import { CodeExplainer } from '../../components/CodeExplainer';
 import { ConceptBridge } from '../../components/ConceptBridge';
-import { CopyButton } from '../../components/CopyButton';
 import { Html } from '../../components/Html';
+import { LabRunner } from '../../components/LabRunner';
 import { plainText } from '../../lib/richText';
 import { href, navigate } from '../../lib/router';
 import { useProgress } from '../../lib/useProgress';
@@ -233,11 +232,7 @@ export function LazyLesson({ stage }: { stage?: string }) {
             </tbody>
           </table>
           <h3>Skrypt</h3>
-          <p className="muted">W repozytorium: <code>labs/lazy_evaluation/lazy_lab.py</code>. Uruchomienie: <code>cd labs && uv run lazy_evaluation/lazy_lab.py</code> (wymaga Javy 17+).</p>
-          <div className="codewrap">
-            <CopyButton text={labCode} />
-            <pre className="code">{labCode}</pre>
-          </div>
+          <LabRunner labId={labId} sourceOpen hint={labHint} />
           <p className="muted">
             Warunki i wyjątki, do których odwołują się rozwinięcia pod eksperymentami, sprawdza drugi skrypt: <code>labs/lazy_evaluation/lazy_conditions_lab.py</code>.
           </p>

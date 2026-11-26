@@ -6,6 +6,7 @@ import { meta as fundamentals } from './spark/fundamentals/lesson';
 import { meta as lazyEvaluation } from './spark/lazy-evaluation/lesson';
 
 export * from './types';
+export * from './labs';
 
 /** Rejestr treści. Nowe pytania dopisujesz do pliku obszaru, nową lekcję rejestrujesz tutaj. Kolejność listy to kolejność nauki. */
 export const questions: Question[] = [...sparkQuestions, ...deltaQuestions, ...databricksQuestions];

@@ -98,6 +98,22 @@ Liczba wierszy pochodzi z metryki `numOutputRows` węzła skanu, a min i max gru
 | 12 partycji na `local[3]` | 12 tasków, jednocześnie najwyżej 3 |
 | `SELECT … FROM VALUES … WHERE …` + `collect()` | 0 jobów, plan `LocalTableScan` (policzone przez driver) |
 
+### Lokalny runner labów (`apps/lab-runner`), uruchomienie kontrolne z 2026-11-27
+
+Środowisko: Linux x64, uv 0.13.7, CPython 3.15.2, PySpark 4.0.1, Java 21.0.13 (Temurin JRE), `local[3]`.
+Lab `lazy_evaluation/lazy_lab.py` uruchomiony przez runner, przyciskiem w lekcji i w pytaniu.
+
+| Fakt | Wynik |
+| --- | --- |
+| Liczby labu uruchomionego przez runner | identyczne z tabelą `lazy_lab.py` wyżej (joby: 2/3/2 i 5/1/1; wiersze: 9, 18, 27; CSV: 1 i 2 joby) |
+| Czas pierwszego uruchomienia (uv tworzy `.venv` i buduje PySpark z pamięci podręcznej uv) | 29,8 s |
+| Czas kolejnych uruchomień | 10,8–11,3 s w dziewięciu uruchomieniach |
+| Gniazda nasłuchujące JVM Sparka przy `SPARK_LOCAL_IP=127.0.0.1` | wszystkie na `127.0.0.1`, w tym interfejs WWW na porcie 4040 |
+| Limit sterty JVM Sparka przy ustawieniach domyślnych | `-Xmx1g` |
+| Rozłączenie klienta w trakcie pracy | po 1,5 s nie było już procesu Pythona ani JVM |
+
+Zakres: jedna maszyna, jedna konfiguracja. Czasy są orientacyjne i zależą od sprzętu oraz stanu pamięci podręcznej uv (przy pustej dojdzie pobranie PySpark). Runner ustawia `SPARK_LOCAL_IP=127.0.0.1` zawsze, niezależnie od otoczenia. Bez tej zmiennej Spark wypisał ostrzeżenie z nazwą hosta i adresem w sieci lokalnej, a gdzie wtedy nasłuchuje, nie sprawdzałem. Windows nie był sprawdzany.
+
 ## Dokumentacja
 
 Strony Apache Spark były w dniu sprawdzenia (2026-11-26) dokumentacją wersji **4.3.0** (`/docs/latest/`).

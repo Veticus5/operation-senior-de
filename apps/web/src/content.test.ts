@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { lessons, questions } from '@content/index';
+import { labById, labs, lessons, questions } from '@content/index';
 import { glossary } from '@content/glossary';
 import type { Bridge } from '@content/types';
-import { beats, experiments, interview, mechanism, plans, pushdown, simNotes, tasks } from '@content/spark/lazy-evaluation/lesson';
+import { beats, experiments, interview, labId, mechanism, plans, pushdown, simNotes, tasks } from '@content/spark/lazy-evaluation/lesson';
 import * as fundamentals from '@content/spark/fundamentals/lesson';
+import { LAB_SOURCES } from './lib/labSources';
 import { parseRich, plainText, termIds } from './lib/richText';
 
 const words = (text: string) => plainText(text).split(/\s+/).filter(Boolean).length;
@@ -33,6 +34,7 @@ const lessonRich: string[] = [
   ...pushdown.plan,
   ...experiments.flatMap(e => [e.ask, e.setup, e.scope, e.output ?? '', ...e.notes, ...(e.more?.html ?? []), ...(e.explainers ?? []).flatMap(x => x.lines.map(l => l.text))]),
   ...lessonBridges.flatMap(b => [b.known, b.fresh, b.breaks]),
+  ...labs.map(l => l.scope),
   ...fundamentalsRich
 ];
 
@@ -191,5 +193,31 @@ describe('lekcje', () => {
   it('symulator ma plan dla każdej kombinacji operacji i akcji', () => {
     const seqs = ['', 'f', 's', 'g', 'f>s', 's>f', 'f>g', 's>g', 'f>s>g', 's>f>g'];
     for (const s of seqs) for (const a of ['show', 'count']) expect(plans[`${s}|${a}`], `${s}|${a}`).toBeDefined();
+  });
+});
+
+describe('laby uruchamiane z interfejsu', () => {
+  it('nie zmieniły identyfikatorów, którymi wiążą się lekcje i pytania', () => {
+    expect(labs.map(l => l.id)).toEqual(['spark-lazy-evaluation-lab']);
+  });
+  it('każdy lab ma opis, zakres wyniku i kod do pokazania', () => {
+    for (const l of labs) {
+      expect(l.id, l.id).toMatch(/^[a-z0-9]+(-[a-z0-9]+)*$/);
+      expect(l.script, l.id).toMatch(/^[a-z0-9_/]+\.py$/);
+      expect(words(l.summary), l.id).toBeGreaterThanOrEqual(8);
+      expect(words(l.scope), l.id).toBeGreaterThanOrEqual(12);
+      expect(l.timeoutSec, l.id).toBeGreaterThan(0);
+      expect(LAB_SOURCES[l.id]?.length ?? 0, l.id).toBeGreaterThan(100);
+    }
+    expect(Object.keys(LAB_SOURCES).sort()).toEqual(labs.map(l => l.id).sort());
+  });
+  it('lekcje i pytania wskazują tylko laby z rejestru', () => {
+    expect(labById(labId)).toBeDefined();
+    for (const q of questions) for (const id of q.labIds ?? []) expect(labById(id), `${q.id}: ${id}`).toBeDefined();
+    expect(questions.filter(q => q.labIds?.length).map(q => q.id)).toEqual(['spark-transformations-actions']);
+  });
+  it('pytanie i lekcja o lazy evaluation prowadzą do tego samego labu', () => {
+    const q = questions.find(x => x.topicId === 'spark.lazy-evaluation');
+    expect(q?.labIds).toEqual([labId]);
   });
 });

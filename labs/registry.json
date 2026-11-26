@@ -1,0 +1,12 @@
+{
+  "labs": [
+    {
+      "id": "spark-lazy-evaluation-lab",
+      "script": "lazy_evaluation/lazy_lab.py",
+      "title": "Lazy evaluation na prawdziwym Sparku",
+      "summary": "Pięć małych eksperymentów na 9 wierszach: czas definicji a czas akcji, plan po optymalizacji, ponowne wykonanie i cache, moment zgłoszenia błędu, liczba jobów na akcję.",
+      "scope": "To uruchomienie lokalne: <code>local[3]</code>, czyli jeden proces z trzema wątkami, bez klastra. Czasy będą inne przy każdym uruchomieniu. Liczniki wierszy i jobów zależą od wersji Sparka, planu i konfiguracji, więc traktuj je jako obserwację, nie gwarancję.",
+      "timeoutSec": 300
+    }
+  ]
+}

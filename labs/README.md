@@ -9,6 +9,8 @@ cd labs
 uv run lazy_evaluation/lazy_lab.py
 ```
 
+Lab z rejestru `registry.json` da się też uruchomić z interfejsu: `npm run dev:labs` w katalogu głównym, potem przycisk „Uruchom lab" w lekcji albo w pytaniu. Runner wykonuje dokładnie to samo polecenie co wyżej. Na razie w rejestrze jest jeden lab: `lazy_evaluation/lazy_lab.py`.
+
 Inny skrypt uruchamiasz tak samo, podając jego ścieżkę. Żeby sprawdzić inną wersję Sparka bez zmiany projektu:
 
 ```bash

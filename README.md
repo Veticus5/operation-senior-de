@@ -6,7 +6,8 @@ Dwie niezależne części pod jedną stroną główną:
 - **Learning Academy**: lekcje do zrozumienia tematu od zera. Narracja, symulator, kod, zadania.
 - **Interview Bank**: pytania rekrutacyjne z odpowiedziami PL/EN, follow-upami i trybem szybkiej powtórki. Działa bez przerabiania lekcji.
 
-Aplikacja jest statyczna. Nie ma backendu, bazy ani logowania. Postęp zapisuje się w `localStorage` przeglądarki.
+Aplikacja jest statyczna. Nie ma bazy ani logowania. Postęp zapisuje się w `localStorage` przeglądarki.
+Jedyny proces poza przeglądarką to opcjonalny [lokalny runner labów](#laby-pyspark): uruchamia skrypty z `labs/` na Twoim komputerze. Bez niego wszystko poza przyciskiem „Uruchom lab" działa tak samo.
 
 ## Uruchomienie
 
@@ -22,8 +23,10 @@ Adres pojawi się w terminalu, domyślnie http://localhost:5173.
 | Polecenie | Co robi |
 | --- | --- |
 | `npm run dev` | serwer deweloperski z odświeżaniem |
+| `npm run dev:labs` | to samo plus lokalny runner labów: laby uruchamiasz przyciskiem w lekcji i w pytaniu |
+| `npm run runner` | sam runner labów, np. obok `npm run preview` |
 | `npm run typecheck` | TypeScript w trybie strict |
-| `npm run test` | testy jednostkowe i testy spójności treści (vitest) |
+| `npm run test` | testy jednostkowe i testy spójności treści (vitest) oraz testy runnera (`node --test`) |
 | `npm run build` | build produkcyjny do `apps/web/dist` |
 | `npm run preview` | podgląd buildu produkcyjnego |
 | `npm run check` | typecheck, testy i build po kolei. To samo sprawdza CI |
@@ -34,32 +37,59 @@ Build używa ścieżek względnych, więc `apps/web/dist` można otworzyć z dow
 
 Wymagania: [uv](https://docs.astral.sh/uv/) i Java 17 lub nowsza.
 
+Z interfejsu, bez przechodzenia do terminala:
+
+```bash
+npm run dev:labs
+```
+
+Polecenie startuje aplikację (http://localhost:5173) i runner (http://127.0.0.1:8765). W etapie Praktyka lekcji Lazy Evaluation i w pytaniu „Transformacje, akcje i lazy evaluation" pojawia się przycisk „Uruchom lab". Wyjście na stronie to prawdziwe stdout i stderr procesu, przesyłane na żywo. Runner pokazuje też, czego brakuje w środowisku (uv, Java, jej wersja).
+
+Albo w terminalu, jak dotąd:
+
 ```bash
 cd labs
 uv run lazy_evaluation/lazy_lab.py
 ```
 
 Pozostałe laby i to, co mierzą, opisuje [labs/README.md](labs/README.md).
+
+### Co runner może, a czego nie
+
+- Nasłuchuje tylko na `127.0.0.1`. Adresu nie da się zmienić konfiguracją.
+- Uruchamia wyłącznie skrypty z allowlisty `labs/registry.json`. Przeglądarka wysyła samo `id` labu. Polecenie (`uv run <skrypt>`) składa runner, bez powłoki i bez argumentów od klienta. Nie ma punktu wejścia do wykonania dowolnego kodu.
+- Sprawdza nagłówki `Origin` i `Host`. Domyślnie wpuszcza `http://localhost:5173`, `http://127.0.0.1:5173` oraz te same adresy na porcie 4173 (`npm run preview`). Dodatkowe źródła: `LAB_RUNNER_ORIGINS=http://localhost:3000`.
+- Limity: jedno uruchomienie naraz, limit czasu z rejestru (dla labu lazy evaluation 300 s), najwyżej 2 MB wyjścia. Po przekroczeniu, po kliknięciu „Przerwij" albo po zamknięciu strony runner zabija całą grupę procesów, razem z JVM Sparka. Pamięci nie ogranicza osobno: JVM Sparka startuje z domyślnym limitem sterty (w uruchomieniu kontrolnym `-Xmx1g`).
+- Do labu przekazuje tylko kilka zmiennych środowiskowych (`PATH`, `HOME`, `JAVA_HOME`, ustawienia języka i katalogów uv).
+- Zawsze ustawia labowi `SPARK_LOCAL_IP=127.0.0.1`, także wtedy, gdy w otoczeniu runnera ta zmienna ma inną wartość. Dzięki temu Spark i jego interfejs WWW (port 4040) słuchają tylko na pętli zwrotnej. To jedyna różnica względem uruchomienia w terminalu, poza `PYTHONUNBUFFERED=1`, które sprawia, że wydruki docierają na bieżąco.
+- Uruchamia dokładnie ten plik, który pokazuje strona. Przy starcie zapamiętuje skrót SHA-256 każdego skryptu z rejestru. Jeśli plik potem się zmieni, runner odmawia uruchomienia (HTTP 409), a interfejs wyłącza przycisk i prosi o ponowny start runnera. To samo, gdy kod wkompilowany w stronę różni się od pliku runnera.
+- Zamknięcie runnera (Ctrl+C, SIGTERM) najpierw przerywa trwający lab i czeka, aż jego procesy znikną: SIGTERM, po 3 s SIGKILL dla całej grupy.
+- **To nie jest piaskownica.** Limit czasu, limit wyjścia i jedno uruchomienie naraz chronią przed zawieszonym albo rozgadanym labem, ale nie ograniczają procesora, pamięci, dysku ani sieci. Skrypty z rejestru to zaufany kod z tego repozytorium i działają z Twoimi uprawnieniami.
+- Zabijanie grupy procesów działa na Linuksie i macOS. Na Windows runner nie był sprawdzany.
+
+Inny port: `LAB_RUNNER_PORT=9000 VITE_LAB_RUNNER_URL=http://127.0.0.1:9000 npm run dev:labs`.
 Wyniki są pomiarami lokalnymi: pokazują mechanizm, ale nie są gwarancjami Sparka. Zakres każdego wyniku jest w [docs/verified-facts.md](docs/verified-facts.md).
 
 ## Struktura
 
 ```
+apps/lab-runner/      lokalny runner labów: serwer HTTP na 127.0.0.1 bez zależności (server.mjs), start razem z Vite (dev.mjs)
 apps/web/src/
   academy/            widoki Learning Academy, jeden podkatalog na lekcję
   interview-bank/     lista pytań, widok pytania, szybka powtórka, filtrowanie
-  components/         elementy wspólne: powłoka, TermTooltip, CodeExplainer, ConceptBridge, Html
-  lib/                router na hashach, magazyn postępu, parser fragmentów treści (richText)
+  components/         elementy wspólne: powłoka, TermTooltip, CodeExplainer, ConceptBridge, Html, LabRunner
+  lib/                router na hashach, magazyn postępu, parser fragmentów treści (richText), klient runnera (labRunner)
   content.test.ts     testy spójności treści (stałe id, komplet PL/EN, długość odpowiedzi, hasła słownika)
   styles/             base.css (tokeny i styl lekcji), app.css (powłoka, bank, poprawki)
 content/
   types.ts            model treści: Question, LessonMeta, Bridge, ExplainedLine
   index.ts            rejestr pytań i lekcji, powiązania po topicId
   glossary.ts         słownik pojęć, jedno źródło definicji dla lekcji i banku
+  labs.ts             laby uruchamiane z interfejsu (czyta labs/registry.json)
   spark/              pytania i treść lekcji Spark
   delta-lake/         pytania Delta Lake
   databricks/         pytania Databricks
-labs/                 samodzielne skrypty PySpark (uv)
+labs/                 samodzielne skrypty PySpark (uv) i registry.json: allowlista runnera
 docs/verified-facts.md  liczby i źródła, na które powołuje się treść
 AGENTS.md             zasady współpracy dla Claude i ChatGPT
 ```
@@ -84,6 +114,13 @@ Nowy obszar (np. Snowflake): dodaj wartość do typu `Area` i `AREA_LABEL` w `co
 5. Etap Interview bierze pytanie, krótką odpowiedź i follow-upy z banku (pytanie o tym samym `topicId`). Nie pisz ich drugi raz w lekcji.
 
 Kryteria dydaktyczne, które lekcja musi spełnić, są w [AGENTS.md](AGENTS.md).
+
+## Jak udostępnić lab w interfejsie
+
+1. Dopisz wpis do `labs/registry.json`: stabilne `id`, ścieżka skryptu względem `labs/`, tytuł, jedno zdanie o tym, co lab mierzy, zakres wyniku i limit czasu.
+2. Dopisz kod skryptu do `apps/web/src/lib/labSources.ts`, żeby był widoczny także bez runnera.
+3. Powiąż lab z treścią przez `id`: w pytaniu polem `labIds`, w lekcji komponentem `<LabRunner labId="..." />`.
+4. `npm run test` sprawdzi, że identyfikatory istnieją i się nie zmieniły, a skrypt leży wewnątrz `labs/`.
 
 Wzorcem jest lekcja `spark-lazy-evaluation`.
 

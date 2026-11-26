@@ -7,6 +7,7 @@ Najpierw przeczytaj [AGENTS.md](AGENTS.md). Tam są cel, role, przepływ pracy i
 ```bash
 npm install          # raz
 npm run dev          # serwer deweloperski
+npm run dev:labs     # serwer deweloperski + lokalny runner labów (przycisk „Uruchom lab")
 npm run check        # typecheck + testy + build, uruchom przed każdym commitem
 cd labs && uv run lazy_evaluation/lazy_lab.py   # lab PySpark, wymaga Javy 17+ (pozostałe laby: labs/README.md)
 ```
@@ -14,8 +15,9 @@ cd labs && uv run lazy_evaluation/lazy_lab.py   # lab PySpark, wymaga Javy 17+ (
 ## Gdzie co jest
 
 - Pytania: `content/<obszar>/questions.ts`. Model: `content/types.ts`. Rejestr: `content/index.ts`. Słownik pojęć: `content/glossary.ts`.
-- Elementy wspólne: `apps/web/src/components/` (`TermTooltip`, `CodeExplainer`, `ConceptBridge`, `Html`). Parser fragmentów treści: `apps/web/src/lib/richText.ts`.
+- Elementy wspólne: `apps/web/src/components/` (`TermTooltip`, `CodeExplainer`, `ConceptBridge`, `Html`, `LabRunner`). Parser fragmentów treści: `apps/web/src/lib/richText.ts`.
 - Lekcja wzorcowa: treść w `content/spark/lazy-evaluation/`, widok w `apps/web/src/academy/lazy-evaluation/`.
+- Runner labów: serwer w `apps/lab-runner/server.mjs` (Node bez zależności, testy `node --test`), allowlista w `labs/registry.json`, klient w `apps/web/src/lib/labRunner.ts`, kod labów dla interfejsu w `apps/web/src/lib/labSources.ts`.
 - Routing: `apps/web/src/lib/router.ts` (hash, bez biblioteki). Trasy składa `apps/web/src/App.tsx`.
 - Postęp: `apps/web/src/lib/progress.ts` (czysta logika, testowana) i `useProgress.ts` (hook).
 - Style: `styles/base.css` to tokeny i styl lekcji przeniesione z zaakceptowanego prototypu. Zmiany i nowe rzeczy dopisuj w `styles/app.css`.
@@ -27,7 +29,7 @@ cd labs && uv run lazy_evaluation/lazy_lab.py   # lab PySpark, wymaga Javy 17+ (
 - Zanim napiszesz liczbę albo zachowanie Sparka do treści, uruchom to w labie albo otwórz dokumentację. Wynik wpisz do `docs/verified-facts.md`, z wersją i zakresem.
 - Lekcja nie dubluje banku: pytanie, odpowiedź 30–60 s i follow-upy etapu Interview pochodzą z pytania o tym samym `topicId`.
 - W fragmentach HTML znak `<` w tekście zapisuj jako `&lt;`, a hasła słownika jako `<term id="...">tekst</term>`.
-- Nie zmieniaj istniejących `id` ani `topicId`.
+- Nie zmieniaj istniejących `id` ani `topicId`. To samo dotyczy `id` labów w `labs/registry.json`.
 - Etapy lekcji pozostają zamontowane i są przełączane atrybutem `hidden`, żeby stan symulatora i odpowiedzi przetrwał przejście między etapami. Nie zamieniaj tego na renderowanie warunkowe.
 - Symulator skaluje scenę 980×372 do szerokości kontenera (`LazySim.tsx`). Jeśli zmieniasz rozmiar sceny, zmień go w obu miejscach: w silniku i w komponencie.
 - Po zmianie interfejsu sprawdź build produkcyjny w przeglądarce (Playwright albo ręcznie) na szerokim ekranie i na 390 px.
