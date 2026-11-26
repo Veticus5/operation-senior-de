@@ -72,6 +72,8 @@ Obowiązują każdą lekcję i każde pytanie w banku. Reviewer sprawdza je tak 
 8. **Bank: odpowiedź krótka, wyjaśnienie obok.** Odpowiedź mówiona zostaje w 30–60 sekundach. Pole `explain` tłumaczy mechanizm od podstaw, po polsku, w 2–5 akapitach, i nie jest do recytowania.
 9. **Jedno źródło.** Lekcja nie powtarza pytania, krótkiej odpowiedzi ani follow-upów z banku. Bierze je z pytania o tym samym `topicId`.
 
+10. **Visual-first w Academy.** Domyślna ścieżka: konkretne pytanie → mały przykład lub wizualizacja → widoczny skutek → krótki wniosek. Szczegóły planu, pomiar, rozbudowana analogia i pogłębienie techniczne są opcjonalne lub w istniejącym etapie Praktyka/Interview. Nie ukrywaj niezbędnych założeń i ograniczeń. Nie dodawaj interakcji na siłę ani nie buduj nowego frameworka. Przed tworzeniem lub zmianą materiałów przeczytaj [skill](.claude/skills/senior-de-lesson-author/SKILL.md) i jego [standard dydaktyczny](.claude/skills/senior-de-lesson-author/references/pedagogy.md); dotyczy wszystkich agentów, nie tylko Claude Code.
+
 Sprawdzian końcowy: czy osoba, która zna SQL i Pythona, a Sparka nie, przejdzie lekcję bez szukania czegokolwiek w innym miejscu?
 
 ## Zasady techniczne
