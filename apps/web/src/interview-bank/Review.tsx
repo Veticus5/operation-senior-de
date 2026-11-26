@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { questions, type Question } from '@content/index';
+import { Html } from '../components/Html';
 import type { Mastery } from '../lib/progress';
 import { href } from '../lib/router';
 import { useProgress } from '../lib/useProgress';
@@ -131,6 +132,13 @@ export function Review() {
             <div className="block">
               <div className="kw">{current.keywords.map(k => <span key={k}>{k}</span>)}</div>
             </div>
+            {/* W szybkiej powtórce wyjaśnienie jest zwinięte: tempo ma pierwszeństwo, ale nie trzeba wychodzić z rundy, żeby coś sprawdzić. */}
+            <details className="why" key={current.id}>
+              <summary>Nie pamiętam dlaczego. Pokaż mechanizm</summary>
+              <div>
+                {current.explain.map((html, k) => <Html as="p" key={k} html={html} />)}
+              </div>
+            </details>
             <div className="grade">
               {GRADES.map(g => (
                 <button key={g.mastery} type="button" onClick={() => grade(g.mastery)}>

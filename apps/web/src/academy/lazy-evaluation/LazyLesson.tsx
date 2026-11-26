@@ -1,12 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
-import { beats, experiments, interview, meta, type Experiment } from '@content/spark/lazy-evaluation/lesson';
+import { beats, experiments, interview, meta, simNotes, type Experiment } from '@content/spark/lazy-evaluation/lesson';
 import { questionsByTopic } from '@content/index';
 import labCode from '../../../../../labs/lazy_evaluation/lazy_lab.py?raw';
+import { CodeExplainer } from '../../components/CodeExplainer';
+import { ConceptBridge } from '../../components/ConceptBridge';
 import { CopyButton } from '../../components/CopyButton';
 import { Html } from '../../components/Html';
+import { plainText } from '../../lib/richText';
 import { href, navigate } from '../../lib/router';
 import { useProgress } from '../../lib/useProgress';
 import { LazySim } from './LazySim';
+import { RowGroups } from './RowGroups';
 import { Tasks } from './Tasks';
 
 const STAGES = [
@@ -40,6 +44,7 @@ function Intuition({ onNext }: { onNext: () => void }) {
         <div className="beat on" key={i}>
           {i === 0 && <p className="eyebrow">Etap 1 · Intuicja</p>}
           <Html html={b.html} />
+          {b.bridge && <ConceptBridge bridge={b.bridge} />}
           {i === shown - 1 && b.next && (
             <button type="button" className={i === beats.length - 1 ? 'cta' : 'more'} onClick={() => (i === beats.length - 1 ? onNext() : setShown(shown + 1))}>
               {b.next}
@@ -56,6 +61,9 @@ function ExperimentCard({ n, e }: { n: number; e: Experiment }) {
   return (
     <div className="obs">
       <span className="num">EKSPERYMENT {n}</span>
+      <p className="setup">
+        <b>Założenia.</b> <Html as="span" html={e.setup} />
+      </p>
       <Html as="p" className="ask" html={e.ask} />
       <div className="choices">
         {e.choices.map((c, i) => (
@@ -67,10 +75,23 @@ function ExperimentCard({ n, e }: { n: number; e: Experiment }) {
       {picked !== null && (
         <div className="reveal on">
           <p className={`verdict ${picked === e.correct ? 'ok' : 'no'}`}>{picked === e.correct ? 'Dobrze przewidziane.' : 'Inaczej, niż się wydaje. Zobacz wynik.'}</p>
-          <Html as="pre" className="code" html={e.output} />
+          {e.output && <Html as="pre" className="code" html={e.output} />}
           {e.notes.map((note, i) => (
             <Html as="p" key={i} html={note} />
           ))}
+          {e.explainers?.map(x => <CodeExplainer key={x.title} title={x.title} lines={x.lines} order={x.order} />)}
+          <p className="scope">
+            <b>Zakres tego wyniku.</b> <Html as="span" html={e.scope} />
+          </p>
+          {e.bridge && <ConceptBridge bridge={e.bridge} />}
+          {e.more && (
+            <details className="deeper">
+              <summary>{e.more.title}</summary>
+              <div>
+                {e.more.html.map((h, i) => <Html as="p" key={i} html={h} />)}
+              </div>
+            </details>
+          )}
         </div>
       )}
     </div>
@@ -78,66 +99,62 @@ function ExperimentCard({ n, e }: { n: number; e: Experiment }) {
 }
 
 function Interview() {
-  const [cur, setCur] = useState(0);
-  const [pl, setPl] = useState(false);
-  const a = interview.answers[cur];
-  const text = pl && a.pl ? a.pl : a.text;
+  const [long, setLong] = useState(false);
+  const [lang, setLang] = useState<'en' | 'pl'>('en');
+  // Pytanie, krótka odpowiedź i follow-upy mają jedno źródło: Interview Bank.
   const bank = questionsByTopic(meta.topicId);
+  const q = bank[0];
+  if (!q) return null;
+  const text = long ? interview.long[lang] : q.answer[lang];
+  const time = long ? interview.long.time[lang] : lang === 'en' ? '30 to 60 seconds' : '30–60 sekund';
   return (
     <>
       <p className="eyebrow">Etap 4 · Interview</p>
-      <p className="q-pl">{interview.questionPl}</p>
-      <p className="q-en" lang="en">{interview.questionEn}</p>
+      <p className="q-pl">{q.question.pl}</p>
+      <p className="q-en" lang="en">{q.question.en}</p>
       <div className="tiers" role="group" aria-label="Wersja odpowiedzi">
-        {interview.answers.map((x, i) => (
-          <button key={x.id} type="button" className="tier" aria-pressed={i === cur} onClick={() => { setCur(i); setPl(false); }}>
-            {x.label}
-          </button>
-        ))}
+        <button type="button" className="tier" aria-pressed={!long} onClick={() => setLong(false)}>Odpowiedź na 30–60 sekund</button>
+        <button type="button" className="tier" aria-pressed={long} onClick={() => setLong(true)}>{interview.long.label}</button>
       </div>
       <p className="ans-meta">
-        <span>{a.time} · {text.split(/\s+/).length} słów</span>
-        {a.pl && (
-          <button type="button" className="linkbtn" onClick={() => setPl(!pl)}>
-            {pl ? 'pokaż po angielsku' : 'pokaż po polsku'}
-          </button>
-        )}
+        <span>{time} · {plainText(text).split(/\s+/).length} słów</span>
+        <button type="button" className="linkbtn" onClick={() => setLang(lang === 'en' ? 'pl' : 'en')}>
+          {lang === 'en' ? 'pokaż po polsku' : 'pokaż po angielsku'}
+        </button>
       </p>
-      <p className="answer" lang={pl && a.pl ? 'pl' : a.lang}>{text}</p>
-      {a.note && <p className="small">{a.note}</p>}
+      <p className="answer" lang={lang}>{text}</p>
+      {long ? <p className="small">{interview.long.note}</p> : q.senior && <p className="small" lang={lang}>{lang === 'en' ? 'If they dig deeper: ' : 'Gdy rozmówca drąży: '}{q.senior[lang]}</p>}
 
       <div className="sect">
         <h3>Pytania pogłębiające</h3>
         <p className="muted">Odpowiedz na głos, dopiero potem rozwiń.</p>
-        {interview.followUps.map(([q, ans, gist]) => (
-          <details className="fu" key={q}>
-            <summary><span lang="en">{q}</span></summary>
+        {q.followUps.map(fu => (
+          <details className="fu" key={fu.q}>
+            <summary><span lang="en">{fu.q}</span></summary>
             <div className="a">
-              <p lang="en">{ans}</p>
-              <p className="pl">{gist}</p>
+              <p lang="en">{fu.a}</p>
+              <p className="pl">{fu.pl}</p>
             </div>
           </details>
         ))}
       </div>
 
       <div className="sect">
-        <h3>Twoje doświadczenie w tej odpowiedzi</h3>
-        <p>Nie znasz Sparka z produkcji tak jak Snowflake i nie musisz udawać. Ten temat akurat świetnie przenosi się z tego, co robisz na co dzień, więc powiedz to wprost:</p>
+        <h3>Most do tego, co już znasz</h3>
+        <p>{interview.bridgeIntro}</p>
         <p className="answer" lang="en" style={{ fontSize: 19 }}>{interview.bridgeEn}</p>
         <p className="small">{interview.bridgePl}</p>
       </div>
 
-      {bank.length > 0 && (
-        <div className="sect">
-          <h3>To pytanie w Interview Banku</h3>
-          <p className="muted">Krótka wersja do powtórek, bez przechodzenia lekcji od nowa.</p>
-          {bank.map(q => (
-            <a key={q.id} className="lesson-link" href={href('bank', 'q', q.id)}>
-              {q.title} →
-            </a>
-          ))}
-        </div>
-      )}
+      <div className="sect">
+        <h3>To pytanie w Interview Banku</h3>
+        <p className="muted">Ta sama odpowiedź do powtórek, z wyjaśnieniem mechanizmu i typowymi błędami. Bez przechodzenia lekcji od nowa.</p>
+        {bank.map(b => (
+          <a key={b.id} className="lesson-link" href={href('bank', 'q', b.id)}>
+            {b.title} →
+          </a>
+        ))}
+      </div>
     </>
   );
 }
@@ -171,16 +188,15 @@ export function LazyLesson({ stage }: { stage?: string }) {
       <section className="stage" hidden={hidden('mechanizm')}>
         <div className="wide">
           <p className="eyebrow">Etap 2 · Mechanizm</p>
+          <span className="badge sim">Symulacja w przeglądarce · plany z prawdziwego explain()</span>
           <LazySim />
           <details className="simnote">
             <summary>Co tu jest symulacją, a co pochodzi z prawdziwego Sparka</summary>
             <ul>
-              <li>Ruch danych to animacja w JavaScripcie na 9 wierszach. Nie działa tu żaden Spark.</li>
-              <li>Plan po optymalizacji, lista czytanych kolumn i przekazanie filtra do skanu pochodzą z prawdziwego <code>explain()</code> dla każdej kombinacji operacji i akcji (PySpark 4.0.1, źródło Parquet).</li>
-              <li>Ponowne przetwarzanie wierszy przy drugiej akcji i jego brak po <code>cache()</code> zmierzyłem licznikiem w UDF. Wyniki są w etapie Praktyka.</li>
-              <li>Uproszczenia: nie ma partycji, jobów ani stage'y, a <code>show()</code> pokazuje wszystko, choć naprawdę wyświetla do 20 wierszy.</li>
+              {simNotes.map((note, i) => <li key={i}><Html as="span" html={note} /></li>)}
             </ul>
           </details>
+          <RowGroups />
           <div className="foot">
             <button type="button" className="back" onClick={() => go('intuicja')}>← Intuicja</button>
             <button type="button" className="cta" style={{ margin: 0 }} onClick={() => go('praktyka')}>Sprawdź to na prawdziwym Sparku</button>
@@ -192,8 +208,11 @@ export function LazyLesson({ stage }: { stage?: string }) {
         <div className="read">
           <p className="eyebrow">Etap 3 · Praktyka</p>
           <h2>Ten sam mechanizm, tym razem naprawdę</h2>
-          <p className="lede">Jeden skrypt, pięć małych eksperymentów. Wszystko poniżej to wynik jego uruchomienia, nie symulacja.</p>
+          <p className="lede">Jeden skrypt, pięć małych eksperymentów. Każdy wydruk poniżej to wynik jego uruchomienia, nie symulacja.</p>
           <span className="badge">Rzeczywiste wykonanie · PySpark 4.0.1 · local[3] · ustawienia domyślne</span>
+          <p className="small" style={{ maxWidth: '64ch' }}>
+            <code>local[3]</code> to jeden proces z trzema wątkami na jednej maszynie, bez klastra. Wyniki pokazują mechanizm, ale są obserwacją z tej konfiguracji, a nie gwarancją Sparka. Przy każdym eksperymencie jest napisane, jak daleko wolno go uogólniać.
+          </p>
           <h3 style={{ marginTop: 36 }}>Dane wejściowe</h3>
           <table className="data">
             <thead><tr><th>subscription_id</th><th>publisher_id</th><th>status</th><th>price</th></tr></thead>
@@ -209,6 +228,9 @@ export function LazyLesson({ stage }: { stage?: string }) {
             <CopyButton text={labCode} />
             <pre className="code">{labCode}</pre>
           </div>
+          <p className="muted">
+            Warunki i wyjątki, do których odwołują się rozwinięcia pod eksperymentami, sprawdza drugi skrypt: <code>labs/lazy_evaluation/lazy_conditions_lab.py</code>.
+          </p>
           <p className="muted">Zanim przewiniesz dalej: przy każdym eksperymencie najpierw zgadnij wynik.</p>
           {experiments.map((e, i) => <ExperimentCard key={i} n={i + 1} e={e} />)}
           <div className="foot">

@@ -1,6 +1,15 @@
 import type { Question } from '../types';
 
-/** Pytania: Apache Spark. Fakty liczbowe pochodzą z docs/verified-facts.md albo z dokumentacji. */
+/**
+ * Pytania: Apache Spark.
+ *
+ * Źródła: dokumentacja i pomiary spisane w docs/verified-facts.md. Liczby opisane w polu `explain` jako
+ * pomiar pochodzą z labs/interview_bank/spark_checks.py oraz labs/lazy_evaluation/*.py (PySpark 4.0.1
+ * i 4.3.0, local[3]). To obserwacje z lokalnego uruchomienia, nie gwarancje Sparka.
+ *
+ * Odpowiedzi do powiedzenia na głos nie używają pierwszej osoby dla pomiarów („zmierzyłem"), dopóki
+ * uczący się sam nie uruchomił labu. Zamiast tego: „w lokalnym teście".
+ */
 export const sparkQuestions: Question[] = [
   {
     id: 'spark-transformations-actions',
@@ -13,24 +22,34 @@ export const sparkQuestions: Question[] = [
       en: "What's the difference between a transformation and an action, and why is Spark lazy?"
     },
     answer: {
-      pl: 'Transformacje, takie jak filter, select czy groupBy, niczego nie liczą. Dopisują krok do planu i zwracają nowy DataFrame. Akcja, czyli show, count albo zapis, żąda wyniku i dopiero ona uruchamia wykonanie. Spark jest leniwy celowo: widzi całe zapytanie przed wykonaniem, więc może je zoptymalizować jak silnik SQL, czyli czytać tylko potrzebne kolumny i spychać filtry do źródła. Praktyczny skutek jest taki, że między akcjami nic nie jest pamiętane. Jeśli wynik ma posłużyć kilku akcjom, cache\'uję go albo zapisuję.',
-      en: "Transformations, like filter, select or groupBy, don't process any data. They add a step to the plan and return a new DataFrame. An action, like show, count or a write, asks for a result, and that is what triggers execution. Spark is lazy on purpose: it sees the whole query before running it, so it can optimize it the way a SQL engine does, reading only the columns it needs and pushing filters down to the source. The practical side is that nothing is remembered between actions. If a result feeds several actions, I cache it or write it out."
+      pl: 'Transformacje, takie jak filter, select czy groupBy, nie przetwarzają wierszy. Dopisują krok do planu i zwracają nowy DataFrame. Akcja, czyli show, count albo zapis, żąda wyniku i dopiero ona uruchamia wykonanie. Spark jest leniwy celowo: widzi całe zapytanie przed wykonaniem, więc może je zoptymalizować jak silnik SQL, czyli czytać tylko potrzebne kolumny i spychać filtry do źródła. Praktyczny skutek jest taki, że Spark domyślnie nie przechowuje wyników między akcjami, więc kolejna akcja może policzyć część albo całość planu od nowa. Jeśli wynik ma posłużyć kilku akcjom, cache\'uję go, a jeśli ma przetrwać job, zapisuję go do tabeli.',
+      en: "Transformations, like filter, select or groupBy, don't process rows. They add a step to a plan and return a new DataFrame. An action, like show, count or a write, asks for a result, and that is what triggers execution. Spark is lazy on purpose: it sees the whole query before running it, so it can optimize it the way a SQL engine does, reading only the columns it needs and pushing filters down to the source. The practical side is that Spark doesn't keep results between actions by default, so another action may recompute part or all of the plan. If a result feeds several actions, I cache it, and if it has to outlive the job, I write it to a table."
     },
     senior: {
-      pl: 'Leniwość nie jest absolutna. Odczyt pliku uruchamia mały job po schemat, a jedna akcja to nie zawsze jeden job: to samo show() dało u mnie 2 joby z AQE i 5 bez. Błąd w nazwie kolumny wychodzi od razu, a błąd w danych, np. zły cast, dopiero przy akcji.',
-      en: "Lazy isn't absolute. Reading a file already runs a small job to get the schema, and one action isn't always one job: the same show() gave me two jobs with AQE on and five with it off. A wrong column name fails immediately, while a data error such as a bad cast only shows up at the action."
+      pl: 'Leniwość nie jest absolutna. Utworzenie DataFrame ze ścieżki Parquet potrafi odczytać metadane pliku, żeby ustalić schemat, choć wierszy nie przetwarza. Jedna akcja to nie zawsze jeden job: w lokalnym teście na Sparku 4 to samo show() dało 2 joby z AQE i 5 bez. W klasycznym Sparku zła nazwa kolumny wychodzi przy definicji, a błąd w danych, np. zły cast, dopiero gdy akcja faktycznie wyliczy to wyrażenie. Na Spark Connect także sprawdzenie nazw jest odłożone. Cache to nie tabela: wypełnia się leniwie, może zostać usunięty z pamięci i wtedy Spark liczy od nowa.',
+      en: "Lazy isn't absolute. Creating a DataFrame from a Parquet path can read file metadata to resolve the schema, although no rows are processed. One action isn't always one job: in a local Spark 4 test the same show() was two jobs with AQE on and five with it off. In classic Spark a wrong column name fails at definition, while a data error such as a bad cast shows up only when an action actually evaluates that expression. On Spark Connect the name check is deferred too. And a cache is not a table: it fills lazily, it can be evicted, and then Spark recomputes."
     },
+    explain: [
+      'Python wykonuje kod linijka po linijce, więc Spark nie wie, czy po <code>filter</code> przyjdzie jeszcze <code>select</code>. Dlatego transformacja tylko dopisuje krok do planu, a liczenie rusza, gdy akcja zażąda wyniku. Wtedy <term id="optimizer">optymalizator</term> widzi całość: prosi źródło tylko o potrzebne kolumny (<term id="column-pruning">column pruning</term>) i przekazuje mu warunek filtra (<term id="predicate-pushdown">predicate pushdown</term>).',
+      'Granice leniwości, pomiar lokalny: <code>read.parquet</code> ze ścieżki uruchomił 1 <term id="job">job</term> po <term id="schema">schemat</term>, wierszy nie czytał. Z podanym schematem albo z tabeli z katalogu było 0 jobów. <code>pivot</code> bez listy wartości policzył je od razu, przy definicji.',
+      'Druga akcja: <code>show()</code>, potem <code>count()</code> przepuściły każdy wiersz przez filtr dwa razy. Wyjątek: dwa razy <code>collect()</code> na tym samym DataFrame z <term id="shuffle">shuffle\'em</term> w planie użyło ponownie zapisanych wyników shuffle\'u. Stąd ostrożne „may be recomputed" w dokumentacji.',
+      '<code>cache()</code> to tymczasowa kopia na czas sesji. Wypełnia się przy pierwszej akcji i tylko tymi <term id="partition">partycjami</term>, które akcja policzyła (w labie <code>take(1)</code> zapamiętało 1 z 3). Spark może usunąć ją z pamięci, a wtedy liczy brakującą część od nowa. Trwały wynik daje dopiero zapis do tabeli.'
+    ],
     keywords: ['lazy evaluation', 'plan', 'Catalyst', 'column pruning', 'predicate pushdown', 'cache'],
     followUps: [
-      { q: 'Is cache() a transformation or an action?', a: "It's lazy. It only marks the DataFrame to be kept. The data is stored when the first action runs.", pl: 'Sam cache() niczego nie liczy.' },
-      { q: 'You call show() and then count() on the same DataFrame. What happens?', a: 'Spark runs the plan twice, including the source read, unless the DataFrame is cached. The exception is when it can reuse shuffle output it still has.', pl: 'Dwie akcje to dwa wykonania planu.' },
-      { q: 'Does one action always mean exactly one job?', a: 'No. An action triggers execution of the plan. How many jobs that takes depends on the plan and on settings such as adaptive query execution.', pl: 'Bezpiecznie: „akcja uruchamia wykonanie planu".' },
-      { q: 'How do you check what Spark will actually run?', a: 'I call explain and compare the plan I wrote with the optimized one. In the scan node I check ReadSchema and PushedFilters.', pl: 'explain(True) pokazuje wszystkie etapy planu.' }
+      { q: 'Is cache() a transformation or an action?', a: "It doesn't trigger any work on its own. cache() is lazy: it only marks the DataFrame to be kept. The data is stored when an action computes it, partition by partition, and later actions read from there.", pl: 'W labie licznik po samym cache() pokazywał 0. Cache dostaje tylko te partycje, które akcja policzyła.' },
+      { q: 'You call show() and then count() on the same DataFrame. What happens?', a: 'Without a cache Spark may recompute part or all of the plan. In a small local test it ran the whole plan twice, including the source read. Spark can skip work when it can reuse shuffle output it still has, which is why the docs say a result "may be recomputed".', pl: 'Bez cache: „może policzyć od nowa". Wyjątek: ponowne użycie wyników shuffle\'u.' },
+      { q: 'Does one action always mean exactly one job?', a: 'No. An action triggers execution of the plan, and how many jobs that takes depends on the plan, the version and the configuration, for example adaptive query execution.', pl: 'Bezpieczne sformułowanie: akcja uruchamia wykonanie planu.' },
+      { q: 'Is reading a file lazy as well?', a: "Mostly. spark.read doesn't load the rows, but Spark needs a schema. For a Parquet path it can read file metadata right away. For CSV with inferSchema it has to scan the data, so in production I pass an explicit schema or read a table from the catalog.", pl: 'Lab: read.parquet ze ścieżki 1 job, z podanym schematem 0, CSV z inferSchema dodatkowy przebieg po danych.' },
+      { q: 'When do you find out about an error in a transformation?', a: 'It depends on the kind of error and on the mode. In classic Spark a wrong column name fails right away, because the plan is checked against the schema when I define it. A data problem, like a bad cast under ANSI mode, only shows up when an action evaluates that expression. On Spark Connect even the name check is deferred.', pl: 'Błąd planu od razu (tryb klasyczny), błąd danych przy akcji, o ile akcja używa tej kolumny.' },
+      { q: 'What is the difference between cache(), persist() and writing to a table?', a: 'cache() is persist() with the default storage level, memory and disk for DataFrames. Both keep the plan, so if cached data is evicted or lost Spark recomputes it. Writing to a table gives me a durable result that other jobs can read and cuts the dependency on the upstream plan.', pl: 'Cache dla jednego joba i kilku akcji, tabela dla wszystkiego, co ma przetrwać.' },
+      { q: 'How do you check what Spark will actually run?', a: "I call explain and compare the plan I wrote with the optimized one. In the scan node I check ReadSchema for column pruning and PushedFilters for pushdown. PushedFilters only tells me what was passed to the source, not how much data was skipped.", pl: 'explain(True) pokazuje wszystkie etapy planu. PushedFilters to „przekazano", nie „zaoszczędzono".' }
     ],
     mistakes: [
-      'Mówienie, że transformacje „wykonują się w tle". Nie wykonują się wcale, dopóki nie ma akcji.',
-      'Twierdzenie, że jedna akcja to zawsze jeden job.',
-      'Traktowanie cache() jak akcji, która od razu coś liczy.'
+      'Mówienie, że transformacje „wykonują się w tle". Nie przetwarzają wierszy, dopóki nie ma akcji.',
+      'Twierdzenie, że Spark przed akcją niczego nie czyta. Schemat potrafi odczytać z metadanych pliku od razu.',
+      'Twierdzenie, że jedna akcja to zawsze jeden job albo że każda akcja zawsze liczy wszystko od nowa.',
+      'Traktowanie cache() jak akcji, która od razu coś liczy, albo jak trwałej tabeli.'
     ]
   },
   {
@@ -44,23 +63,31 @@ export const sparkQuestions: Question[] = [
       en: 'What is the difference between narrow and wide transformations? Which operations cause a shuffle?'
     },
     answer: {
-      pl: 'Transformacja narrow, np. filter albo select, liczy każdą partycję niezależnie, więc dane nie przemieszczają się między executorami. Transformacja wide, np. groupBy, distinct, orderBy albo join dwóch dużych tabel, wymaga, żeby wiersze z tym samym kluczem trafiły do jednej partycji. Spark musi wtedy przegrupować dane i to jest shuffle. Jest kosztowny, bo oznacza serializację, zapis na dysk i transfer po sieci, a do tego wyznacza granicę stage\'a. Dlatego przy optymalizacji zaczynam od planu i sprawdzam, ile jest w nim shuffle\'i i czy każdy jest potrzebny.',
-      en: 'A narrow transformation, like filter or select, computes each partition independently, so no data moves between executors. A wide transformation, like groupBy, distinct, orderBy or a join of two large tables, needs all rows with the same key in one partition. Spark has to redistribute the data, and that is a shuffle. It is expensive because it means serialization, disk writes and network transfer, and it also marks a stage boundary. So when I optimize, I start with the plan and check how many shuffles it has and whether each one is needed.'
+      pl: 'Transformacja narrow, np. filter albo select, liczy każdą partycję wyniku z jednej partycji wejścia, więc nic nie przenosi się między partycjami. Transformacja wide, np. groupBy, distinct, orderBy albo join dwóch dużych tabel, do zbudowania jednej partycji wyniku potrzebuje danych z wielu partycji wejścia. Spark musi wtedy przegrupować dane i to jest shuffle. Przy joinie i agregacji chodzi o to, żeby pasujące klucze spotkały się w jednej partycji. Shuffle jest kosztowny, bo oznacza serializację, zapis na dysk i transfer po sieci, a do tego wyznacza granicę stage\'a. Dlatego przy optymalizacji zaczynam od planu i sprawdzam, ile jest w nim shuffle\'i i czy każdy jest potrzebny.',
+      en: 'A narrow transformation, like filter or select, computes each output partition from a single input partition, so nothing moves between partitions. A wide transformation, like groupBy, distinct, orderBy or a join of two large tables, needs data from many input partitions to build one output partition. Spark has to redistribute the data, and that is a shuffle. For a join or an aggregation the point is that matching keys meet in the same partition. A shuffle is expensive because it means serialization, disk writes and network transfer, and it also marks a stage boundary. So when I optimize, I start with the plan and check how many shuffles it has and whether each one is needed.'
     },
     senior: {
-      pl: 'W planie shuffle to Exchange z rodzajem podziału, np. hashpartitioning. BroadcastExchange to nie shuffle. Operacja wide nie zawsze dodaje shuffle: jeśli dane są już podzielone po tym kluczu, Spark z tego korzysta. Agregacja częściowa przed shuffle\'em zmniejsza ilość przesyłanych danych.',
-      en: "In the plan a shuffle is an Exchange with a partitioning, such as hashpartitioning. BroadcastExchange is not a shuffle. A wide operation doesn't always add one: if the data is already partitioned by that key, Spark reuses it. Partial aggregation before the shuffle reduces how much data is sent."
+      pl: 'W planie shuffle to Exchange z rodzajem podziału, np. hashpartitioning. BroadcastExchange to nie shuffle. Operacja wide nie zawsze dodaje shuffle: jeśli dane są już podzielone po tym kluczu, Spark z tego korzysta. To, co wędruje, też zależy od operacji: agregacja przesyła wyniki częściowe per klucz, a nie każdy wiersz, a repartition bez kolumn w ogóle nie patrzy na klucze.',
+      en: "In the plan a shuffle is an Exchange with a partitioning, such as hashpartitioning. BroadcastExchange is not a shuffle. A wide operation doesn't always add one: if the data is already partitioned by that key, Spark reuses it. What moves also depends on the operation: an aggregation ships partial results per key rather than every row, and a repartition without columns ignores keys altogether."
     },
+    explain: [
+      'Dane w Sparku są pocięte na <term id="partition">partycje</term>, liczone równolegle. Dopóki operacja potrzebuje tylko własnej partycji, jak <code>filter</code> czy <code>select</code>, nic się między nimi nie przenosi. To zależność narrow. Gdy jedna partycja wyniku potrzebuje danych z wielu partycji wejścia, Spark musi je przetasować. To <term id="shuffle">shuffle</term>, a zależność nazywa się wide.',
+      'Co dokładnie wędruje, zależy od operacji. Pomiar lokalny na 100 000 wierszy i 50 kluczach: sort-merge join zapisał do shuffle\'u wszystkie 100 000 wierszy dużej strony. <code>groupBy</code> z sumą zapisał 150 rekordów, bo Spark najpierw agreguje w każdej partycji wejścia (50 kluczy razy 3 partycje) i przesyła już wynik częściowy.',
+      'Sposób podziału też się różni. Hash po kluczu i podział zakresami (<code>repartitionByRange</code>, tak dzieli też <code>orderBy</code>) trzymały jeden klucz w jednej partycji. <code>repartition(8)</code> bez kolumn rozdaje wiersze po kolei: jeden klucz trafił do wszystkich 8 partycji.',
+      'W planie shuffle to węzeł <code>Exchange</code>. Liczbę partycji po nim ustawia <code>spark.sql.shuffle.partitions</code>, w Apache Spark domyślnie 200. <term id="aqe">AQE</term> potrafi potem skleić małe.'
+    ],
     keywords: ['shuffle', 'Exchange', 'hashpartitioning', 'stage boundary', 'spark.sql.shuffle.partitions'],
     followUps: [
       { q: 'How do you identify a shuffle?', a: 'In explain it is an Exchange node with a partitioning. In the Spark UI it is the boundary between two stages, with shuffle read and write metrics.', pl: 'Exchange w planie, granica stage\'a w UI.' },
       { q: 'How can you reduce shuffling?', a: 'Filter and drop columns before the wide operation, broadcast small tables in joins, and remove distinct, orderBy or repartition calls that are not needed.', pl: 'Najpierw mniej danych, potem strojenie.' },
-      { q: 'Does every join require a shuffle?', a: 'No. A broadcast join sends the small table to every executor, so the large side is not shuffled. Data already partitioned by the join key can skip it too.', pl: 'Broadcast ma własny koszt: mała tabela idzie przez driver i sieć.' },
-      { q: 'How many partitions do you get after a shuffle?', a: 'spark.sql.shuffle.partitions, 200 by default. With adaptive query execution Spark can merge small ones afterwards.', pl: 'Domyślnie 200, AQE potrafi skleić.' }
+      { q: 'Does every join require a shuffle?', a: 'No. A broadcast hash join sends the small table to every executor, so the large side is not shuffled. Data already partitioned by the join key can skip it too.', pl: 'Broadcast ma własny koszt: mała tabela jest rozsyłana do wszystkich executorów.' },
+      { q: 'How many partitions do you get after a shuffle?', a: 'spark.sql.shuffle.partitions, 200 by default in Apache Spark. With adaptive query execution Spark can merge small ones afterwards.', pl: 'Domyślnie 200 w Apache Spark, AQE potrafi skleić.' },
+      { q: 'Does a shuffle move every row?', a: 'Not necessarily. A sort-merge join shuffles the rows of both sides. An aggregation like sum or count first aggregates within each input partition and shuffles only the partial results.', pl: 'Lab: 100 000 wierszy, do shuffle\'u przy groupBy trafiło 150 rekordów.' }
     ],
     mistakes: [
-      'Mówienie, że shuffle wywołują akcje. Wywołują go transformacje wide, akcja tylko uruchamia wykonanie.',
+      'Mówienie, że shuffle wywołują akcje. Wymagają go transformacje wide, akcja tylko uruchamia wykonanie.',
       'Twierdzenie, że każdy Exchange to shuffle albo że każda operacja wide go dodaje.',
+      'Twierdzenie, że shuffle zawsze przenosi wszystkie wiersze. Agregacja przesyła wyniki częściowe.',
       'Pomijanie kosztu: sama definicja bez „dlaczego to drogie" brzmi jak wyuczona.'
     ]
   },
@@ -75,23 +102,31 @@ export const sparkQuestions: Question[] = [
       en: 'Walk me through what happens when you run a Spark job.'
     },
     answer: {
-      pl: 'Driver to proces z moim kodem. Buduje i optymalizuje plan, a gdy wywołam akcję, tworzy job. Job dzieli na stage\'e w miejscach, gdzie potrzebny jest shuffle, a każdy stage na taski, po jednym na partycję. Taski wykonują executory: czytają dane, liczą i zapisują wyniki pośrednie jako pliki shuffle. Stąd bierze się znaczenie liczby partycji, bo to liczba tasków, czyli stopień równoległości. Za mało partycji daje duże taski, które nie mieszczą się w pamięci, za dużo daje narzut na planowanie i małe pliki.',
-      en: 'The driver is the process that runs my code. It builds and optimizes the plan, and when I call an action it creates a job. It splits the job into stages wherever a shuffle is needed, and each stage into tasks, one per partition. Executors run the tasks: they read the data, compute, and write intermediate results as shuffle files. That is why the number of partitions matters, because it is the number of tasks, so the degree of parallelism. Too few partitions means large tasks that do not fit in memory, too many means scheduling overhead and small files.'
+      pl: 'Driver to proces z moim kodem. Buduje i optymalizuje plan, a gdy wywołam akcję, tworzy job. Job dzieli na stage\'e w miejscach, gdzie potrzebny jest shuffle, a każdy stage na taski, po jednym na partycję. Taski wykonują executory. Stage\'e, które przygotowują dane do shuffle\'u, zapisują pliki shuffle, a ostatni stage zwraca wynik do drivera albo zapisuje go do celu. Liczba partycji to liczba tasków, ale to, ile z nich działa jednocześnie, ogranicza liczba dostępnych rdzeni na executorach. Za mało partycji daje duże taski, które zrzucają dane na dysk albo nie mieszczą się w pamięci, za dużo daje narzut na planowanie i małe pliki.',
+      en: 'The driver is the process that runs my code. It builds and optimizes the plan, and when I call an action it creates a job. It splits the job into stages wherever a shuffle is needed, and each stage into tasks, one per partition. Executors run the tasks. Stages that feed a shuffle write shuffle files, and the final stage returns the result to the driver or writes it to the sink. The number of partitions is the number of tasks, but how many run at the same time is limited by the available executor cores. Too few partitions means large tasks that spill to disk or run out of memory, too many means scheduling overhead and small files.'
     },
     senior: {
-      pl: 'Reguła „akcja to job, shuffle to stage, partycja to task" jest przybliżeniem. Z AQE jedna akcja bywa kilkoma jobami, a liczba tasków po shuffle\'u maleje, bo Spark skleja małe partycje. Stage może też zostać pominięty, gdy jego pliki shuffle już istnieją.',
-      en: 'The rule "action is a job, shuffle is a stage, partition is a task" is an approximation. With AQE one action can be several jobs, and the task count after a shuffle drops because Spark merges small partitions. A stage can also be skipped when its shuffle files already exist.'
+      pl: 'Reguła „akcja to job, shuffle to stage, partycja to task" jest przybliżeniem. Z AQE jedna akcja bywa kilkoma jobami, a liczba tasków po shuffle\'u maleje, bo Spark skleja małe partycje. Stage może też zostać pominięty, gdy jego pliki shuffle już istnieją. Driver to nie tylko koordynator: trafia do niego wszystko, co ściągnę przez collect, w Apache Spark buduje on małą stronę broadcast joina, a zapytanie na danych lokalnych potrafi policzyć sam.',
+      en: 'The rule "action is a job, shuffle is a stage, partition is a task" is an approximation. With AQE one action can be several jobs, and the task count after a shuffle drops because Spark merges small partitions. A stage can also be skipped when its shuffle files already exist. And the driver is not only a coordinator: everything I collect lands there, in Apache Spark it builds the small side of a broadcast join, and it can evaluate a query on local data by itself.'
     },
+    explain: [
+      'Trzy poziomy, od góry. <b>Job</b> powstaje, gdy akcja każe coś policzyć. Spark tnie go na <b>stage\'e</b> tam, gdzie potrzebny jest <term id="shuffle">shuffle</term>, bo dane trzeba najpierw zapisać, a potem odczytać w nowym układzie. Stage składa się z <b>tasków</b>: jeden task liczy jedną <term id="partition">partycję</term>.',
+      'Pliki shuffle zapisują tylko te stage\'e, po których następuje shuffle. Ostatni stage joba oddaje wynik <term id="driver">driverowi</term> albo zapisuje go do tabeli.',
+      'Liczba tasków to nie równoległość. Pomiar lokalny na <term id="local-mode">local[3]</term>: stage z 12 partycjami miał 12 tasków, ale jednocześnie działały najwyżej 3, tyle, ile było wątków. Na klastrze tę rolę pełnią rdzenie <term id="executor">executorów</term>.',
+      'Driver planuje i koordynuje, ale nie jest wolny od danych. Odbiera wyniki <code>collect()</code> i <code>toPandas()</code>. W Apache Spark zbiera i buduje małą stronę broadcast joina. A zapytanie na danych lokalnych potrafi policzyć sam: w labie <code>SELECT … FROM VALUES … WHERE</code> wykonało się bez żadnego joba (plan <code>LocalTableScan</code>).'
+    ],
     keywords: ['driver', 'executor', 'job', 'stage', 'task', 'Spark UI', 'local[N]'],
     followUps: [
-      { q: 'What happens if an executor fails?', a: 'Its tasks are retried on another executor. If its shuffle files are lost, Spark recomputes the stage that produced them.', pl: 'Spark zna plan, więc umie odtworzyć brakujący fragment.' },
-      { q: 'What runs on the driver?', a: 'Planning, scheduling and collecting results. It does not process the data, except for whatever I pull in with collect or toPandas.', pl: 'collect() na dużych danych zabija driver.' },
+      { q: 'What happens if an executor fails?', a: 'Its tasks are retried on another executor, up to a retry limit. If shuffle files it wrote are lost, Spark re-runs the stage that produced them.', pl: 'Spark zna plan, więc umie odtworzyć brakujący fragment.' },
+      { q: 'What runs on the driver?', a: 'Planning, scheduling and coordination. The distributed work runs on executors, but the driver still handles data: it receives whatever I collect or convert with toPandas, and it can evaluate small local queries itself.', pl: 'collect() na dużych danych zabija driver.' },
+      { q: 'Is the number of tasks the same as the parallelism?', a: 'No. A stage has one task per partition, but only as many run at once as there are free executor cores. Twelve partitions on three cores means twelve tasks, three at a time.', pl: 'Taski to kolejka pracy, rdzenie to okienka.' },
       { q: 'What does local[3] mean?', a: 'Spark runs in a single process with three worker threads. There are no separate executors.', pl: 'To wątki, nie executory.' },
       { q: 'Where do you look when a job is slow?', a: 'In the Spark UI: the slowest stage first, then the distribution of task durations and shuffle read sizes inside it.', pl: 'Job, stage, task: zawsze ta sama ścieżka w dół.' }
     ],
     mistakes: [
-      'Twierdzenie, że driver przetwarza dane.',
-      'Mylenie liczby executorów z liczbą tasków.',
+      'Twierdzenie, że driver przetwarza cały zbiór, albo odwrotnie, że nigdy nie dotyka danych. collect, toPandas i dane lokalne trafiają właśnie do niego.',
+      'Mylenie liczby tasków z liczbą tasków działających naraz. To drugie ogranicza liczba rdzeni.',
+      'Mówienie, że każdy stage zapisuje pliki shuffle. Ostatni zwraca wynik albo zapisuje go do celu.',
       'Opisywanie local[N] jako N executorów.'
     ]
   },
@@ -109,11 +144,18 @@ export const sparkQuestions: Question[] = [
       pl: 'Najpierw ustalam, co się zmieniło: wolumen danych, kod, konfiguracja albo kształt danych ze źródła. Porównuję dobry przebieg ze złym. Potem sprawdzam w Spark UI, gdzie ucieka czas: który stage dominuje i jak wygląda w nim rozkład czasu tasków. Jeden task dużo wolniejszy od mediany to sygnał do sprawdzenia skew, co potwierdzam rozmiarem shuffle read. Jeśli wolne są wszystkie taski, patrzę na spill, GC i rozmiar partycji. W planie sprawdzam, czy join nie zmienił strategii i czy filtry nadal trafiają do źródła. Większy klaster to ostatni krok, nie pierwszy.',
       en: 'First I find out what changed: data volume, code, configuration, or the shape of the upstream data. I compare a good run with a bad one. Then I use the Spark UI to see where the time goes: which stage dominates, and what the task time distribution looks like inside it. One task much slower than the median is a reason to check for skew, which I confirm with its shuffle read size. If all tasks are slow, I look at spill, GC and partition sizes. In the plan I check whether a join changed strategy and whether filters still reach the source. A bigger cluster is the last step, not the first.'
     },
+    explain: [
+      'Kolejność ma znaczenie, bo każda przyczyna zostawia inny ślad. Zmiana w danych albo w kodzie wychodzi przy porównaniu dwóch przebiegów: liczby wierszy i planu.',
+      'Skew, czyli kilka kluczy z ogromną liczbą wierszy: większość <term id="task">tasków</term> kończy szybko, a jeden lub kilka trwa wielokrotnie dłużej i czyta dużo więcej danych po <term id="shuffle">shuffle\'u</term>. Sam wolny task to poszlaka. Potwierdza ją rozkład: shuffle read tego taska na tle mediany i zwykły <code>count</code> po kluczu.',
+      'Za duże <term id="partition">partycje</term>: wolne są wszystkie taski, a w metrykach pojawia się spill. To zrzucanie danych pośrednich z pamięci na dysk, gdy task się w niej nie mieści. Działa, ale wolno.',
+      'Zmiana strategii joina: mała tabela urosła ponad próg i Spark po cichu zamienił broadcast hash join na sort-merge join z shuffle\'em. Widać to w planie.',
+      'Na Databricks serverless nie ma <term id="spark-ui">Spark UI</term>. Te same pytania zadajesz w query profile, który pokazuje czas i liczbę wierszy na operator.'
+    ],
     keywords: ['Spark UI', 'skew', 'spill', 'shuffle read', 'query profile', 'broadcast threshold'],
     followUps: [
-      { q: 'What does spill mean?', a: 'A task ran out of execution memory and wrote intermediate data to disk. It works but it is slow. Smaller partitions usually fix it.', pl: 'Spill to objaw za dużych partycji.' },
-      { q: 'A dimension table grew and the job got slow. Why?', a: 'It probably crossed the broadcast threshold, so Spark switched from a broadcast join to a sort-merge join with a shuffle.', pl: 'Cicha zmiana strategii joina.' },
-      { q: 'How do you do this on serverless?', a: 'There is no Spark UI there, so I use the query profile, which shows time and rows per operator.', pl: 'Na serverless zostaje query profile.' }
+      { q: 'What does spill mean?', a: 'A task ran out of execution memory and wrote intermediate data to disk. It works but it is slow. Smaller partitions usually fix it.', pl: 'Spill to zwykle objaw za dużych partycji.' },
+      { q: 'A dimension table grew and the job got slow. Why?', a: 'It probably crossed the broadcast threshold, so Spark switched from a broadcast hash join to a sort-merge join with a shuffle. I would confirm that in the plan.', pl: 'Cicha zmiana strategii joina. Hipoteza do potwierdzenia w planie.' },
+      { q: 'How do you do this on serverless?', a: 'On Databricks serverless the Spark UI is not available, so I use the query profile, which shows time and rows per operator.', pl: 'Na Databricks serverless zostaje query profile.' }
     ],
     mistakes: [
       'Zaczynanie od „dałbym większy klaster".',
@@ -132,14 +174,20 @@ export const sparkQuestions: Question[] = [
       en: 'What is data skew? How do you detect it and how do you fix it?'
     },
     answer: {
-      pl: 'Skew jest wtedy, gdy kilka kluczy ma nieproporcjonalnie dużo wierszy, np. null, domyślne ID albo jeden bardzo duży klient. Po shuffle\'u wszystkie wiersze z tym samym kluczem trafiają do jednej partycji, więc jeden task mieli wielokrotnie więcej danych niż reszta. Widać to w Spark UI: max czasu taska i shuffle read są daleko od mediany. Potwierdzam zwykłym count po kluczu. Naprawiam w tej kolejności: usuwam przyczynę, np. osobno obsługuję nulle, robię broadcast małej strony, zostawiam to AQE, a gdy to nie wystarcza, solę klucz albo liczę gorący klucz osobno.',
-      en: 'Skew is when a few keys hold a disproportionate share of the rows, for example null, a default ID, or one very large customer. After a shuffle all rows with the same key land in one partition, so one task processes far more data than the rest. It shows in the Spark UI: max task time and shuffle read are far above the median. I confirm it with a count by key. I fix it in this order: remove the cause, such as handling nulls separately, broadcast the small side, let AQE handle it, and if that is not enough, salt the key or process the hot key separately.'
+      pl: 'Skew jest wtedy, gdy kilka kluczy ma nieproporcjonalnie dużo wierszy, np. null, domyślne ID albo jeden bardzo duży klient. Shuffle dzieli dane hashem klucza, więc wszystkie wiersze z tym samym kluczem trafiają do jednej partycji i jeden task mieli wielokrotnie więcej danych niż reszta. Widać to w Spark UI: max czasu taska i shuffle read są daleko od mediany. Potwierdzam zwykłym count po kluczu. Naprawiam w tej kolejności: usuwam przyczynę, np. osobno obsługuję nulle, robię broadcast małej strony, zostawiam to AQE, a gdy to nie wystarcza, solę klucz albo liczę gorący klucz osobno.',
+      en: 'Skew is when a few keys hold a disproportionate share of the rows, for example null, a default ID, or one very large customer. A shuffle partitions data by the hash of the key, so all rows with the same key land in one partition and one task processes far more data than the rest. It shows in the Spark UI: max task time and shuffle read are far above the median. I confirm it with a count by key. I fix it in this order: remove the cause, such as handling nulls separately, broadcast the small side, let AQE handle it, and if that is not enough, salt the key or process the hot key separately.'
     },
+    explain: [
+      'Przy joinie po kluczu Spark wyznacza <term id="partition">partycję</term> z hasha klucza. Wszystkie wiersze z tym samym kluczem lądują w jednej partycji, a jedną partycję liczy jeden <term id="task">task</term>. Jeśli jeden klucz ma 80% wierszy, jeden task dostaje 80% pracy, a reszta klastra na niego czeka.',
+      'Pomiar lokalny: 100 000 wierszy, z czego 80% z jednym kluczem. Po <code>repartition(8, klucz)</code> niepuste partycje miały od 2 000 do 80 000 wierszy.',
+      'Dlatego więcej <term id="executor">executorów</term> ani więcej partycji nie pomaga na jeden gorący klucz: hash nadal wysyła go w jedno miejsce. Więcej partycji pomaga tylko wtedy, gdy problemem jest kilka średnich kluczy, które przypadkiem trafiły razem.',
+      'Przy agregacjach typu suma albo liczba skew boli mniej niż przy joinie, bo Spark najpierw agreguje w każdej partycji wejścia i przesyła wynik częściowy. Przy joinie przez <term id="shuffle">shuffle</term> idzie każdy wiersz.'
+    ],
     keywords: ['skew', 'hot key', 'shuffle read', 'AQE', 'salting', 'broadcast'],
     followUps: [
-      { q: 'Why does adding executors not help?', a: 'One key still goes to one task. More executors only speed up the tasks that were already fast.', pl: 'Jeden klucz to zawsze jedna partycja.' },
-      { q: 'Why does increasing shuffle partitions not help?', a: 'Hashing sends a single key to a single partition, no matter how many partitions there are.', pl: 'Więcej partycji nie rozbije jednego klucza.' },
-      { q: 'Where does skew come from in real data?', a: 'Nulls in join keys, test or default accounts, and a handful of very large customers.', pl: 'W domenie subskrypcji: kilku dużych publisherów.' }
+      { q: 'Why does adding executors not help?', a: 'With hash partitioning one key still goes to one partition, so to one task. More executors only speed up the tasks that were already fast.', pl: 'Hash wysyła jeden klucz do jednej partycji.' },
+      { q: 'Why does increasing shuffle partitions not help?', a: 'Hashing sends a single key to a single partition, no matter how many partitions there are. It only helps when several medium keys happened to collide in one partition.', pl: 'Więcej partycji nie rozbije jednego klucza.' },
+      { q: 'Where does skew come from in real data?', a: 'Nulls in join keys, test or default accounts, and a handful of very large customers.', pl: 'Nulle, konta domyślne, kilku bardzo dużych klientów.' }
     ],
     mistakes: [
       'Proponowanie większej liczby partycji albo executorów jako rozwiązania.',
@@ -158,14 +206,20 @@ export const sparkQuestions: Question[] = [
       en: 'When does AQE handle skew for you, and when does it not?'
     },
     answer: {
-      pl: 'Adaptive Query Execution poprawia plan w trakcie wykonania, bo po shuffle\'u zna prawdziwe rozmiary partycji. Przy skew dzieli za dużą partycję na mniejsze i powiela pasującą partycję po drugiej stronie joina. Ma jednak warunki. Domyślnie partycja musi być jednocześnie ponad pięć razy większa od mediany i większa niż 256 MB. Działa tylko dla joinów opartych na shuffle\'u, czyli sort-merge i shuffle hash, nie obsługuje żadnej strony full outer joina i nie działa w streamingu. Nie pomaga też na skew w groupBy ani w funkcji okna. Wtedy zostaje salting albo wydzielenie gorącego klucza.',
-      en: 'Adaptive Query Execution re-optimizes the plan at runtime, because after a shuffle it knows the real partition sizes. For skew, it splits an oversized partition and replicates the matching partition on the other side of the join. But it has conditions. By default a partition has to be both more than five times the median and larger than 256 megabytes. It only works for shuffle-based joins, meaning sort-merge and shuffle hash, it does not handle either side of a full outer join, and it does not apply to streaming. It also does nothing for skew in a groupBy or a window function. In those cases I salt the key or isolate the hot key.'
+      pl: 'Adaptive Query Execution poprawia plan w trakcie wykonania, bo po shuffle\'u zna prawdziwe rozmiary partycji. Przy skew dzieli za dużą partycję na mniejsze i powiela pasującą partycję po drugiej stronie joina. Ma jednak warunki. Domyślnie partycja musi być jednocześnie ponad pięć razy większa od mediany i większa niż 256 MB. Działa tylko dla joinów opartych na shuffle\'u, czyli sort-merge i shuffle hash, nie obsługuje żadnej strony full outer joina i nie obejmuje zapytań streamingowych. Obsługa skew dotyczy wyłącznie joinów, więc nie pomaga na skew w groupBy ani w funkcji okna. Wtedy zostaje salting albo wydzielenie gorącego klucza.',
+      en: 'Adaptive Query Execution re-optimizes the plan at runtime, because after a shuffle it knows the real partition sizes. For skew, it splits an oversized partition and replicates the matching partition on the other side of the join. But it has conditions. By default a partition has to be both more than five times the median and larger than 256 megabytes. It only works for shuffle-based joins, meaning sort-merge and shuffle hash, it does not handle either side of a full outer join, and it does not cover streaming queries. Its skew handling is for joins only, so it does not help with skew in a groupBy or a window function. In those cases I salt the key or isolate the hot key.'
     },
+    explain: [
+      'Zwykły <term id="optimizer">optymalizator</term> planuje przed wykonaniem i musi zgadywać rozmiary danych. <term id="aqe">AQE</term> korzysta z tego, że po każdym <term id="shuffle">shuffle\'u</term> Spark zna prawdziwe rozmiary <term id="partition">partycji</term>, i poprawia resztę planu w locie. Robi głównie trzy rzeczy: skleja małe partycje, zamienia sort-merge join na broadcast, gdy jedna strona okazała się mała, i dzieli skośne partycje w joinie.',
+      'Przy skośnym joinie dzieli za dużą partycję jednej strony na kawałki i do każdego dokłada kopię pasującej partycji z drugiej strony. Stąd ograniczenia: działa tylko w joinach opartych na shuffle\'u, a to, którą stronę wolno dzielić, zależy od typu joina. Według dokumentacji Databricks: inner obie strony, left outer tylko lewa, right outer tylko prawa, full outer żadna.',
+      'Progi są takie same w dokumentacji Apache Spark i Databricks: partycja jest skośna, gdy jest większa niż 5 razy mediana i jednocześnie większa niż 256 MB. Mała tabela ze skośnym kluczem po prostu nie spełni drugiego warunku.',
+      'AQE jest domyślnie włączone w Apache Spark od wersji 3.2 i na Databricks. Zapytań streamingowych nie obejmuje.'
+    ],
     keywords: ['AQE', 'skew join', 'skewedPartitionFactor', '256 MB', 'coalesce partitions', 'isFinalPlan'],
     followUps: [
-      { q: 'What else does AQE do?', a: 'It merges small shuffle partitions and can switch a sort-merge join to a broadcast join when one side turns out to be small.', pl: 'Trzy rzeczy: sklejanie partycji, zmiana joina, skew.' },
+      { q: 'What else does AQE do?', a: 'It merges small shuffle partitions and can switch a sort-merge join to a broadcast hash join when one side turns out to be small.', pl: 'Trzy rzeczy: sklejanie partycji, zmiana joina, skew.' },
       { q: 'How do you see that AQE changed the plan?', a: 'The plan has an AdaptiveSparkPlan node with isFinalPlan=true after execution, and a skew-optimized join shows isSkew=true.', pl: 'Porównaj plan początkowy z końcowym.' },
-      { q: 'Is AQE on by default?', a: 'Yes, in current Spark and Databricks runtimes.', pl: 'Tak.' }
+      { q: 'Is AQE on by default?', a: 'Yes, since Apache Spark 3.2, and on Databricks.', pl: 'Tak, od Spark 3.2.' }
     ],
     mistakes: [
       '„AQE rozwiązuje skew" bez żadnych warunków.',
@@ -184,6 +238,11 @@ export const sparkQuestions: Question[] = [
       pl: 'Salting rozrzuca jeden gorący klucz na kilka partycji przez doklejenie losowego sufiksu. Po skośnej stronie dodaję kolumnę z losową liczbą od 0 do N-1 i łączę albo grupuję po kluczu razem z tą solą. Przy joinie drugą stronę trzeba powielić N razy, po jednym wierszu na każdą wartość soli. Przy agregacji robię dwa kroki: najpierw po kluczu i soli, potem po samym kluczu. Koszt to większa druga strona joina, dodatkowa agregacja i mniej czytelny kod. Dwustopniowa agregacja działa też tylko dla wyników, które da się złożyć, np. sum, a nie dokładnego count distinct.',
       en: 'Salting spreads one hot key over several partitions by adding a random suffix. On the skewed side I add a column with a random number from zero to N minus one, and I join or group on the key plus that salt. For a join the other side has to be replicated N times, one row per salt value. For an aggregation I do two steps: first by key and salt, then by key alone. The cost is a larger other side of the join, an extra aggregation, and code that is harder to read. Two-step aggregation also only works for results that can be combined, like sums, not an exact distinct count.'
     },
+    explain: [
+      'Problem: hash wysyła gorący klucz do jednej <term id="partition">partycji</term>. Pomysł: zmienić klucz tak, żeby jeden gorący klucz stał się N różnymi kluczami. Do skośnej strony doklejasz losową liczbę od 0 do N-1, czyli sól. Wiersze klucza X rozchodzą się wtedy na X_0, X_1 i tak dalej, a każdy z nich trafia do innej partycji.',
+      'W joinie druga strona musi mieć odpowiednik dla każdej wersji klucza, więc każdy jej wiersz powielasz N razy, po jednym na wartość soli. To jest główny koszt: druga strona rośnie N-krotnie.',
+      'W agregacji robisz dwa kroki. Najpierw grupujesz po parze klucz i sól, co rozbija gorący klucz na N mniejszych grup. Potem grupujesz po samym kluczu i składasz wyniki częściowe. Działa to dla wyników, które da się złożyć z części: sumy, liczby, minimum, maksimum. Dokładnej liczby unikalnych wartości tak nie policzysz, bo ta sama wartość może wystąpić w kilku grupach.'
+    ],
     keywords: ['salting', 'hot key', 'explode', 'two-phase aggregation'],
     followUps: [
       { q: 'How do you choose N?', a: 'Roughly the size of the hot partition divided by the partition size I want.', pl: 'Z danych, nie z sufitu.' },
@@ -207,19 +266,30 @@ export const sparkQuestions: Question[] = [
       en: 'When would you use a broadcast join? What can go wrong?'
     },
     answer: {
-      pl: 'Gdy jedna strona joina jest na tyle mała, że mieści się w pamięci, Spark może wysłać jej kopię do każdego executora i łączyć przez wyszukiwanie w tablicy hashującej. Duża strona nie jest wtedy ani shuffle\'owana, ani sortowana, więc to zwykle najszybszy join. Spark wybiera go sam poniżej progu, domyślnie 10 MB, a AQE potrafi przełączyć się na niego w trakcie. Mogę go też wymusić hintem. Ryzyka: mała tabela przechodzi przez driver, więc jeśli jest większa, niż zakładałem, kończy się brakiem pamięci albo timeoutem. Nie działa też dla każdego typu joina, np. full outer z niego nie skorzysta.',
-      en: 'When one side of a join is small enough to fit in memory, Spark can send a copy of it to every executor and join by hash lookup. The large side is then neither shuffled nor sorted, so it is usually the fastest join. Spark picks it automatically below a threshold, 10 megabytes by default, and AQE can switch to it at runtime. I can also force it with a hint. The risks: the small table goes through the driver, so if it is larger than I assumed, I get an out-of-memory error or a timeout. It also does not work for every join type, for example a full outer join cannot use it.'
+      pl: 'Gdy jedna strona joina jest na tyle mała, że mieści się w pamięci, Spark może wysłać jej kopię do każdego executora i łączyć przez wyszukiwanie w tablicy hashującej. To broadcast hash join. Duża strona nie jest wtedy ani shuffle\'owana, ani sortowana, więc to zwykle najszybszy join z warunkiem równości. Spark wybiera go sam, gdy szacowany rozmiar jest poniżej progu, w Apache Spark domyślnie 10 MB, a AQE potrafi przełączyć się na niego w trakcie. Mogę też o niego poprosić hintem, ale hint to prośba, nie gwarancja. Ryzyka: jeśli tabela jest większa, niż zakładałem, kończy się brakiem pamięci albo timeoutem przy jej budowaniu i rozsyłaniu. Broadcast hash join nie obsługuje też każdego typu joina, np. full outer z niego nie skorzysta.',
+      en: 'When one side of a join is small enough to fit in memory, Spark can send a copy of it to every executor and join by hash lookup. That is a broadcast hash join. The large side is then neither shuffled nor sorted, so it is usually the fastest equi-join. Spark picks it automatically when the estimated size is below a threshold, 10 megabytes by default in Apache Spark, and AQE can switch to it at runtime. I can also ask for it with a hint, but a hint is a request, not a guarantee. The risks: if the table is larger than I assumed, I run out of memory or hit a timeout while it is being built and shipped. Broadcast hash join also does not support every join type, for example a full outer join cannot use it.'
     },
+    senior: {
+      pl: 'W Apache Spark mała strona jest najpierw zbierana i budowana na driverze, więc liczy się też jego pamięć. To, którą stronę da się rozesłać, zależy od typu joina: w left outer tylko prawą. Bez warunku równości Spark sięga po broadcast nested loop join, który obsłuży też full outer, ale jest dużo wolniejszy.',
+      en: 'In Apache Spark the small side is first collected and built on the driver, so driver memory matters too. Which side can be broadcast depends on the join type: in a left outer join only the right one. Without an equality condition Spark falls back to a broadcast nested loop join, which also handles a full outer join but is much slower.'
+    },
+    explain: [
+      'Zwykły join dwóch dużych tabel, czyli sort-merge, musi przetasować obie strony po kluczu (<term id="shuffle">shuffle</term>) i je posortować. Jeśli jedna strona jest mała, taniej jest rozesłać jej kopię do wszystkich <term id="executor">executorów</term>. Każdy trzyma ją w pamięci jako tablicę hashującą i dla każdego wiersza dużej strony robi szybkie wyszukanie. Duża strona zostaje na miejscu.',
+      'Spark wybiera tę strategię sam, gdy szacowany rozmiar strony jest poniżej <code>spark.sql.autoBroadcastJoinThreshold</code>. W Apache Spark to domyślnie 10 MB (sprawdzone w dokumentacji i w labie). Na Databricks próg, przy którym <term id="aqe">AQE</term> zamienia join w trakcie wykonania, to domyślnie 30 MB.',
+      'Hint to prośba, nie gwarancja. Dokumentacja Sparka mówi wprost, że strategia z hintu może nie zostać wybrana, bo nie każda obsługuje każdy typ joina. Pomiar lokalny z hintem broadcast: inner oraz left outer z małą stroną po prawej dały BroadcastHashJoin. Full outer, left outer z hintem na lewej stronie i right outer z hintem na prawej zostały przy SortMergeJoin.',
+      'Powód: broadcast hash join nie może rozesłać strony, której wiersze trzeba zachować w wyniku. Bez warunku równości, np. <code>a.k &lt; b.k</code>, Spark użył BroadcastNestedLoopJoin, także dla full outer.'
+    ],
     keywords: ['broadcast hash join', 'autoBroadcastJoinThreshold', '10 MB', 'BroadcastExchange', 'hint'],
     followUps: [
-      { q: 'Which setting controls it?', a: 'spark.sql.autoBroadcastJoinThreshold. Setting it to minus one turns automatic broadcast off.', pl: 'Na Databricks próg adaptacyjny to 30 MB.' },
+      { q: 'Which setting controls it?', a: 'spark.sql.autoBroadcastJoinThreshold. Setting it to minus one turns automatic broadcast off.', pl: 'Na Databricks próg zamiany joina przez AQE w trakcie wykonania to domyślnie 30 MB.' },
+      { q: 'Does a broadcast hint guarantee a broadcast join?', a: "No. Spark's documentation says there is no guarantee that the hinted strategy is chosen, because a strategy may not support the join type. A full outer equi-join with a broadcast hint, for example, does not become a broadcast hash join.", pl: 'Hint ustawia priorytet, nie wymusza. Lab: full outer z hintem dał SortMergeJoin.' },
       { q: 'What is the default join for two large tables?', a: 'Sort-merge join: both sides are shuffled by key and sorted.', pl: 'Dwa shuffle i sortowanie.' },
-      { q: 'Which side can be broadcast in a left outer join?', a: 'Only the right side. The preserved side cannot be the broadcast one.', pl: 'Strona zachowywana nie może być broadcastowana.' }
+      { q: 'Which side can be broadcast in a left outer join?', a: 'Only the right side. A broadcast hash join cannot broadcast the side whose rows must be preserved.', pl: 'Strona zachowywana nie może być rozsyłana.' }
     ],
     mistakes: [
-      'Wymuszanie hintu bez znajomości rozmiaru tabeli.',
+      'Mówienie, że hint „wymusza" broadcast, albo ustawianie go bez znajomości rozmiaru tabeli.',
       'Twierdzenie, że broadcast „nie przesyła danych". Przesyła małą tabelę.',
-      'Nieznajomość progu.'
+      'Podawanie progu 10 MB bez zaznaczenia, że to wartość domyślna Apache Spark.'
     ]
   },
   {
@@ -236,9 +306,15 @@ export const sparkQuestions: Question[] = [
       pl: 'Repartition robi pełny shuffle. Może zwiększyć albo zmniejszyć liczbę partycji i może dzielić po kolumnach. Bez kolumn rozkłada wiersze mniej więcej po równo, a po kluczu dzieli hashem, więc przy skośnym kluczu partycje nadal będą nierówne. Coalesce tylko zmniejsza liczbę partycji przez sklejanie istniejących, bez pełnego shuffle\'u. Jest tańszy, ale wynik bywa nierówny. Repartition biorę, gdy potrzebuję równego rozłożenia albo danych ułożonych po kluczu, coalesce, żeby na końcu zmniejszyć liczbę plików. Pułapka: coalesce(1) potrafi ściągnąć małą równoległość w górę planu.',
       en: 'Repartition does a full shuffle. It can increase or decrease the number of partitions and can partition by columns. Without columns it spreads rows roughly evenly, and by key it uses a hash, so with a skewed key the partitions will still be uneven. Coalesce only reduces the number of partitions by merging existing ones, without a full shuffle. It is cheaper, but the result can be uneven. I use repartition when I need an even spread or data laid out by key, and coalesce to reduce the number of output files at the end. One trap: coalesce(1) can pull the low parallelism upstream in the plan.'
     },
+    explain: [
+      'Obie operacje zmieniają liczbę <term id="partition">partycji</term>, ale inaczej. <code>repartition(n)</code> tasuje wszystkie wiersze od nowa (<term id="shuffle">shuffle</term>). Bez kolumn rozdaje je po kolei, więc partycje wychodzą równe: w labie 100 000 wierszy na 8 partycji dało po około 12 500. Z kolumną dzieli hashem klucza, więc przy skośnym kluczu partycje będą nierówne.',
+      '<code>coalesce(n)</code> nie tasuje: skleja istniejące partycje w większe. Jest tani, ale nie wyrówna rozmiarów i nie zwiększy liczby partycji. Gdy poprosisz o więcej, niż jest, zostanie tyle, ile było.',
+      'Pułapka opisana w dokumentacji: <code>coalesce</code> nie tworzy granicy <term id="stage">stage\'a</term>, więc <code>coalesce(1)</code> może sprawić, że wcześniejsze liczenie też odbędzie się w jednym tasku. <code>repartition(1)</code> dodaje shuffle, ale zostawia wcześniejszą pracę równoległą.',
+      '„100–200 MB na partycję" to reguła praktyczna, nie parametr Sparka. Dla orientacji dwie wartości domyślne z dokumentacji: <term id="aqe">AQE</term> skleja partycje po shuffle\'u do około 64 MB, a pliki są czytane w kawałkach do 128 MB.'
+    ],
     keywords: ['repartition', 'coalesce', 'round-robin', 'small files', 'optimized writes'],
     followUps: [
-      { q: 'How many partitions should a job have?', a: 'Enough that each is roughly 100 to 200 megabytes. With AQE I start high and let it merge.', pl: 'Rozmiar partycji, nie magiczna liczba.' },
+      { q: 'How many partitions should a job have?', a: 'There is no magic number. A common rule of thumb is partitions on the order of 100 to 200 megabytes. With AQE I start high and let it merge the small ones.', pl: 'Rozmiar partycji, nie magiczna liczba. 100–200 MB to reguła praktyczna.' },
       { q: 'What is the small files problem?', a: 'Many tiny files make listing and reads slow. It comes from too many output partitions or frequent small writes.', pl: 'Na Delcie pomaga OPTIMIZE i optimized writes.' },
       { q: 'Why can coalesce(1) be slow?', a: 'It does not create a stage boundary, so the upstream computation can end up running in a single task.', pl: 'repartition(1) zostawia wcześniejszą pracę równoległą.' }
     ],

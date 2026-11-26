@@ -31,10 +31,49 @@ export interface Question {
   answer: Bilingual;
   /** Opcjonalne rozwinięcie na poziomie seniora: co dopowiedzieć, gdy rozmówca drąży. */
   senior?: Bilingual;
+  /**
+   * Wyjaśnienie mechanizmu od podstaw, po polsku, akapitami. To materiał do zrozumienia, nie do powiedzenia
+   * na głos: w interfejsie jest zwinięte. Dozwolone znaczniki: b, code oraz <term id="...">tekst</term>
+   * (hasło z content/glossary.ts). Liczby opisane jako pomiar muszą mieć pokrycie w labs/.
+   */
+  explain: string[];
   keywords: string[];
   followUps: FollowUp[];
   /** Typowe błędy kandydatów. */
   mistakes: string[];
+}
+
+/** Hasło słownika. Definicja ma być zrozumiała bez znajomości innych haseł. */
+export interface GlossaryEntry {
+  /** Nazwa wyświetlana w dymku. */
+  term: string;
+  /** Jedno do trzech zdań, po polsku. */
+  def: string;
+}
+
+/**
+ * Most do tego, co uczeń już zna (SQL, Snowflake, dbt). Pole `breaks` jest obowiązkowe:
+ * analogia bez wskazania, gdzie się kończy, uczy błędnego modelu.
+ */
+export interface Bridge {
+  /** Skąd jest analogia, np. "dbt" albo "Snowflake". */
+  from: string;
+  /** Znane pojęcie. */
+  known: string;
+  /** Jego odpowiednik w nowym temacie. */
+  fresh: string;
+  /** Gdzie analogia przestaje działać. */
+  breaks: string;
+}
+
+/** Jedna linia kodu albo planu z wyjaśnieniem. Używa tego komponent CodeExplainer. */
+export interface ExplainedLine {
+  /** Linia dokładnie tak, jak ją wypisuje narzędzie. */
+  code: string;
+  /** Krótka etykieta, np. odpowiednik w SQL. */
+  label: string;
+  /** Wyjaśnienie po polsku. Dozwolone znaczniki jak w Question.explain. */
+  text: string;
 }
 
 export interface LessonMeta {
