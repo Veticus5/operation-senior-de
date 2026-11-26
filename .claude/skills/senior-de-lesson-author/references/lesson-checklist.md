@@ -4,6 +4,9 @@
 - [ ] Intuition precedes implementation detail; examples are small, concrete and relevant.
 - [ ] Each essential term, code snippet and displayed plan node is explained where introduced.
 - [ ] Visuals are meaningful, accessible and labeled as simulations where appropriate.
+- [ ] Default Academy view follows question → concrete visual/example → observable consequence → short takeaway; optional benchmark, full plan and deeper analogy are collapsed or in their relevant existing stage.
+- [ ] Each learning unit teaches one concept, avoids duplicate prose and does not require scrolling past unrelated detail to find the main result. Essential context and qualifications remain visible.
+- [ ] For changed lesson UI, inspect actual desktop and 390 px screenshots in the default state and after meaningful interaction; include representative before/after screenshots in the PR when possible.
 - [ ] Technical claims are scoped, consistent across lesson, simulator, quiz and bank, with official sources or reproducible labs in docs/verified-facts.md.
 - [ ] Measured results name their environment; no unsupported guarantees or first-person claims.
 - [ ] Interview answers PL/EN are natural, concise, have useful follow-ups and optional depth; new terminology is explained without bloating fast recall.
