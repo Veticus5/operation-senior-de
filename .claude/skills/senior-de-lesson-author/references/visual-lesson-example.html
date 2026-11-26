@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Visual-first · wzorzec lekcji</title>
+<style>
+:root{color-scheme:dark;--bg:#181614;--panel:#211e1b;--line:#3a342f;--muted:#b3aaa1;--ink:#f3eee8;--accent:#f29a70;--quiet:#85817a}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 system-ui,sans-serif}main{max-width:760px;margin:auto;padding:44px 24px 64px}header{display:flex;justify-content:space-between;align-items:center;gap:12px;border-bottom:1px solid var(--line);padding-bottom:18px;margin-bottom:32px}.eyebrow,small{font-size:.77rem;letter-spacing:.04em;color:var(--muted)}h1{font-size:clamp(2rem,5vw,3rem);line-height:1.13;letter-spacing:-.045em;margin:12px 0}h2{font-size:1.25rem;margin:0}p{margin:8px 0 16px}.intro{max-width:62ch;color:var(--muted)}code{font: .92em ui-monospace,monospace;color:var(--accent);overflow-wrap:anywhere}.experiment{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:24px;margin:26px 0 18px}.controls{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;margin:20px 0}.control label{display:block;color:var(--muted);font-size:.78rem;margin-bottom:6px}.options{display:flex;gap:5px;flex-wrap:wrap}button{font:inherit;font-size:.84rem;color:var(--ink);background:transparent;border:1px solid var(--line);border-radius:8px;padding:7px 12px;cursor:pointer}button[aria-pressed=true]{color:var(--accent);background:#f29a7013;border-color:var(--accent)}button:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:3px}.group{display:grid;grid-template-columns:66px 1fr 105px;gap:10px;align-items:center;border-top:1px solid var(--line);padding:12px 0}.group-title{font-size:.8rem;color:var(--muted)}.numbers{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}.number{text-align:center;border-radius:5px;background:#ffffff09;padding:6px 2px;font:clamp(.65rem,2.4vw,.85rem)/1.5 ui-monospace,monospace}.number.match{color:var(--accent);background:#f29a7024}.skipped .number{color:var(--quiet);text-decoration:line-through}.status{font-size:.78rem;text-align:right}.status b{display:block;color:var(--accent);font-weight:600}.skipped .status b{color:var(--muted)}.status small{font-size:.7rem;letter-spacing:0}.result{border-top:1px solid var(--line);padding-top:18px;display:flex;gap:20px;align-items:center;flex-wrap:wrap}.metric{font-size:2.5rem;font-weight:720;letter-spacing:-.05em;line-height:1;color:var(--accent)}.result p{margin:0;flex:1;min-width:180px}.takeaway{font-size:1.04rem;line-height:1.55;margin-bottom:24px}.takeaway strong{color:var(--accent)}details{border-top:1px solid var(--line);padding:12px 0}summary{cursor:pointer;list-style:none;font-weight:550;display:flex;justify-content:space-between;gap:12px}summary::-webkit-details-marker{display:none}summary::after{content:"+";color:var(--muted)}details[open] summary::after{content:"−"}details p{color:var(--muted);max-width:65ch;margin:12px 0 3px}footer{margin-top:24px;border-top:1px solid var(--line);padding-top:14px;color:var(--muted);font-size:.78rem}@media(max-width:480px){main{padding:24px 16px 40px}.experiment{padding:14px}.group{grid-template-columns:44px 1fr 74px;gap:6px}.numbers{gap:3px}.status{font-size:.7rem}.status small{font-size:.65rem}.controls{gap:12px}.result{gap:12px}}
+</style>
+</head>
+<body><main>
+<header><span>Academy / Spark</span><small>Wzorzec · Mechanizm</small></header>
+<div class="eyebrow">01 / OPTYMALIZACJA ODCZYTU</div>
+<h1>Czy musimy przeczytać cały plik?</h1>
+<p class="intro">Plik Parquet dzieli wiersze na grupy. Jeśli znamy największą wartość w każdej grupie, możemy wykluczyć część z nich jeszcze przed odczytem wartości.</p>
+<section class="experiment" aria-label="Symulacja pomijania grup wierszy">
+<small>Symulacja koncepcyjna · 16 przykładowych rekordów</small>
+<div class="controls">
+<div class="control"><label>Warunek SQL</label><div class="options" id="filters" role="group" aria-label="Warunek filtrowania"><button data-limit="1000" aria-pressed="true">amount &gt; 1000</button><button data-limit="2000" aria-pressed="false">2000</button><button data-limit="4000" aria-pressed="false">4000</button></div></div>
+<div class="control"><label>Ułożenie danych</label><div class="options" id="layout" role="group" aria-label="Ułożenie danych"><button data-layout="sorted" aria-pressed="true">Posortowane</button><button data-layout="mixed" aria-pressed="false">Rozsiane</button></div></div>
+</div>
+<div id="groups"></div>
+<div class="result" aria-live="polite"><div><div class="metric" id="metric">2 z 4</div><small>grup do sprawdzenia</small></div><p id="reason"></p></div>
+</section>
+<p class="takeaway"><strong>To przykład predicate pushdown.</strong> Spark może przekazać warunek czytnikowi pliku. Przy odpowiednich statystykach czytnik może pominąć grupy, które na pewno nie zawierają pasujących wierszy.</p>
+<details><summary>Jak dokładnie to działa?</summary><p>Parquet może zapisać statystyki minimum i maksimum dla grup wierszy. Przy warunku <code>amount &gt; 1000</code> grupa z maksimum 850 nie zawiera żadnego pasującego rekordu. Grupa z maksimum 1800 może zawierać zarówno pasujące, jak i niepasujące wartości. Podświetlenie w symulacji pokazuje rzeczywiste wartości spełniające warunek; czytnik nie zna ich przed odczytem, zna tu tylko statystyki. Pomijanie grup zależy od obsługi filtra i dostępności statystyk.</p></details>
+<details><summary>Co zobaczę w planie Sparka?</summary><p><code>PushedFilters</code> wskazuje warunki przekazane źródłu. Nie jest dowodem, że odczytano mniej danych. Skuteczność należy ocenić na podstawie rzeczywistych metryk wykonania.</p></details>
+<details><summary>Prawdziwy eksperyment</summary><p>Uruchom <code>labs/lazy_evaluation/pushdown_lab.py</code> w repozytorium i porównaj metryki skanu dla posortowanych oraz nieposortowanych danych. Liczby powyżej są wyłącznie ilustracją, nie wynikiem pomiaru.</p></details>
+<details><summary>Analogia do Snowflake</summary><p>Intuicja przypomina pomijanie mikropartycji na podstawie metadanych. Nie jest to identyczny mechanizm: Snowflake zarządza własnym formatem przechowywania, a tutaj mówimy o czytniku Parquet i jego statystykach.</p></details>
+<details><summary>Jak odpowiedzieć na rozmowie?</summary><p lang="en">Predicate pushdown means passing a filter to the data source so it can potentially reduce the amount of data read. For Parquet, row-group statistics can help skip groups that cannot match. I would verify the benefit using actual scan metrics rather than assuming that PushedFilters proves an I/O reduction.</p></details>
+<footer>Referencja dydaktyczna, nie komponent produkcyjny. Zachowaj istniejący styl i architekturę aplikacji; przenieś przede wszystkim hierarchię informacji.</footer>
+</main><script>
+const sorted=[[100,200,300,400],[450,600,700,850],[1050,1300,1500,1800],[2200,3200,4100,5000]];
+const mixed=sorted[0].map((_,i)=>sorted.map(g=>g[i]));
+let limit=1000,layout="sorted";
+function render(){
+ const groups=layout==="sorted"?sorted:mixed;
+ let read=0;
+ document.getElementById("groups").replaceChildren(...groups.map((g,i)=>{
+  const max=Math.max(...g),skip=max<=limit;if(!skip)read++;
+  const row=document.createElement("div");row.className="group"+(skip?" skipped":"");
+  const title=document.createElement("span");title.className="group-title";title.textContent="Grupa "+(i+1);
+  const numbers=document.createElement("div");numbers.className="numbers";
+  for(const v of g){const n=document.createElement("span");n.className="number"+(v>limit?" match":"");n.textContent=v;numbers.append(n)}
+  const status=document.createElement("span");status.className="status";const b=document.createElement("b");b.textContent=skip?"Pomiń":"Sprawdź";const meta=document.createElement("small");meta.textContent="max "+max;status.append(b,meta);row.append(title,numbers,status);return row;
+ }));
+ document.getElementById("metric").textContent=read+" z 4";
+ document.getElementById("reason").textContent=read===4?"Każda grupa może zawierać pasujące rekordy. Same statystyki nie pozwalają niczego pominąć.":(4-read)+" z 4 grup nie może zawierać pasujących rekordów. W tym modelu można je pominąć.";
+ document.querySelectorAll("[data-limit]").forEach(b=>b.setAttribute("aria-pressed",String(Number(b.dataset.limit)===limit)));
+ document.querySelectorAll("[data-layout]").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.layout===layout)));
+}
+document.getElementById("filters").addEventListener("click",e=>{const b=e.target.closest("[data-limit]");if(b){limit=Number(b.dataset.limit);render()}});
+document.getElementById("layout").addEventListener("click",e=>{const b=e.target.closest("[data-layout]");if(b){layout=b.dataset.layout;render()}});
+render();
+</script></body></html>
