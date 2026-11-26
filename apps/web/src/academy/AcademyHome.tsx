@@ -11,11 +11,11 @@ export function AcademyHome() {
         <h1>Lekcje</h1>
         <p className="lede">Każda lekcja prowadzi od intuicji przez mechanizm i prawdziwy kod do odpowiedzi na rozmowie.</p>
         <div style={{ marginTop: 48 }}>
-          {lessons.map(l => (
+          {lessons.map((l, i) => (
             <a key={l.id} className="lesson-row" href={href('academy', l.id)}>
               <h3>{l.title}</h3>
               <span className="m">
-                {AREA_LABEL[l.area]} · ok. {l.minutes} min
+                Lekcja {String(i).padStart(2, '0')} · {AREA_LABEL[l.area]} · ok. {l.minutes} min
                 <br />
                 {progress.lessonCompleted(l.id) ? <b>ukończona</b> : 'do zrobienia'} · pytania w banku: {questionsByTopic(l.topicId).length}
               </span>

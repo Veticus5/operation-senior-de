@@ -3,13 +3,16 @@ import { useRoute } from './lib/router';
 import { Home } from './Home';
 import { AcademyHome } from './academy/AcademyHome';
 import { LazyLesson } from './academy/lazy-evaluation/LazyLesson';
+import { FundamentalsLesson } from './academy/spark-fundamentals/FundamentalsLesson';
 import { BankHome } from './interview-bank/BankHome';
 import { QuestionView } from './interview-bank/QuestionView';
 import { Review } from './interview-bank/Review';
 import { meta as lazyMeta } from '@content/spark/lazy-evaluation/lesson';
+import { meta as fundamentalsMeta } from '@content/spark/fundamentals/lesson';
 
 /** Lekcje mają własne komponenty (symulatory są specyficzne dla tematu). Rejestr: id lekcji -> komponent. */
 const LESSONS: Record<string, (props: { stage?: string }) => JSX.Element> = {
+  [fundamentalsMeta.id]: FundamentalsLesson,
   [lazyMeta.id]: LazyLesson
 };
 

@@ -89,6 +89,14 @@ export const glossary: Record<string, GlossaryEntry> = {
     term: 'local[3]',
     def: 'Tryb, w którym cały Spark działa w jednym procesie na Twojej maszynie, z trzema wątkami roboczymi. Nie ma osobnych executorów ani sieci, więc część zachowań klastra tu nie wystąpi.'
   },
+  'cluster-manager': {
+    term: 'Menedżer klastra',
+    def: 'Usługa, która przydziela aplikacjom maszyny i zasoby na klastrze. Spark działa z własnym trybem Standalone, z Hadoop YARN i z Kubernetes.'
+  },
+  jvm: {
+    term: 'JVM',
+    def: 'Maszyna wirtualna Javy: środowisko, w którym działają procesy silnika Sparka. Kod w Pythonie steruje nimi z zewnątrz.'
+  },
   accumulator: {
     term: 'Akumulator',
     def: 'Licznik, do którego zadania mogą tylko dodawać, a wynik odczytuje driver. Dobry do diagnostyki. Gdy Spark ponawia zadanie, licznik użyty w transformacji może zostać zwiększony więcej niż raz.'
