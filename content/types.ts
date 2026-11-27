@@ -1,6 +1,6 @@
 /** Model treści. Treść nie importuje niczego z aplikacji: to czyste dane. */
 
-export type Area = 'spark' | 'delta-lake' | 'databricks' | 'data-modeling';
+export type Area = 'spark' | 'delta-lake' | 'databricks' | 'architecture' | 'data-modeling';
 export type Priority = 'P0' | 'P1' | 'P2';
 
 export interface Bilingual {
@@ -109,5 +109,6 @@ export const AREA_LABEL: Record<Area, string> = {
   spark: 'Spark',
   'delta-lake': 'Delta Lake',
   databricks: 'Databricks',
+  architecture: 'Data Architecture',
   'data-modeling': 'Data Modeling'
 };

@@ -399,7 +399,7 @@ export const additivity = {
       text: 'Odsetka nie wolno ani sumować, ani uśredniać. Poprawny wynik dla całości to 1 zwrot na 9 wpłat, czyli 11,1%. Dlatego w tabeli faktów trzyma się składniki (liczbę zwrotów i liczbę wpłat), a iloraz liczy się na końcu.'
     }
   ],
-  takeaway: '<b>Wniosek.</b> Miara <b>addytywna</b> sumuje się po każdym wymiarze. <b>Póładdytywna</b> po niektórych, typowo po wszystkich oprócz czasu: tak zachowują się salda i stany. <b>Nieaddytywna</b>, na przykład odsetek, nie sumuje się wcale. Rodzaj miary wynika z rodzaju tabeli: miary w migawkach są zwykle póładdytywne.',
+  takeaway: '<b>Wniosek.</b> Miara <b>addytywna</b> sumuje się po każdym wymiarze. <b>Póładdytywna</b> po niektórych, typowo po wszystkich oprócz czasu: tak zachowują się salda i stany. <b>Nieaddytywna</b>, na przykład odsetek, nie sumuje się wcale. Miary w migawkach są często póładdytywne, ale decyduje ich definicja: kwoty sumujemy w zgodnej walucie i po rozłącznych grupach.',
   moreTitle: 'Co z tego wynika dla warstwy BI',
   more: [
     'Narzędzie BI domyślnie sumuje kolumnę liczbową. Jeśli użytkownik przeciągnie <code>mrr_eur</code> na wykres kwartalny, dostanie 90. Dlatego kolumny póładdytywne i nieaddytywne ukrywa się, a zamiast nich udostępnia zdefiniowaną miarę, która wie, jak się agregować.',
@@ -565,7 +565,7 @@ export const pit = {
   asofTitle: 'Gdy wymiar ma tylko datę początku wersji',
   asof: [
     'Log zmian często ma jedynie <code>changed_at</code>, bez daty końca. Datę końca można wyliczyć funkcją okna <code>LEAD</code> albo użyć złączenia, które samo szuka najbliższego wcześniejszego wiersza.',
-    'W Snowflake służy do tego <code>ASOF JOIN</code> z klauzulą <code>MATCH_CONDITION</code>: dla każdego wiersza z lewej strony zwraca jeden wiersz z prawej, najbliższy w czasie według podanego operatora. Dozwolone są tylko operatory nierówności, a wiersze lewej strony bez dopasowania zostają z wartościami NULL, podobnie jak w złączeniu lewostronnym. Przy remisie dokumentacja nie gwarantuje, który z wierszy zostanie zwrócony.'
+    'W Snowflake służy do tego <code>ASOF JOIN</code> z klauzulą <code>MATCH_CONDITION</code>: dla każdego wiersza z lewej strony zwraca jeden wiersz z prawej, najbliższy w czasie według podanego operatora. Dozwolone są tylko operatory nierówności, a wiersze lewej strony bez dopasowania zostają z wartościami NULL, podobnie jak w złączeniu lewostronnym. Przy remisie dokumentacja nie gwarantuje, który z wierszy zostanie zwrócony. ASOF nie sprawdza valid_to: przy lukach trzeba zweryfikować koniec ważności i obsłużyć brak dopasowania.'
   ],
   asofCode: `SELECT t.txn_id, t.paid_at, c.country
 FROM transactions t
@@ -604,9 +604,9 @@ export const late = {
   ],
   correctionsTitle: 'Poprawki wstecz i ponowne przeliczenie',
   corrections: [
-    '<b>Poprawka faktu.</b> Zwrot T-10 nie kasuje wpłaty T-9. Jest osobnym wierszem z ujemną kwotą. Tabela transakcyjna jest wtedy tylko dopisywana, a suma po dowolnym okresie pozostaje prawdziwa: marzec pokazuje i wpłatę, i zwrot.',
+    '<b>Poprawka faktu.</b> Zwrot T-10 nie kasuje wpłaty T-9. Jest osobnym wierszem z ujemną kwotą. W tym projekcie tabela transakcyjna jest wtedy tylko dopisywana, a suma po dowolnym okresie pozostaje prawdziwa: marzec pokazuje i wpłatę, i zwrot.',
     '<b>Poprawka wymiaru wstecz.</b> Okazuje się, że Ben przeprowadził się 1 lutego, a nie 10. Kimball opisuje to wprost: trzeba wstawić albo poprawić wiersz w historii wymiaru, a potem przepisać klucze w wierszach faktów, których to dotyczy. Tu: transakcja T-4 z 1 lutego przechodzi z wersji niemieckiej na polską.',
-    '<b>Backfill.</b> Ponowne przeliczenie historii musi dawać ten sam wynik co ładowanie na bieżąco. To wymaga dwóch rzeczy: ładowanie dobiera wersję wymiaru po dacie zdarzenia, a zapis jest idempotentny, czyli powtórzony nie tworzy duplikatów (na przykład <code>MERGE</code> po <code>txn_id</code> albo nadpisanie całej partycji dnia).',
+    '<b>Backfill.</b> Ponowne przeliczenie historii musi dawać ten sam wynik co ładowanie na bieżąco. To wymaga dwóch rzeczy: ładowanie dobiera wersję wymiaru po dacie zdarzenia, a zapis jest idempotentny: stabilny klucz, deterministyczna deduplikacja źródła, kolejność spóźnionych zmian i deterministyczne wartości przy <code>MERGE</code>; przy nadpisaniu partycji potrzebny jest kompletny zbiór wejściowy.',
     '<b>Migawki.</b> Okresowej migawki nie da się uczciwie odtworzyć, jeśli źródło trzyma tylko stan bieżący. Stan z 31 stycznia trzeba było zapisać 31 stycznia. To argument za tym, żeby migawkę zacząć zbierać, zanim ktoś o nią zapyta.'
   ],
   takeaway: '<b>Wniosek.</b> Model historyczny ma dwie osie czasu: kiedy coś się wydarzyło i kiedy hurtownia się o tym dowiedziała. Dopóki dane przychodzą na czas, obie się pokrywają i błąd w ładowaniu jest niewidoczny. Dobre pytanie kontrolne do każdego projektu: „co się stanie, gdy ten wiersz przyjdzie tydzień później?”.'
@@ -702,7 +702,7 @@ export const rls = {
   mapTitle: 'user_publisher (tabela uprawnień)',
   factTitle: 'fact_transaction widziany przez tę osobę',
   says: 'Widzi {rows} z 10 transakcji, przychód {revenue} EUR. Reguła nie jest wpisana w raport: ten sam raport pokazuje każdemu jego wycinek.',
-  takeaway: '<b>Wniosek.</b> <b>Row-level security</b> (RLS) to reguła, która dla danego użytkownika odcina wiersze, zanim policzy się cokolwiek. Regułę nakłada się na wymiar, tutaj wydawcy, a relacja przenosi ją na wszystkie tabele faktów. Dlatego klucz wydawcy musi być w każdym fakcie i musi to być ten sam, wspólny wymiar.',
+  takeaway: '<b>Wniosek.</b> <b>Row-level security</b> (RLS) to reguła, która dla danego użytkownika odcina wiersze, zanim policzy się cokolwiek. W tym modelu regułę nakłada się na wymiar wydawcy, a aktywne relacje z właściwym kierunkiem filtra przenoszą ją na fakty. Brak przypisania użytkownika oznacza brak dostępu. Dlatego klucz wydawcy musi być w każdym fakcie i musi to być ten sam, wspólny wymiar.',
   sketches: [
     { tool: 'Power BI: filtr roli na tabeli uprawnień (DAX)', code: '[email] = USERPRINCIPALNAME()' },
     { tool: 'Looker: filtr na eksploracji (LookML)', code: `access_filter: {
@@ -786,7 +786,7 @@ export const tools = {
   } as SampleTable,
   breaksTitle: 'Gdzie analogia się kończy',
   breaks: [
-    'Power BI w trybie importu trzyma kopię danych we własnym silniku i liczy miary na niej. Looker nie ma własnego magazynu danych: każde zapytanie staje się SQL-em wykonanym w hurtowni. To zmienia rozmowę o świeżości danych, koszcie zapytań i miejscu optymalizacji.',
+    'Power BI w trybie importu trzyma kopię danych we własnym silniku i liczy miary na niej. Looker wykonuje SQL w hurtowni przy braku trafienia w cache; może ponownie użyć zapisanego wyniku, a PDT przechowuje w bazie. To zmienia rozmowę o świeżości danych, koszcie zapytań i miejscu optymalizacji.',
     'W Power BI relacje są częścią modelu i działają stale. W Looker złączenia są zdefiniowane w eksploracji i trafiają do zapytania wtedy, gdy są potrzebne.',
     'Wymiar typu 2 w obu przypadkach przygotowuje się wcześniej. Microsoft pisze wprost, że Power Query nie wykona wyszukania wersji po dacie, a model semantyczny może jedynie załadować gotową tabelę typu 2.'
   ]
