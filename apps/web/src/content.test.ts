@@ -81,7 +81,8 @@ describe('baza pytań', () => {
       'spark-architecture-basics', 'spark-vs-pandas-warehouse',
       'spark-transformations-actions', 'spark-narrow-wide-shuffle', 'spark-job-stage-task', 'spark-session-vs-context', 'spark-query-plans', 'spark-slow-job', 'spark-data-skew', 'spark-aqe',
       'spark-salting', 'spark-broadcast-join', 'spark-join-strategies', 'spark-repartition-coalesce', 'delta-acid-log', 'delta-merge-idempotency', 'delta-optimize-vacuum',
-      'delta-liquid-clustering', 'delta-change-data-feed', 'delta-medallion', 'databricks-bundles-cicd', 'databricks-unity-catalog', 'databricks-structured-streaming'
+      'delta-liquid-clustering', 'delta-change-data-feed', 'delta-medallion', 'databricks-bundles-cicd', 'databricks-unity-catalog', 'databricks-structured-streaming',
+      'modeling-star-schema-grain', 'modeling-fan-out-double-counting', 'modeling-fact-table-types', 'modeling-scd-types', 'modeling-late-arriving-data', 'modeling-semantic-layer', 'modeling-kimball-inmon-data-vault'
     ]);
   });
   it('każde pytanie jest kompletne w obu językach', () => {
@@ -169,7 +170,7 @@ describe('lekcje', () => {
     for (const l of lessons) expect(questions.some(q => q.topicId === l.topicId), l.id).toBe(true);
   });
   it('kolejność nauki: Fundamentals, Lazy Evaluation, Execution Architecture, Partitioning & Shuffle, Join Strategies, Data Skew & AQE', () => {
-    expect(lessons.map(l => l.id)).toEqual(['spark-fundamentals', 'spark-lazy-evaluation', 'spark-execution-architecture', 'spark-partitioning-shuffle', 'spark-join-strategies', 'spark-data-skew-aqe']);
+    expect(lessons.map(l => l.id)).toEqual(['spark-fundamentals', 'spark-lazy-evaluation', 'spark-execution-architecture', 'spark-partitioning-shuffle', 'spark-join-strategies', 'spark-data-skew-aqe', 'data-modeling-dimensional']);
   });
   it('partitioning & shuffle: dane symulacji są spójne z opisem i z liczbami z labu', () => {
     const { orders, sim, inputPartitions, rowsPerPartition } = ps;

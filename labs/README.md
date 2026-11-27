@@ -27,6 +27,7 @@ uv run --no-project --with pyspark==4.3.0 python lazy_evaluation/lazy_lab.py
 | `interview_bank/spark_checks.py` | Interview Bank, pytania o Sparku | wartości domyślne, hint broadcast a typ joina, co wędruje przez shuffle, trzy sposoby podziału na partycje, taski a równoległość, praca wykonana przez driver |
 | `join_strategies/join_strategies_lab.py` | lekcja Spark Join Strategies (plany w etapie Praktyka, eksperymenty 1–3) i pytanie „Strategie joina" | ten sam join jako broadcast hash, sort merge i shuffled hash: plany fizyczne i rekordy zapisane do shuffle'u; próg broadcastu kontra szacunek rozmiaru; zamiana joina przez AQE; hinty przy różnych typach joina |
 | `data_skew/skew_aqe_lab.py` | lekcja Data Skew & AQE | rozmiary partycji przy kluczu równym i skośnym, rekordy z shuffle'u na task w joinie, obsługa skew w AQE i jej granice (progi, typ joina, funkcja okna), sklejanie partycji, zmiana strategii joina, salting, `NULL` w kluczu |
+| `data_modeling/modeling_sql_check.py` | lekcja Advanced Data Modeling (liczby w ilustracjach) | nie jest labem Sparka i nie ma go w rejestrze: ładuje wymyślony zbiór do SQLite i wykonuje zapytania z lekcji (fan-out, SCD typ 1 i 2, złączenie punkt-w-czasie, most, RLS). Uruchomienie: `python3 labs/data_modeling/modeling_sql_check.py`, bez Javy i bez zależności |
 
 Zasada: jeśli lekcja albo pytanie w banku podaje liczbę „z uruchomienia", musi istnieć lab, który ją odtwarza.
 
