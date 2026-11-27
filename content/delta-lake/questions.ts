@@ -208,5 +208,43 @@ export const deltaQuestions: Question[] = [
       'Kopiowanie danych między warstwami bez dodanej wartości.',
       'Obiecywanie, że z bronze „zawsze" da się wszystko odtworzyć, bez słowa o retencji.'
     ]
+  },
+  {
+    id: 'delta-concurrent-writes',
+    topicId: 'delta.concurrency',
+    area: 'delta-lake',
+    priority: 'P1',
+    title: 'Równoległe zapisy i konflikty',
+    question: {
+      pl: 'Dwa joby piszą jednocześnie do tej samej tabeli Delta. Co się dzieje?',
+      en: 'Two jobs write to the same Delta table at the same time. What happens?'
+    },
+    answer: {
+      pl: 'Delta używa optimistic concurrency control. Każdy piszący czyta jakąś wersję tabeli, zapisuje swoje nowe pliki danych, a na końcu próbuje dodać kolejny wpis do logu. Dany plik commitu może utworzyć tylko jeden z nich, więc drugi musi sprawdzić, co zmienił pierwszy. Jeśli zmiany się nie nakładają, na przykład przy dwóch appendach, po prostu commituje się jako następna wersja. Jeśli pierwszy usunął albo przepisał pliki, które drugi przeczytał, drugi dostaje wyjątek konfliktu i musi ponowić operację. Nic nie zostaje zapisane w połowie, bo pliki bez commitu nie należą do tabeli. Czytający nie są blokowani, korzystają ze snapshot isolation. Żeby ograniczyć konflikty, pilnuję, by joby dotykały rozłącznych danych, a na Databricks row-level concurrency rozstrzyga zmiany różnych wierszy w tym samym pliku.',
+      en: "Delta uses optimistic concurrency control. Each writer reads a table version, writes its new data files, and then tries to commit the next log entry. Only one writer can create a given commit file, so the second one has to check what the first changed. If the changes don't overlap, for example two appends, it simply commits as the following version. If the first writer removed or rewrote files the second one read, the second fails with a concurrent modification exception and has to retry. Nothing is half-written, because uncommitted files are never part of the table. Readers aren't blocked at all: they use snapshot isolation. To reduce conflicts I keep writers on disjoint data, and on Databricks row-level concurrency resolves updates to different rows in the same file."
+    },
+    senior: {
+      pl: 'Domyślny poziom izolacji zapisu na Databricks to WriteSerializable, mocniejszy to Serializable. OPTIMIZE też jest piszącym: bez deletion vectors może wejść w konflikt z UPDATE i MERGE, więc nie puszczam kompaktowania w środku okna ładowania. Row-level concurrency wymaga deletion vectors i tabeli bez partycji.',
+      en: 'The default write isolation level on Databricks is WriteSerializable, and Serializable is the stricter one. OPTIMIZE is a writer too: without deletion vectors it can conflict with UPDATE and MERGE, so I do not run compaction in the middle of a load window. Row-level concurrency needs deletion vectors and an unpartitioned table.'
+    },
+    explain: [
+      'W hurtowni równoległe zapisy porządkuje serwer: blokadami albo kolejką transakcji. Tabela Delta to pliki w <term id="object-storage">object storage</term>, więc nie ma serwera, który mógłby trzymać blokadę. Zamiast tego każdy piszący pracuje tak, jakby był sam, a kolizję sprawdza się na końcu. To optimistic concurrency control: zakładamy, że konflikty są rzadkie.',
+      'Dokumentacja Delta Lake opisuje trzy etapy. Odczyt: piszący czyta najnowszą wersję i zapamiętuje, które pliki przeczytał. Zapis: tworzy nowe pliki danych, których jeszcze nikt nie widzi. Walidacja i commit: sprawdza, czy to, co przeczytał, nie zostało w międzyczasie zmienione przez kogoś innego. Jeśli nie, zapisuje commit. Jeśli tak, kończy się wyjątkiem.',
+      'Kluczowe jest pytanie „co przeczytałem”. Dwa appendy niczego nie czytają, więc nie mogą się pogryźć. Dwa UPDATE na tym samym pliku tak: drugi policzył wynik na pliku, którego już nie ma na liście. Na Databricks tabele z deletion vectors i bez partycji mają row-level concurrency (od Databricks Runtime 14.3 LTS): konflikt jest wtedy tylko przy zmianie tego samego wiersza.',
+      'Przegrany dostaje błąd, a nie zepsutą tabelę. Jego pliki zostają w katalogu jako osierocone i kiedyś usunie je VACUUM. Ponowienie to zwykle po prostu ponowne uruchomienie operacji, która przeczyta już nową wersję.'
+    ],
+    keywords: ['optimistic concurrency control', 'WriteSerializable', 'snapshot isolation', 'ConcurrentAppendException', 'row-level concurrency', 'deletion vectors'],
+    followUps: [
+      { q: 'Can two appends conflict?', a: 'No. Appends only add files and do not depend on existing ones, so both commit, one after the other.', pl: 'INSERT + INSERT nie może wejść w konflikt.' },
+      { q: 'How would you reduce conflicts between two jobs that update the same table?', a: 'Make them touch disjoint data and say so in the condition, for example an explicit predicate on the partition or clustering column. On Databricks I would also check whether the table qualifies for row-level concurrency.', pl: 'Rozłączne pliki i jawny warunek. Albo row-level concurrency.' },
+      { q: 'Does a long-running reader block writers, or the other way round?', a: 'Neither. A reader works on the snapshot it started with. The one thing that can break it is VACUUM with a retention shorter than the query takes.', pl: 'Snapshot isolation. Ryzykiem jest tylko zbyt krótka retencja VACUUM.' },
+      { q: 'What is the difference between WriteSerializable and Serializable?', a: 'WriteSerializable is the default and allows some interleavings, for example an insert committing while an update is in flight. Serializable is stricter: in that case the update fails and has to be retried.', pl: 'Domyślny jest słabszy. Przy Serializable przegrywa UPDATE, nie INSERT.' }
+    ],
+    mistakes: [
+      'Twierdzenie, że Delta blokuje tabelę na czas zapisu. Nie ma blokad, jest walidacja przy commicie.',
+      'Mówienie, że równoległe zapisy do jednej tabeli są niemożliwe albo zawsze kończą się konfliktem.',
+      'Pominięcie tego, że OPTIMIZE też jest piszącym i może wywrócić trwający MERGE.',
+      'Obiecywanie row-level concurrency na każdej tabeli. Wymaga deletion vectors i braku partycjonowania.'
+    ]
   }
 ];
