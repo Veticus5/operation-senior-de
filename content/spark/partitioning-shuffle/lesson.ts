@@ -235,7 +235,7 @@ export const sim = {
 /** Mechanizm, część 2: z czego składa się koszt shuffle'u. Cztery kroki, wszystkie widoczne od razu. */
 export const cost = {
   title: 'Dlaczego shuffle jest drogi?',
-  intro: 'Filtr dotyka wiersza w pamięci i idzie dalej. Rekord, który przechodzi przez shuffle, ma dłuższą drogę. Dokumentacja Sparka nazywa shuffle operacją kosztowną, bo wymaga serializacji danych (zamiany na bajty), zapisu i odczytu z dysku oraz transferu po sieci.',
+  intro: 'Filtr dotyka wiersza w pamięci i idzie dalej. Rekord, który przechodzi przez shuffle, ma dłuższą drogę. Dokumentacja Sparka nazywa shuffle operacją kosztowną, bo wymaga serializacji danych (zamiany na bajty), zapisu i odczytu z dysku oraz transferu po sieci. Siecią idą tylko bloki pobierane z innych maszyn.',
   note: 'Schemat drogi jednego rekordu. To ilustracja mechanizmu, nie pomiar.',
   steps: [
     { k: 'Serializacja', where: 'task przed shuffle\'em', text: 'Obiekt w pamięci trzeba zamienić na ciąg bajtów, żeby dało się go zapisać i wysłać. Po drugiej stronie bajty są zamieniane z powrotem. To praca procesora przy każdym rekordzie.' },
