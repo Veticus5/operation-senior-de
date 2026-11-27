@@ -117,6 +117,18 @@ export const glossary: Record<string, GlossaryEntry> = {
     term: 'Akumulator',
     def: 'Licznik, do którego zadania mogą tylko dodawać, a wynik odczytuje driver. Dobry do diagnostyki. Gdy Spark ponawia zadanie, licznik użyty w transformacji może zostać zwiększony więcej niż raz.'
   },
+  'object-storage': {
+    term: 'Object storage',
+    def: 'Usługa chmurowa do przechowywania plików jako obiektów, np. Amazon S3, Azure Blob Storage albo Google Cloud Storage. Tania i praktycznie nieograniczona, ale każdy odczyt idzie po sieci.'
+  },
+  'snowflake-credit': {
+    term: 'Kredyt Snowflake',
+    def: 'Jednostka, w której Snowflake rozlicza zużycie mocy obliczeniowej. Cena kredytu zależy od edycji, regionu i umowy, więc koszty porównuje się najpierw w kredytach.'
+  },
+  mpp: {
+    term: 'MPP',
+    def: 'Massively parallel processing: baza, która dzieli zapytanie na wiele węzłów pracujących równolegle. W klasycznym wariancie każdy węzeł ma własny dysk i własną część danych.'
+  },
   'join-hint': {
     term: 'Hint (wskazówka joina)',
     def: 'Dopisek w zapytaniu albo w kodzie, którym prosisz Sparka o konkretny sposób łączenia tabel, np. broadcast. Spark go uwzględnia, jeśli ten sposób obsługuje dany typ joina. To prośba, nie gwarancja.'
