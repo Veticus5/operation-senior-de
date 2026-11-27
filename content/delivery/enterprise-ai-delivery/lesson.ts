@@ -532,7 +532,7 @@ export const verify = {
   intro: '„Potok jest zielony" znaczy tylko tyle, że zadania się zakończyły. Wdrożenie jest skończone, gdy sprawdzisz wynik na produkcji.',
   columns: ['Kiedy', 'Co sprawdzasz', 'Po co'],
   rows: [
-    ['Zaraz po wdrożeniu', 'Testy danych na produkcji i to samo uzgodnienie co w CI, na pełnych danych', 'Dane produkcyjne mają przypadki, których CI nie widziało'],
+    ['Zaraz po wdrożeniu', 'Testy danych na produkcji i to samo uzgodnienie co w CI, na pełnych danych', 'Dane produkcyjne mogą mieć przypadki, których CI nie widziało'],
     ['Pierwsze uruchomienie z harmonogramu', 'Czas wykonania, liczba wierszy, koszt', 'Wymagania niefunkcjonalne wychodzą dopiero na pełnej skali'],
     ['Kolejne dni', 'Świeżość, wolumen, alerty na odchylenia', 'Błędy przyrostu i spóźnione dane ujawniają się z czasem'],
     ['U odbiorcy', 'Czy raport albo system docelowy pokazuje to, czego oczekiwano', 'Model może być poprawny, a raport nadal czytać starą kolumnę']
@@ -843,7 +843,7 @@ export const quiz: QuizItem[] = [
     q: 'Model grupuje po dniu. Po zmianie liczba wierszy jest ta sama, testy <code>unique</code> i <code>not_null</code> przechodzą. Co z tego wynika?',
     options: ['Zmiana jest bezpieczna', 'Nic o poprawności sum: agregacja ukrywa powielone wiersze', 'Że join na pewno nie powielił wierszy'],
     correct: 1,
-    why: 'Fan-out powiela wiersze przed agregacją, a wynik po grupowaniu ma tyle samo wierszy co wcześniej. Testy danych sprawdzają klucz wyniku, a nie wartości miar. Potrzebne jest porównanie sum z wersją sprzed zmiany.'
+    why: 'Fan-out powiela wiersze przed agregacją, a wynik po grupowaniu ma tyle samo wierszy co wcześniej. Testy danych sprawdzają klucz wyniku, a nie wartości miar. Łapie to porównanie sum z wersją sprzed zmiany albo test jednostkowy z przypadkiem, który powiela wiersze.'
   },
   {
     q: 'Uzgodnienie before/after pokazuje różnicę w przychodzie dla dwóch dni. Co robisz najpierw?',
