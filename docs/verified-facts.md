@@ -98,6 +98,46 @@ Liczba wierszy pochodzi z metryki `numOutputRows` węzła skanu, a min i max gru
 | 12 partycji na `local[3]` | 12 tasków, jednocześnie najwyżej 3 |
 | `SELECT … FROM VALUES … WHERE …` + `collect()` | 0 jobów, plan `LocalTableScan` (policzone przez driver) |
 
+### `labs/execution_architecture/execution_lab.py` (lekcja 02 i pytania o modelu wykonania)
+
+Uruchomienia z 2026-11-27: PySpark 4.0.1 i 4.3.0, `local[3]`, Java 21, ustawienia domyślne poza wymienionymi. Wszystkie liczby wyszły identycznie w obu wersjach.
+Dane testowe: `orders` 1200 wierszy w 4 plikach Parquet (800 ze statusem `paid`, 5 dat), `customers` 40 wierszy w 2 plikach (4 regiony).
+`spark.sql.files.maxPartitionBytes` = 4 MB, żeby każdy plik był osobną partycją: `orders` 4 partycje, `customers` 2. `spark.sql.shuffle.partitions` = 200 (wartość domyślna). Akcja w części 3 to zapis do Parquet.
+
+| Fakt | Wynik |
+| --- | --- |
+| `SparkSession.builder.getOrCreate()` wywołane drugi raz | ten sam obiekt sesji |
+| `spark.newSession()` | inna sesja, ten sam `SparkContext` i to samo `applicationId` |
+| Widok tymczasowy utworzony w pierwszej sesji | widoczny w pierwszej, niewidoczny w drugiej |
+| `spark.sql.shuffle.partitions` zmienione w drugiej sesji na 7 | pierwsza nadal 200 |
+| `explain(extended=True)`, filter + groupBy + sum, AQE wyłączone | cztery sekcje: Parsed, Analyzed, Optimized Logical Plan, Physical Plan. Optymalizator dopisał `Project [order_date, amount]` i `isnotnull(status)`. Plan fizyczny: `FileScan parquet` (3 kolumny, `PushedFilters`), `ColumnarToRow`, `Filter`, `Project`, `HashAggregate` z `partial_sum`, `Exchange hashpartitioning(order_date, 200)`, `HashAggregate` z `sum` |
+| Operatory planu fizycznego, filter + join + groupBy, broadcast wyłączony | 3 × `Exchange hashpartitioning`, `SortMergeJoin`, 2 × `Sort` |
+| To samo z domyślnym progiem broadcast | `BroadcastHashJoin`, `BroadcastExchange`, 1 × `Exchange hashpartitioning` |
+| Pierwsza linia planu fizycznego z AQE przed akcją / po `collect()` na tym samym DataFrame | `AdaptiveSparkPlan isFinalPlan=false` / `isFinalPlan=true` |
+
+Joby, wykonane stage'e i wykonane taski jednej akcji `write`. W zapytaniu C broadcast jest wyłączony (`spark.sql.autoBroadcastJoinThreshold = -1`), o ile nie napisano inaczej.
+
+| Zapytanie | AQE | Joby | Stage'e (taski) | Rekordy w shuffle'u |
+| --- | --- | --- | --- | --- |
+| A. filter | wyłączone i włączone | 1 | 1 stage (4) | brak |
+| B. filter + groupBy | wyłączone | 1 | 2: (4), (200) | zapisane 20 = 5 dat × 4 partycje |
+| B. filter + groupBy | włączone | 2 | job 0: (4). Job 1: 1 pominięty, potem (1) | 20 |
+| C. filter + join + groupBy | wyłączone | 1 | 4: klienci (2), zamówienia (4), join (200), suma (200) | 40 i 800 przed joinem, join odczytał 840 i zapisał 40 |
+| C. filter + join + groupBy | włączone | 4 | joby 0 i 1: (2) i (4). Job 2: 2 pominięte, join (1). Job 3: 3 pominięte, suma (1) | join zapisał 4 |
+| C z domyślnym progiem broadcast | wyłączone | 2 | job 0: klienci (2). Job 1: (4), (200) | zapisane 16 = 4 regiony × 4 partycje |
+| C z domyślnym progiem broadcast | włączone | 3 | (2), (4), 1 pominięty i (1) | 16 |
+
+Razem wykonanych tasków: A 4; B 204 bez AQE i 5 z AQE; C 406 i 8; C z broadcastem 206 i 7.
+
+| Fakt | Wynik |
+| --- | --- |
+| Zapytanie C bez AQE: stage 0 i stage 1 (dwa niezależne odczyty) | działały w tym samym czasie (porównanie `submissionTime` i `completionTime` z REST API) |
+| Task partycji 1 pada przy pierwszej próbie, `local[3]` | job przerwany wyjątkiem, stage w stanie `FAILED`, 1 nieudana próba |
+| To samo na `local[3,4]` | job zakończony. Numery prób: partycja 1 ma `attemptNumber` 1, pozostałe 0. Stage: 4 udane taski, 1 nieudana próba |
+| Lab uruchomiony przez lokalny runner, przyciskiem w lekcji | kod wyjścia 0, 13,4 s, te same liczby |
+
+Zakres: jedna maszyna, jeden proces, dane testowe. Osobny job dla strony broadcast i osobne joby AQE dla części planu przed shuffle'em to obserwacje z tych planów, nie reguły z dokumentacji. AQE skleiło tu 200 partycji w jedną, bo dane są malutkie. Wniosek „zwykłe `local[3]` nie ponawia tasków" opiera się na tym jednym teście i na opisie `local[K,F]` w dokumentacji. Lab nie sprawdza utraty executora ani plików shuffle.
+
 ### `labs/join_strategies/join_strategies_lab.py` (lekcja 04: Spark Join Strategies)
 
 Uruchomienia z 2026-11-27: PySpark 4.0.1 (przypięta) i 4.3.0 (kontrolne), `local[3]`, Java 21, klasyczny PySpark.
@@ -204,6 +244,31 @@ Strony Apache Spark i PySpark to dokumentacja wersji **4.3.0**. Lekcja nie ma w�
 | Snowflake: trzy warstwy (storage, compute, cloud services). Zapytania przetwarzają klastry MPP; „Each virtual warehouse is an independent compute cluster". Snowflake zarządza wszystkimi aspektami przechowywania danych (organizacja, rozmiar plików, kompresja, statystyki). Tabele Iceberg trzymają pliki w zewnętrznym storage | [Snowflake: Key concepts and architecture](https://docs.snowflake.com/en/user-guide/intro-key-concepts) |
 | Rozmiar warehouse określa zasoby obliczeniowe klastra; każdy kolejny rozmiar podwaja zużycie kredytów na godzinę | [Snowflake: Overview of warehouses](https://docs.snowflake.com/en/user-guide/warehouses-overview) |
 
+### Lekcja 02: Spark Execution Architecture (sprawdzone 2026-11-27)
+
+Strony Apache Spark i PySpark to dokumentacja wersji **4.3.0**. Kod źródłowy: tag `v4.0.1`. Lekcja powołuje się też na wcześniejsze wpisy tego pliku (wartości domyślne AQE i shuffle'u, `spark.task.maxFailures`, `spark.task.cpus`, broadcast budowany na driverze, Spark Connect, serverless bez Spark UI, akumulatory).
+
+| Fakt | Źródło |
+| --- | --- |
+| Job: „A parallel computation consisting of multiple tasks that gets spawned in response to a Spark action (e.g. `save`, `collect`)". Stage: „Each job gets divided into smaller sets of tasks called stages that depend on each other". Driver program: „The process running the main() function of the application and creating the SparkContext". „Because the driver schedules tasks on the cluster, it should be run close to the worker nodes" | [Spark: Cluster Mode Overview](https://spark.apache.org/docs/latest/cluster-overview.html) |
+| Tryb `client`: „the submitter launches the driver outside of the cluster". Tryb `cluster`: „the framework launches the driver inside of the cluster". W trybie `client` driver działa w procesie `spark-submit` | tamże oraz [Spark: Submitting Applications](https://spark.apache.org/docs/latest/submitting-applications.html) |
+| `local[K,F]`: „Run Spark locally with K worker threads and F maxFailures" | [Spark: Submitting Applications](https://spark.apache.org/docs/latest/submitting-applications.html) |
+| „The entry point into all functionality in Spark is the SparkSession class." | [Spark: SQL Getting Started](https://spark.apache.org/docs/latest/sql-getting-started.html) |
+| SparkSession: „The entry point to programming Spark with the Dataset and DataFrame API." `newSession()`: „separate SQLConf, registered temporary views and UDFs, but shared SparkContext and table cache". `sparkContext`: „Returns the underlying SparkContext." | [PySpark API: SparkSession](https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.SparkSession.html) i strony `newSession`, `sparkContext` |
+| SparkContext: „Main entry point for Spark functionality. A SparkContext represents the connection to a Spark cluster, and can be used to create RDD and broadcast variables on that cluster." „Only one SparkContext should be active per JVM. You must stop() the active SparkContext before creating a new one." | [PySpark API: SparkContext](https://spark.apache.org/docs/latest/api/python/reference/api/pyspark.SparkContext.html) |
+| SQLContext: wejście do danych strukturalnych „in Spark 1.x". „As of Spark 2.0, this is replaced by SparkSession. However, we are keeping the class here for backward compatibility." | docstring `pyspark.sql.SQLContext` w PySpark 4.0.1 |
+| Spark Connect: „some APIs such as SparkContext and RDD are not supported"; „the client does not have access to the static Spark configuration or the SparkContext" | [Spark: Spark Connect Overview](https://spark.apache.org/docs/latest/spark-connect-overview.html) |
+| Leniwe jest wykonanie zapytań (transformacje, `spark.sql("select …")`), a akcje i polecenia SQL (`spark.sql("insert …")`, `spark.sql("create …")`) wykonują się od razu, tak samo w Spark Classic i Spark Connect. Spark Classic analizuje plan od razu przy budowie. Spark Connect odkłada analizę: „Any operation that requires a resolved plan—such as accessing a schema, explaining the plan, persisting a DataFrame, or executing an action—causes the client to send the unresolved plans to the server over RPC." | [Spark: Eager vs Lazy, Spark Connect vs Spark Classic](https://spark.apache.org/docs/latest/spark-connect-gotchas.html) |
+| `getOrCreate()`: zwraca istniejącą sesję albo tworzy nową; „In case an existing SparkSession is returned, the config options specified in this builder will be applied to the existing SparkSession" | docstring `SparkSession.Builder.getOrCreate` w PySpark 4.0.1 |
+| AQE zamienia sort-merge join na broadcast hash join, gdy statystyki z wykonania pokazują, że strona joina jest poniżej progu adaptacyjnego | [Spark: Performance Tuning](https://spark.apache.org/docs/latest/sql-performance-tuning.html) |
+| `EXPLAIN` domyślnie pokazuje tylko plan fizyczny. `EXTENDED`: „Generates parsed logical plan, analyzed logical plan, optimized logical plan and physical plan." Parsed to plan nierozwiązany, analyzed zamienia `unresolvedAttribute` i `unresolvedRelation` na obiekty z typami, optimized powstaje przez zestaw reguł optymalizacji. `FORMATTED`: zarys planu fizycznego i szczegóły węzłów | [Spark: EXPLAIN](https://spark.apache.org/docs/latest/sql-ref-syntax-qry-explain.html) |
+| Zakładka SQL: wszystkie zapytania SQL i DataFrame, w tym akcje takie jak `count`, `show`, `write`; strona zapytania podaje powiązane joby i stage'e. Zakładka Jobs: liczba stage'y według stanu „(active, pending, completed, skipped, failed)" i DAG visualization: „vertices represent the RDDs or DataFrames and the edges represent an operation to be applied on RDD". Zakładka Stages: stan wszystkich stage'y wszystkich jobów | [Spark: Web UI](https://spark.apache.org/docs/latest/web-ui.html) |
+| „By default, Spark's scheduler runs jobs in FIFO fashion." Fair sharing między jobami da się skonfigurować. „multiple parallel jobs can run simultaneously if they were submitted from separate threads" | [Spark: Job Scheduling](https://spark.apache.org/docs/latest/job-scheduling.html) |
+| `spark.task.maxFailures` 4: „Number of continuous failures of any particular task before giving up on the job"; „Number of allowed retries = this value - 1". `spark.stage.maxConsecutiveAttempts` 4. `spark.speculation` false. `spark.locality.wait` 3s: „How long to wait to launch a data-local task before giving up and launching it on a less-local node" | [Spark: Configuration](https://spark.apache.org/docs/latest/configuration.html) |
+| Shuffle: Spark tworzy zadania „map" porządkujące dane i „reduce" agregujące je. Pliki shuffle są zachowywane, żeby nie tworzyć ich od nowa przy ponownym liczeniu | [Spark: RDD Programming Guide](https://spark.apache.org/docs/latest/rdd-programming-guide.html) |
+| AQE „makes use of the runtime statistics to choose the most efficient query execution plan"; skleja partycje po shuffle'u na podstawie statystyk wyjścia map. `spark.sql.shuffle.partitions` 200: liczba partycji przy shuffle'u dla joinów i agregacji. O osobnych jobach AQE ta strona nie mówi | [Spark: Performance Tuning](https://spark.apache.org/docs/latest/sql-performance-tuning.html) |
+| Stage'e powstają przez cięcie grafu na granicach shuffle'u; operacje z zależnością narrow są łączone w jeden zestaw tasków. Granica to bariera: trzeba poczekać na poprzedni stage. Dwa rodzaje: `ShuffleMapStage` (zapisuje pliki wyjścia map) i `ResultStage` (ostatni, wykonuje akcję). Job może wymagać wielu stage'y. Scheduler pamięta, które stage'e już zapisały pliki shuffle, żeby ich nie powtarzać. Preferowane miejsce taska wynika z cache i położenia danych shuffle. Awarie wewnątrz stage'a obsługuje ponawianie tasków; po utracie pliku wyjścia map (`FetchFailed`, `ExecutorLost`) utracony stage jest wysyłany ponownie dla brakujących tasków | komentarz klasy [`DAGScheduler`](https://github.com/apache/spark/blob/v4.0.1/core/src/main/scala/org/apache/spark/scheduler/DAGScheduler.scala) i [`TaskSetManager`](https://github.com/apache/spark/blob/v4.0.1/core/src/main/scala/org/apache/spark/scheduler/TaskSetManager.scala), Apache Spark 4.0.1. To opis w kodzie, nie w dokumentacji użytkownika |
+
 ### Lekcja 04: Spark Join Strategies (sprawdzone 2026-11-27)
 
 Strony Apache Spark to dokumentacja wersji **4.3.0** (`/docs/latest/`). Wiersze oznaczone „kod źródłowy" pochodzą z gałęzi `branch-4.0` repozytorium apache/spark, czyli z innej wersji niż dokumentacja: to stałe i komentarze w kodzie, a nie obietnice z dokumentacji użytkownika, i mogą się zmienić między wersjami.
@@ -232,10 +297,13 @@ Wpisy bez daty (liquid clustering, VACUUM, deployment modes, DLT, Submitting App
 
 - Lekcja 00, rzeczy podane z wiedzy ogólnej albo jako ocena, a nie cytat: dbt kompiluje modele do SQL i wysyła je do hurtowni; hurtownia potrafi ładować JSON; instalacja PySparka wystarcza do uruchomienia trybu lokalnego (tak działają laby w tym repozytorium, ale lekcja nie cytuje dokumentacji); „jedna dużo większa partycja potrafi zdominować czas zapytania". Wybór narzędzia w scenariuszach i zdanie „kilkaset GB i SQL to zwykłe zadanie dla hurtowni" to ocena inżynierska, nie fakt z dokumentacji.
 - Lekcja 00, czego nie udało się potwierdzić i dlatego nie ma w treści: definicja Databricks Runtime jako zestawu komponentów oraz informacja o założycielach Databricks (na otwartych stronach dokumentacji ich nie było).
+- Lekcja 02, rzeczy podane z wiedzy ogólnej: opis Query Profile w Snowflake (most w etapie Intuicja); znaczenie `*(1)` jako whole-stage code generation i `ColumnarToRow` jako kroku technicznego między czytnikiem Parquet a operatorami wierszowymi; zdanie, że utrata drivera kończy aplikację (w treści z zastrzeżeniem „w typowej konfiguracji"); że ponowiony task może trafić na inny executor; że zakładka Stages pokazuje czasy tasków i rozmiary shuffle read / write. Zdania „AQE uruchamia część planu przed shuffle'em jako osobny job" i „strona broadcast liczy się osobnym jobem" to obserwacje z labu, nie cytaty z dokumentacji.
+- Lekcja 02, po review PR #13: w których dokładnie punktach AQE wolno zmienić plan (granice zmaterializowanych części planu, w tym strona broadcast) i jakie są inne niż utrata plików shuffle powody niepowodzenia stage'a. Dokumentacja użytkownika tego nie opisuje, więc treść mówi ostrożnie „najczęściej wynik shuffle'u" i „nie jest jedynym powodem". `isFinalPlan=true` lab sprawdził tylko dla `collect()` na tym samym DataFrame.
+- Lekcja 02, czego lab nie sprawdza: utrata executora i plików shuffle (treść opiera się na komentarzu w kodzie `DAGScheduler`), lokalność danych i `spark.locality.wait`, spekulacja, tryb fair, tryby `client` i `cluster`, równoczesność jobów AQE.
 - Lekcja 04, rzeczy podane z wiedzy ogólnej albo jako ocena: w Snowflake silnik sam dobiera algorytm joina (most w etapie Intuicja, bez otwierania dokumentacji Snowflake); `ColumnarToRow` zamienia paczki kolumn z czytnika Parquet na wiersze, a gwiazdka z numerem w planie grupuje operatory wykonywane razem; `false` w węźle `Sort` oznacza sortowanie wewnątrz partycji; „dla dwóch dużych tabel sort merge to typowy wybór" oraz zalecenia w czterech scenariuszach to ocena inżynierska oparta na opisach z kodu źródłowego, a nie pomiar. Lab nie mierzy czasu ani pamięci żadnej strategii.
 - Lekcja 04, czego nie sprawdzono i dlatego jest w treści tylko jako zastrzeżenie: zachowanie na prawdziwym klastrze, na Databricks i w Photonie; faktyczne wywołanie błędu braku pamięci albo limitu 8 GB; wpływ statystyk kolumn i optymalizatora kosztowego na szacunek po filtrze.
 - Rozmiar partycji „100–200 MB" w pytaniu o repartition: reguła praktyczna, nie cytat z dokumentacji. W treści jest tak opisana.
 - Fakty o Snowflake użyte w mostach (result cache, pruning mikropartycji, automatic clustering, offset w Streams, Time Travel i Fail-safe): podane z wiedzy ogólnej, bez otwierania dokumentacji Snowflake.
 - Warianty, których laby nie uruchamiają: Spark Connect, Databricks serverless, Photon, prawdziwy klaster z wieloma executorami. Wszystko, co treść o nich mówi, pochodzi z dokumentacji, nie z pomiaru.
-- Limit ponowień taska (follow-up o awarii executora): odpowiedź mówi tylko „up to a retry limit", bez liczby.
+- Limit ponowień taska w follow-upach o awarii executora: odpowiedzi mówią „up to a retry limit" bez liczby. Liczba (`spark.task.maxFailures` = 4) jest w tabeli wyżej.
 - „W samym Apache Spark nie ma result cache": wniosek z dokumentacji (wynik „may be recomputed"), a nie cytat.
