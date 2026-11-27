@@ -9,6 +9,7 @@ import { PartitioningLesson } from './academy/partitioning-shuffle/PartitioningL
 import { JoinLesson } from './academy/join-strategies/JoinLesson';
 import { SkewLesson } from './academy/data-skew-aqe/SkewLesson';
 import { DatabaseLesson } from './academy/database-architecture/DatabaseLesson';
+import { DeliveryLesson } from './academy/enterprise-ai-delivery/DeliveryLesson';
 import { SnowflakeLesson } from './academy/snowflake-architecture/SnowflakeLesson';
 import { BankHome } from './interview-bank/BankHome';
 import { QuestionView } from './interview-bank/QuestionView';
@@ -20,6 +21,7 @@ import { meta as partitioningMeta } from '@content/spark/partitioning-shuffle/le
 import { meta as joinMeta } from '@content/spark/join-strategies/lesson';
 import { meta as skewMeta } from '@content/spark/data-skew-aqe/lesson';
 import { meta as databaseMeta } from '@content/architecture/database-architecture/lesson';
+import { meta as deliveryMeta } from '@content/delivery/enterprise-ai-delivery/lesson';
 import { meta as snowflakeMeta } from '@content/snowflake/architecture/lesson';
 
 /** Lekcje mają własne komponenty (symulatory są specyficzne dla tematu). Rejestr: id lekcji -> komponent. */
@@ -31,6 +33,7 @@ const LESSONS: Record<string, (props: { stage?: string }) => JSX.Element> = {
   [joinMeta.id]: JoinLesson,
   [skewMeta.id]: SkewLesson,
   [databaseMeta.id]: DatabaseLesson,
+  [deliveryMeta.id]: DeliveryLesson,
   [snowflakeMeta.id]: SnowflakeLesson
 };
 

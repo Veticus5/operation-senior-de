@@ -84,6 +84,8 @@ describe('baza pytań', () => {
       'delta-liquid-clustering', 'delta-change-data-feed', 'delta-medallion', 'databricks-bundles-cicd', 'databricks-unity-catalog', 'databricks-structured-streaming',
       'arch-oltp-olap', 'arch-normalization', 'arch-keys-integrity', 'arch-indexes', 'arch-partition-pruning', 'arch-query-optimization', 'arch-acid-isolation',
       'arch-warehouse-lake-lakehouse', 'arch-etl-elt', 'arch-storage-compute', 'arch-choose-architecture',
+      'delivery-requirements-to-production', 'delivery-testing-data-pipelines', 'delivery-release-rollback', 'delivery-ai-daily-work', 'delivery-agent-boundaries',
+      'delivery-validate-ai-code', 'delivery-ai-tech-debt', 'delivery-ai-regulated', 'delivery-ai-accountability',
       'snowflake-architecture-layers', 'snowflake-micro-partitions-pruning', 'snowflake-clustering', 'snowflake-caching', 'snowflake-scaling',
       'snowflake-slow-query', 'snowflake-cost-control', 'snowflake-streams-tasks', 'snowflake-time-travel-cloning', 'snowflake-access-sharing'
     ]);
@@ -172,8 +174,8 @@ describe('lekcje', () => {
   it('każda lekcja ma co najmniej jedno powiązane pytanie', () => {
     for (const l of lessons) expect(questions.some(q => q.topicId === l.topicId), l.id).toBe(true);
   });
-  it('kolejność nauki: Fundamentals, Lazy Evaluation, Execution Architecture, Partitioning & Shuffle, Join Strategies, Data Skew & AQE, Database & Data Architecture, Snowflake Architecture', () => {
-    expect(lessons.map(l => l.id)).toEqual(['spark-fundamentals', 'spark-lazy-evaluation', 'spark-execution-architecture', 'spark-partitioning-shuffle', 'spark-join-strategies', 'spark-data-skew-aqe', 'database-architecture', 'snowflake-architecture-performance']);
+  it('kolejność nauki: Fundamentals, Lazy Evaluation, Execution Architecture, Partitioning & Shuffle, Join Strategies, Data Skew & AQE, Database & Data Architecture, Enterprise SDLC & AI, Snowflake Architecture', () => {
+    expect(lessons.map(l => l.id)).toEqual(['spark-fundamentals', 'spark-lazy-evaluation', 'spark-execution-architecture', 'spark-partitioning-shuffle', 'spark-join-strategies', 'spark-data-skew-aqe', 'database-architecture', 'enterprise-ai-delivery', 'snowflake-architecture-performance']);
   });
   it('partitioning & shuffle: dane symulacji są spójne z opisem i z liczbami z labu', () => {
     const { orders, sim, inputPartitions, rowsPerPartition } = ps;
