@@ -1,0 +1,112 @@
+/* Lekcja 06: Database & Data Architecture. Wszystkie klasy mają prefiks db-, żeby nie kolidować z innymi lekcjami. */
+.db-viz{margin:26px 0 0;border:1px solid var(--line);border-radius:16px;background:var(--bg-2);padding:20px}
+.db-viz .db-verdict:last-child{margin-bottom:0}
+.db-ctl{margin:0 0 14px}
+.db-chips{display:flex;flex-wrap:wrap;gap:8px}
+.db-chip{border:1px solid var(--line-2);background:transparent;border-radius:9px;padding:6px 12px;font-size:14px;color:var(--ink-2)}
+.db-chip:hover{border-color:var(--ink-2)}
+.db-chip[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+.db-verdict{font-size:16.5px;line-height:1.55;margin:0 0 10px;padding-left:16px;border-left:2px solid var(--accent);color:var(--ink);max-width:none}
+.db-verdict.muted{border-color:var(--line-2);color:var(--ink-2)}
+.db-verdict.ok{border-color:var(--good)}
+.db-verdict.no{border-color:var(--bad)}
+.db-legend{display:flex;gap:6px 16px;flex-wrap:wrap;font:400 12px var(--mono);color:var(--ink-3);max-width:none}
+.db-legend span{display:inline-flex;gap:6px;align-items:center}
+.db-legend span::before{content:"";width:10px;height:10px;border-radius:3px;border:1px solid var(--accent)}
+.db-scroll{overflow-x:auto;max-width:100%}
+.db-table{width:100%;margin:8px 0 14px}
+.db-table th[scope="row"]{white-space:nowrap;vertical-align:top;border-top:1px solid var(--line);padding-top:6px}
+.db-table td{vertical-align:top;white-space:normal;overflow-wrap:anywhere}
+.db-table td code{font-size:12.5px;color:var(--ink)}
+.db-workloads{min-width:520px;margin-top:22px}
+.db-compare{min-width:540px;font-family:var(--body);font-size:15px}
+.db-compare td,.db-compare th[scope="row"]{line-height:1.45;padding-top:8px;padding-bottom:8px}
+.db-compare th[scope="row"]{white-space:normal;color:var(--ink);font-weight:500;font-size:14.5px;min-width:130px}
+pre.db-sql{font-size:13px;line-height:1.6;padding:12px 14px;margin:4px 0 16px;white-space:pre-wrap;overflow-wrap:anywhere;min-height:3.4em}
+pre.db-sql-tall{min-height:7.2em}
+.db-grid{display:grid;gap:4px;margin:0 0 10px}
+.db-grid-row{row-gap:8px;column-gap:0}
+.db-grid-column{column-gap:8px;row-gap:0}
+.db-h{font:500 11px/1.4 var(--mono);color:var(--ink-3);padding:0 4px 4px;overflow:hidden;text-overflow:ellipsis}
+.db-cell{font:400 12.5px/1.3 var(--mono);color:var(--ink-3);border:1px solid var(--line-2);padding:6px 4px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;transition:background .25s,color .25s,border-color .25s}
+.db-cell.db-r{border-color:var(--accent);color:var(--accent)}
+.db-cell.db-n{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.db-legend{margin:0 0 16px}
+.db-legend .db-l-need::before{background:var(--accent)}
+.db-tiles{display:flex;flex-wrap:wrap;gap:10px 28px;margin:6px 0 14px}
+.db-tiles p{display:flex;align-items:center;gap:12px;margin:0;font-size:14.5px;line-height:1.3;color:var(--ink-2);max-width:22ch}
+.db-tiles b{font:600 40px/1 var(--display);color:var(--accent);flex:none;white-space:nowrap}
+.db-two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:24px 0 0}
+.db-card{border:1px solid var(--line-2);border-radius:14px;padding:16px 18px;background:var(--bg-2)}
+.db-card h3{font:600 19px var(--display);margin:0 0 10px}
+.db-card ul{margin:0;padding-left:18px;font-size:15.5px;line-height:1.55;color:var(--ink-2)}
+.db-rule{font-size:16px;line-height:1.5;color:var(--ink);margin:0 0 12px;max-width:none}
+.db-tables{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 20px;margin:0 0 10px;min-height:13em;align-content:start}
+.db-tables .db-mini:only-child{grid-column:1/-1}
+.db-mini-name{font:500 12.5px var(--mono);color:var(--ink);margin:0;max-width:none}
+.db-mini .db-table{font-size:12.5px}
+.db-mini .db-table td,.db-mini .db-table th{padding-right:12px;white-space:nowrap}
+.db-table th.db-key{color:var(--ink);text-decoration:underline;text-underline-offset:3px}
+.db-table th.db-flag,.db-table td.db-flag{color:var(--accent)}
+.db-out{min-height:7.5em}
+.db-tree{border:1px dashed var(--line-2);border-radius:12px;padding:14px;margin:0 0 16px}
+.db-level{display:flex;justify-content:center;gap:10px;margin:0 0 10px}
+.db-level i{width:54px;height:16px;border:1px solid var(--line-2);border-radius:5px;transition:background .25s,border-color .25s}
+.db-leaves{gap:5px}
+.db-leaves i{width:auto;flex:1 1 0;max-width:54px}
+.db-level i.on,.db-pages i.on{background:var(--accent);border-color:var(--accent)}
+.db-gap{margin-top:14px}
+.db-pages{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:5px}
+.db-pages i{height:16px;border:1px solid var(--line-2);border-radius:4px;transition:background .25s,border-color .25s}
+.db-parts{list-style:none;margin:0 0 16px;padding:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.db-parts li{border:1px solid var(--line-2);border-radius:10px;padding:9px 12px;display:grid;gap:2px;font:400 12.5px/1.45 var(--mono);color:var(--ink-2);transition:opacity .25s,border-color .25s}
+.db-parts li.on{border-color:var(--accent)}
+.db-parts li.off{opacity:.42}
+.db-part-n{color:var(--ink);font-weight:500}
+.db-part-hot{color:var(--ink)}
+.db-parts li.on .db-part-s{color:var(--accent)}
+.db-anoms{list-style:none;margin:0 0 16px;padding:0;display:grid;gap:8px}
+.db-anoms li{border:1px solid var(--line-2);border-radius:10px;padding:10px 14px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 12px;font-size:15px;line-height:1.45;color:var(--ink-2)}
+.db-anoms b{font:500 14px var(--mono);color:var(--ink)}
+.db-anom-s{font:500 12px var(--mono);letter-spacing:.06em;text-transform:uppercase}
+.db-anom-t{grid-column:1/-1}
+.db-anoms li.ok{border-color:color-mix(in srgb,var(--good) 55%,transparent)} .db-anoms li.ok .db-anom-s{color:var(--good)}
+.db-anoms li.no{border-color:color-mix(in srgb,var(--bad) 55%,transparent)} .db-anoms li.no .db-anom-s{color:var(--bad)}
+.db-acid{list-style:none;margin:0 0 8px;padding:0;display:grid;gap:10px}
+.db-acid li{display:grid;grid-template-columns:38px minmax(0,1fr);gap:12px;align-items:baseline;font-size:16.5px;line-height:1.55;color:var(--ink-2)}
+.db-acid b{font:600 30px/1 var(--display);color:var(--accent)}
+.db-acid strong{color:var(--ink);font-weight:600}
+.db-sub{font:600 22px var(--display);margin:56px 0 12px}
+.db-layers{display:grid;gap:6px;margin:0 0 16px}
+.db-layer{border:1px solid var(--line-2);border-radius:10px;padding:10px 14px;display:grid;grid-template-columns:96px minmax(0,1fr);gap:12px;align-items:baseline}
+.db-layer span{font:500 12px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+.db-layer p{margin:0;font-size:15.5px;line-height:1.45;color:var(--ink);max-width:none}
+.db-layer.base{border-color:var(--accent)}
+.db-layer.db-shared{grid-template-columns:minmax(0,1fr);text-align:center}
+.db-facts{margin:0 0 16px;display:grid;gap:6px}
+.db-facts div{display:grid;grid-template-columns:150px minmax(0,1fr);gap:12px;font-size:15.5px;line-height:1.45}
+.db-facts dt{font:500 12px/1.9 var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3)}
+.db-facts dd{margin:0;color:var(--ink)}
+.db-flow{list-style:none;margin:0 0 18px;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;counter-reset:f}
+.db-flow li{border:1px solid var(--line-2);border-radius:10px;padding:10px 12px;display:grid;gap:4px;counter-increment:f}
+.db-flow b{font:600 17px var(--display);color:var(--ink)}
+.db-flow b::before{content:counter(f) ". ";color:var(--ink-3);font-weight:400}
+.db-flow span{font:400 12.5px/1.4 var(--mono);color:var(--ink-2)}
+.db-flow li.hot{border-color:var(--accent)}
+.db-flow li.hot b{color:var(--accent)}
+.db-nodes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:0 0 8px}
+.db-node{border:1px solid var(--line-2);border-radius:10px;padding:10px 12px;display:grid;gap:4px}
+.db-node b{font:500 13.5px var(--mono);color:var(--ink)}
+.db-node span{font-size:14px;line-height:1.4;color:var(--ink-2)}
+.db-points{min-height:8.5em}
+@media (max-width:640px){
+  .db-viz{padding:14px}
+  .db-two,.db-tables,.db-parts{grid-template-columns:minmax(0,1fr)}
+  .db-tables{min-height:0}
+  .db-flow,.db-nodes{grid-template-columns:minmax(0,1fr)}
+  .db-facts div,.db-layer{grid-template-columns:minmax(0,1fr);gap:0}
+  .db-tiles b{font-size:32px}
+  .db-cell{font-size:11px;padding:5px 2px}
+  .db-h{font-size:9.5px;padding:0 1px 4px}
+  .db-level i{width:40px}
+}
