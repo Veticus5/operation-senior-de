@@ -40,35 +40,35 @@ export const beats: Beat[] = [
   {
     html: '<h1>Dane urosły. Maszyna nie.</h1>\n<p class="lede">Masz skrypt w pandas, który liczy dzienny przychód z pliku zamówień. Działa od roku, a plik rośnie.</p>\n<p>Pytanie, od którego zaczyna się Spark: <b>co się stanie z tym skryptem, gdy danych będzie dziesięć, a potem sto razy więcej?</b> Wybierz rozmiar zbioru i porównaj dwa podejścia.</p>',
     visual: 'fit',
-    after: '<b>Wniosek.</b> W zwykłym użyciu pandas wczytuje cały zbiór do pamięci jednego procesu, więc jego sufitem jest jedna maszyna. Gdy dane liczy się kawałek po kawałku, o powodzeniu decyduje rozmiar kawałka, a nie całości. Zostaje pytanie, kto te kawałki przeliczy i ile to potrwa.',
+    after: '<b>Wniosek.</b> W zwykłym użyciu pandas wczytuje cały zbiór do pamięci jednego procesu. Jego granicą jest więc pamięć jednej maszyny. Gdy dane liczysz kawałek po kawałku, w pamięci musi się zmieścić kawałek, a nie całość. Zostaje pytanie, kto te kawałki przeliczy i ile to potrwa.',
     more: {
       title: 'Co ta ilustracja upraszcza',
       html: [
         'Rozmiary oznaczają dane już wczytane do pamięci. Plik na dysku, zwłaszcza skompresowany, bywa dużo mniejszy niż te same dane w pamięci.',
-        'pandas też potrafi czytać porcjami. Według jego dokumentacji działa to dobrze, gdy porcje wymagają niewielkiej koordynacji albo żadnej, a operacje takie jak <code>groupby</code> są w ten sposób dużo trudniejsze. Wtedy poleca inne biblioteki.',
-        'Samo pocięcie niczego nie gwarantuje. Kawałek może okazać się za duży dla pamięci, a nie każda operacja liczy kawałki niezależnie: grupowanie i łączenie tabel wymagają zestawienia danych z wielu kawałków. Tę koordynację bierze na siebie silnik.',
-        '128 MB to wartość domyślna ustawienia <code>spark.sql.files.maxPartitionBytes</code> w Apache Spark: limit bajtów pakowanych do jednej partycji przy czytaniu plików. To parametr planowania odczytu, a nie ogólne ograniczenie rozmiaru partycji ani zużycia pamięci.'
+        'pandas też potrafi czytać plik porcjami. Według jego dokumentacji działa to dobrze, gdy każdą porcję da się policzyć osobno albo prawie osobno, bez uzgadniania wyników z innymi porcjami. Operacje takie jak <code>groupby</code> są w ten sposób dużo trudniejsze. Dokumentacja poleca wtedy inne biblioteki.',
+        'Samo pocięcie niczego nie gwarantuje. Kawałek też może okazać się za duży dla pamięci. Poza tym nie każdą operację da się policzyć w każdym kawałku osobno. Grupowanie i łączenie tabel muszą zestawić ze sobą dane z wielu kawałków, np. wiersze z tym samym kluczem. Tym uzgadnianiem zajmuje się silnik.',
+        '128 MB to w Apache Spark wartość domyślna ustawienia <code>spark.sql.files.maxPartitionBytes</code>. Mówi ono, ile bajtów Spark najwyżej pakuje do jednego kawałka, czyli partycji, gdy czyta pliki. Dotyczy tylko planowania odczytu. To nie jest ogólny limit rozmiaru partycji ani zużycia pamięci.'
       ]
     },
     next: 'A większa maszyna?'
   },
   {
-    html: '<h2>Większa maszyna albo więcej maszyn</h2>\n<p>Możesz przenieść skrypt na maszynę z większą pamięcią. To działa, dopóki taka maszyna istnieje i dopóki wystarcza Ci, że całość liczy jeden komputer.</p>\n<p>Druga droga: wiele zwykłych maszyn, z których każda liczy swoje kawałki w tym samym czasie. To <b>przetwarzanie rozproszone</b>. Brzmi prosto, ale ktoś musi pociąć dane, rozdać pracę, zebrać wyniki i powtórzyć to, co przepadło, gdy jedna z maszyn padnie w połowie.</p>\n<p>Pisanie tego ręcznie przy każdym zapytaniu nie wchodzi w grę. Tę pracę ma wykonać silnik.</p>',
+    html: '<h2>Większa maszyna albo więcej maszyn</h2>\n<p>Możesz przenieść skrypt na maszynę z większą pamięcią. To działa, dopóki taka maszyna istnieje i dopóki wystarcza Ci, że całość liczy jeden komputer.</p>\n<p>Druga droga: wiele zwykłych maszyn, z których każda liczy swoje kawałki w tym samym czasie. To <b>przetwarzanie rozproszone</b> (distributed processing). Brzmi prosto, ale ktoś musi pociąć dane, rozdać pracę, zebrać wyniki i powtórzyć to, co przepadło, gdy jedna z maszyn padnie w połowie.</p>\n<p>Pisanie tego ręcznie przy każdym zapytaniu nie wchodzi w grę. Tę pracę ma wykonać silnik.</p>',
     next: 'Czy ja już czegoś takiego nie używam?'
   },
   {
-    html: '<h2>Używasz tego od lat, tylko tego nie widać</h2>\n<p>Snowflake też jest rozproszony. Wysyłasz SQL, a virtual warehouse, czyli klaster maszyn, liczy go równolegle. Podziału danych i rozdziału pracy nigdy nie oglądasz.</p>\n<p><b>Apache Spark</b> to silnik open source, który robi to samo jawnie. Bierze zapytanie zapisane w SQL albo w Pythonie, dzieli pracę na kawałki, rozdaje je maszynom i składa wynik. Działa na klastrze, który widzisz, i na plikach, które leżą w Twoim storage. Nie kończy się też na SQL: ten sam silnik obsługuje streaming i machine learning.</p>',
+    html: '<h2>Używasz tego od lat, tylko tego nie widać</h2>\n<p>Snowflake też jest rozproszony. Wysyłasz SQL, a virtual warehouse, czyli klaster maszyn, liczy go równolegle. Podziału danych i rozdziału pracy nigdy nie oglądasz.</p>\n<p><b>Apache Spark</b> to silnik open source, który robi to samo, ale na widoku. Bierze zapytanie zapisane w SQL albo w Pythonie. Dzieli pracę na kawałki, rozdaje je maszynom i składa wynik. Działa na klastrze, który widzisz, i na plikach, które leżą w Twoim storage. Nie kończy się też na SQL: ten sam silnik obsługuje streaming, czyli dane napływające na bieżąco, i machine learning.</p>',
     bridge: {
       from: 'Snowflake',
       known: 'Virtual warehouse: niezależny klaster obliczeniowy, który wykonuje Twój SQL. Wybierasz tylko jego rozmiar.',
       fresh: 'Klaster Sparka pełni tę samą rolę, ale jego części mają nazwy i da się je zobaczyć. Za chwilę poznasz je jako driver i executory.',
-      breaks: 'Snowflake sam zarządza tym, jak dane są zapisane i podzielone, a Ty widzisz tylko tabele. Spark jest silnikiem obliczeń, a nie magazynem danych: czyta pliki z zewnętrznego storage i tam zapisuje wyniki. Za format tych plików i częściowo za ich podział na kawałki odpowiadasz Ty.'
+      breaks: 'Snowflake sam zarządza tym, jak dane są zapisane i podzielone. Ty widzisz tylko tabele. Spark to silnik obliczeń, a nie magazyn danych. Czyta pliki z zewnętrznego storage i tam zapisuje wyniki. Za format tych plików i częściowo za ich podział na kawałki odpowiadasz Ty.'
     },
     more: {
       title: 'Skąd się wziął Spark',
       html: [
         'Spark powstał w 2009 roku jako projekt badawczy w AMPLab na UC Berkeley. Na początku 2010 roku został otwarty, a w 2013 trafił do Apache Software Foundation.',
-        'Wcześniejszym standardem przetwarzania rozproszonego był MapReduce. Autorzy Sparka opisują swój cel jako model, który obsłuży znacznie szerszą klasę zastosowań niż MapReduce i zachowa jego automatyczną odporność na awarie. Chodziło zwłaszcza o algorytmy iteracyjne i interaktywną analizę, czyli przypadki, w których przez te same dane przechodzi się wiele razy.'
+        'Wcześniej standardem przetwarzania rozproszonego był MapReduce. Autorzy Sparka opisują swój cel tak: model, który obsłuży dużo więcej rodzajów zadań niż MapReduce i tak jak on sam poradzi sobie z awarią maszyny. Chodziło zwłaszcza o przypadki, w których przez te same dane przechodzi się wiele razy: algorytmy iteracyjne, czyli powtarzające ten sam krok, i interaktywną analizę.'
       ]
     },
     next: 'Zobacz, kto co robi'
@@ -89,10 +89,10 @@ export const fit = {
   /** Werdykt dla podejścia „całość w pamięci", w kolejności `sizes`. */
   verdicts: [
     { state: 'ok', text: 'Mieści się z dużym zapasem. pandas wystarczy i jest tu najprostszym narzędziem.' },
-    { state: 'risk', text: 'Formalnie się mieści, ale to już ryzyko. Część operacji pandas tworzy kopie pośrednie, więc potrzeba więcej pamięci, niż zajmuje sam zbiór.' },
+    { state: 'risk', text: 'Na papierze się mieści, ale to już ryzyko. Część operacji pandas tworzy po drodze kopie danych, więc potrzeba więcej pamięci, niż zajmuje sam zbiór.' },
     { state: 'no', text: 'Nie mieści się: zbiór jest ponad 6 razy większy niż pamięć tej maszyny. Zwykłe wczytanie całości nie ma szans się udać.' }
   ] as { state: 'ok' | 'risk' | 'no'; text: string }[],
-  chunksText: 'Kawałek tej wielkości mieści się tu w pamięci z zapasem, bez względu na rozmiar całości. Przy prostych operacjach, takich jak filtr, kawałki liczy się niezależnie, więc można je rozdać wielu maszynom.'
+  chunksText: 'Kawałek tej wielkości mieści się tu w pamięci z zapasem, bez względu na rozmiar całości. Przy prostych operacjach, takich jak filtr, każdy kawałek da się policzyć osobno, więc można je rozdać wielu maszynom.'
 };
 
 /**
@@ -102,7 +102,7 @@ export const fit = {
  */
 export const cluster = {
   question: 'Kto wykonuje pracę, kiedy uruchamiasz zapytanie?',
-  intro: 'Cztery słowa, bez których nie da się rozmawiać o Sparku. <b>Driver</b> to proces z Twoim programem: układa plan i rozdziela pracę. <b>Executory</b> to procesy robocze na maszynach klastra: to one czytają i liczą dane. <b>Partycja</b> to kawałek danych, taki jak w poprzednim etapie. Przeliczenie jednej partycji to jeden <b>task</b>. Zmień liczbę executorów albo partycji i uruchom zapytanie.',
+  intro: 'Zostało pytanie, kto przeliczy kawałki. W Sparku odpowiedź składa się z czterech słów. Kawałek danych, taki jak w poprzednim etapie, to <b>partycja</b> (partition). Przeliczenie jednej partycji to jeden <b>task</b>. Taski wykonują <b>executory</b>: procesy robocze na maszynach klastra, które czytają i liczą dane. Pracę rozdziela im <b>driver</b>: proces z Twoim programem, który układa plan. Zmień liczbę executorów albo partycji i uruchom zapytanie.',
   assumptions: 'Model uproszczony: proste zapytanie (odczyt plików, filtr, zapis wyniku), równe partycje, każdy executor ma 2 rdzenie, a jeden rdzeń liczy jeden task naraz.',
   executors: [1, 2, 4],
   defaultExecutors: 2,
@@ -120,7 +120,7 @@ export const cluster = {
     done: 'Wszystkie taski zakończone. Driver dostał ich statusy, a nie wiersze.'
   },
   takeaway: [
-    '<b>Wniosek.</b> W jednym etapie liczba partycji wyznacza liczbę tasków. Jednocześnie liczy się ich najwyżej tyle, ile jest wolnych rdzeni na executorach, i nigdy więcej, niż jest tasków. Równoległość ograniczają więc obie liczby naraz.',
+    '<b>Wniosek.</b> W jednym etapie pracy (stage) tasków jest tyle, ile partycji. Naraz liczy się ich najwyżej tyle, ile jest wolnych rdzeni na executorach, i nigdy więcej, niż jest tasków. O tym, ile pracy idzie równolegle, decydują więc obie liczby naraz: partycje i rdzenie.',
     'Driver w tym zapytaniu nie dotyka wierszy: rozdaje taski i odbiera informację, że się skończyły. Zmienia się to, gdy poprosisz o wynik u siebie, np. przez <code>collect()</code>. Wtedy wszystkie wiersze wracają do jednego procesu.'
   ],
   simTitle: 'Co tu jest uproszczeniem',
@@ -128,7 +128,7 @@ export const cluster = {
     'To animacja w JavaScripcie. Nie działa tu żaden Spark.',
     '„Tury" są uproszczeniem. Prawdziwe taski kończą się w różnym czasie, a zwolniony rdzeń od razu bierze następny task.',
     'Partycje rzadko są równe. Jedna wyraźnie większa od reszty potrafi zdominować czas całego zapytania.',
-    'Zapytanie z grupowaniem albo joinem ma często kilka etapów. Nowy etap zaczyna się tam, gdzie dane trzeba przegrupować między partycjami (<term id="shuffle">shuffle</term>), i ma własne taski, więc „jeden task na partycję" obowiązuje w ramach etapu. Nie każdy join tego wymaga: mała tabela może zostać rozesłana do executorów w całości, a dane bywają już odpowiednio podzielone.',
+    'Zapytanie z grupowaniem albo joinem ma często kilka etapów (stages). Nowy etap zaczyna się tam, gdzie dane trzeba przegrupować między partycjami. To przegrupowanie nazywa się <term id="shuffle">shuffle</term>. Każdy etap ma własne taski, więc zasada „jeden task na partycję" obowiązuje w ramach etapu. Nie każdy join wymaga shuffle\'u: mała tabela może zostać rozesłana do executorów w całości, a dane bywają już odpowiednio podzielone.',
     'Liczbę rdzeni executora ustawia się w konfiguracji (<code>spark.executor.cores</code>). Dwa rdzenie to założenie tej ilustracji, a nie wartość domyślna. „Jeden rdzeń na task" to z kolei wartość domyślna <code>spark.task.cpus</code>, którą też da się zmienić.',
     'Liczba executorów nie musi być stała. Dynamiczna alokacja, w Apache Spark domyślnie wyłączona, dokłada executory, gdy taski czekają w kolejce, i usuwa te, które stoją bezczynnie.'
   ],
@@ -151,21 +151,21 @@ export const cluster = {
   whereTitle: 'Gdzie dokładnie działa mój kod w Pythonie',
   where: [
     'W klasycznym PySparku Twój proces Pythona działa razem z driverem i nim steruje. Sam driver i executory to procesy <term id="jvm">JVM</term>.',
-    'W <term id="spark-connect">Spark Connect</term> Twój program jest osobnym klientem: wysyła plan zapytania do serwera, a driver działa po stronie serwera. Model ról zostaje ten sam: ktoś planuje, ktoś liczy partycje.'
+    'W <term id="spark-connect">Spark Connect</term> Twój program jest osobnym klientem: wysyła plan zapytania do serwera, a driver działa po stronie serwera. Podział ról zostaje ten sam: ktoś planuje, ktoś liczy partycje.'
   ],
   bridgeTitle: 'Analogia: rozmiar warehouse w Snowflake',
   bridge: {
     from: 'Snowflake',
     known: 'Rozmiar warehouse: każdy kolejny rozmiar to więcej zasobów obliczeniowych w klastrze i dwa razy więcej kredytów za godzinę.',
-    fresh: 'Liczba i rozmiar executorów. Do tego dochodzi druga gałka, której w Snowflake nie dotykasz: liczba partycji.',
-    breaks: 'W Snowflake podziałem danych zarządza usługa. W Sparku zbyt mało partycji zostawia rdzenie bez pracy, a dokumentacja podaje jako punkt wyjścia 2–4 partycje na każdy rdzeń klastra. Uwaga na słowo: partycja Sparka to kawałek danych w trakcie obliczeń, a nie partycja tabeli, po której hurtownia dzieli dane na dysku.'
+    fresh: 'Liczba i rozmiar executorów. Do tego dochodzi drugie ustawienie, którego w Snowflake nie dotykasz: liczba partycji.',
+    breaks: 'W Snowflake podziałem danych zarządza usługa. W Sparku zbyt mało partycji zostawia rdzenie bez pracy. Dokumentacja podaje jako punkt wyjścia 2–4 partycje na każdy rdzeń klastra. Uwaga na słowo „partycja". W Sparku to kawałek danych w trakcie obliczeń. To nie jest partycja tabeli, po której hurtownia dzieli dane na dysku.'
   } as Bridge
 };
 
 /** Etap Mechanizm, część 2: DataFrame jako tabela opisana kodem. */
 export const dataframe = {
   title: 'A gdzie w tym wszystkim tabela?',
-  intro: 'Nie piszesz tasków i nie adresujesz partycji. Pracujesz na <b>DataFrame</b>: tabeli z nazwanymi kolumnami i typami, której wiersze leżą w partycjach na wielu maszynach. Ty widzisz jedną tabelę, Spark widzi kawałki. Kliknij kolejne linie i porównaj je z SQL.',
+  intro: 'Tasków nie piszesz ręcznie i nie wskazujesz partycji. Pracujesz na <b>DataFrame</b>. To tabela z nazwanymi kolumnami i typami. Jej wiersze leżą w partycjach na wielu maszynach. Ty widzisz jedną tabelę, Spark widzi kawałki. Kliknij kolejne linie i porównaj je z SQL.',
   codeTitle: 'Dzienny przychód w PySparku',
   lines: [
     {
@@ -264,8 +264,8 @@ export const choose = {
     {
       setup: 'Zamówienia i klienci są już w Snowflake, razem 200 GB. Potrzebny jest dzienny raport przychodu, a wszystkie transformacje dają się zapisać w SQL.',
       correct: 2,
-      why: 'Hurtownia. Dane już tam są, SQL wystarcza, a hurtownia sama rozprasza obliczenia. Wyciąganie danych do Sparka oznaczałoby kopiowanie ich i drugi system do utrzymania, bez żadnej korzyści.',
-      scope: 'Odpowiedź by się zmieniła, gdyby doszła logika, której nie da się rozsądnie wyrazić w SQL, albo gdyby te same dane miały zasilać streaming lub trenowanie modeli.'
+      why: 'Hurtownia. Dane już tam są, SQL wystarcza, a hurtownia sama rozkłada obliczenia na wiele maszyn. Wyciąganie danych do Sparka oznaczałoby kopiowanie ich i drugi system do utrzymania, bez żadnej korzyści.',
+      scope: 'Odpowiedź by się zmieniła, gdyby doszła logika, której nie da się rozsądnie zapisać w SQL, albo gdyby te same dane miały zasilać streaming lub trenowanie modeli.'
     },
     {
       setup: 'Codziennie do S3 trafia 2 TB logów w JSON. Trzeba je sparsować własną logiką w Pythonie, oczyścić i zapisać jako tabele w otwartym formacie, z których skorzysta kilka narzędzi.',
@@ -278,7 +278,7 @@ export const choose = {
   more: {
     title: 'Gdzie ten podział się zaciera',
     html: [
-      'Spark ma <b>pandas API on Spark</b>: składnię pandas wykonywaną na klastrze. Zbiór żyje wtedy na wielu maszynach, więc nie wszystko zachowuje się tak jak w zwykłym pandas.',
+      'Spark ma <b>pandas API on Spark</b>. Piszesz składnią pandas, a liczy klaster. Dane leżą wtedy na wielu maszynach, więc nie wszystko zachowuje się tak jak w zwykłym pandas.',
       'W drugą stronę: Databricks ma SQL warehouses, czyli zasób obliczeniowy do odpytywania danych w SQL, też napędzany Sparkiem. Snowflake obsługuje z kolei tabele Iceberg, których pliki leżą w zewnętrznym storage.',
       'Dlatego pytanie coraz rzadziej brzmi „Spark czy hurtownia", a coraz częściej „który silnik do którego zadania".'
     ]
