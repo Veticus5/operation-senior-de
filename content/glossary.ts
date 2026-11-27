@@ -117,13 +117,37 @@ export const glossary: Record<string, GlossaryEntry> = {
     term: 'Akumulator',
     def: 'Licznik, do którego zadania mogą tylko dodawać, a wynik odczytuje driver. Dobry do diagnostyki. Gdy Spark ponawia zadanie, licznik użyty w transformacji może zostać zwiększony więcej niż raz.'
   },
+  'snowflake-credit': {
+    term: 'Kredyt Snowflake',
+    def: 'Jednostka, w której Snowflake rozlicza zużycie mocy obliczeniowej. Cena kredytu zależy od edycji, regionu i umowy, więc koszty porównuje się najpierw w kredytach.'
+  },
+  mpp: {
+    term: 'MPP',
+    def: 'Massively parallel processing: baza, która dzieli zapytanie na wiele węzłów pracujących równolegle. W klasycznym wariancie każdy węzeł ma własny dysk i własną część danych.'
+  },
   'join-hint': {
     term: 'Hint (wskazówka joina)',
     def: 'Dopisek w zapytaniu albo w kodzie, którym prosisz Sparka o konkretny sposób łączenia tabel, np. broadcast. Spark go uwzględnia, jeśli ten sposób obsługuje dany typ joina. To prośba, nie gwarancja.'
   },
   'object-storage': {
-    term: 'Object storage (S3)',
-    def: 'Usługa chmurowa do przechowywania plików pod nazwami, bez limitu pojemności i tanio. Amazon S3 to jej najpopularniejszy przykład. Platformy danych trzymają tam surowe pliki, zanim trafią do hurtowni.'
+    term: 'Object storage',
+    def: 'Magazyn plików w chmurze, np. Amazon S3, Azure Data Lake Storage albo Google Cloud Storage. Tani i praktycznie nieograniczony, ale to nie baza danych: sam z siebie nie ma transakcji ani pojęcia tabeli.'
+  },
+  'snapshot-isolation': {
+    term: 'Snapshot isolation',
+    def: 'Zapytanie widzi dane w jednym, spójnym stanie z chwili startu. Zmiany zatwierdzone w trakcie jego działania są dla niego niewidoczne, więc czytający i piszący nie blokują się nawzajem.'
+  },
+  'deletion-vectors': {
+    term: 'Deletion vectors',
+    def: 'Znaczniki zapisane obok pliku danych, które mówią, że wskazane wiersze już nie obowiązują. Dzięki nim zmiana albo usunięcie wiersza nie wymaga przepisania całego pliku od razu.'
+  },
+  'data-skipping': {
+    term: 'Data skipping',
+    def: 'Pomijanie całych plików przy odczycie. Tabela pamięta dla każdego pliku najmniejszą i największą wartość kolumn, więc silnik nie otwiera plików, w których szukanej wartości na pewno nie ma.'
+  },
+  'service-principal': {
+    term: 'Service principal',
+    def: 'Tożsamość techniczna dla automatów, a nie dla ludzi. Używają jej joby i narzędzia CI/CD, żeby wdrożenie nie zależało od konta konkretnej osoby i jej uprawnień.'
   },
   snowpipe: {
     term: 'Snowpipe',
