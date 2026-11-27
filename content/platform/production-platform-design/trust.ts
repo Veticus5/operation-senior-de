@@ -69,7 +69,7 @@ export const incidents = {
         { by: 'maybe', why: 'Tak, jeśli istnieje niezależne źródło liczby zdarzeń. Dla zdarzeń z aplikacji często go nie ma.' },
         { by: 'no', why: 'Definicje nie mają tu nic do rzeczy.' }
       ],
-      lesson: 'Nikt nie napisał testu „dziś ma przyjść co najmniej 70 mln wierszy". Monitor nie potrzebuje reguły: uczy się normy z historii. Do tego służy <b>obserwowalność danych</b>.'
+      lesson: 'Nikt nie napisał testu „dziś ma przyjść co najmniej 70 mln wierszy". Monitor nie potrzebuje takiej reguły: sam ustala z historii, co jest normalne. Do tego służy <b>obserwowalność danych</b>.'
     },
     {
       id: 'logic', label: 'Zwroty liczone jako przychód',
@@ -81,7 +81,7 @@ export const incidents = {
         { by: 'yes', why: 'Suma przychodu za dzień nie zgadza się z systemem płatności.' },
         { by: 'no', why: 'Definicja jest jedna, tylko źle zapisana.' }
       ],
-      lesson: 'Błąd logiki daje dane poprawne technicznie i błędne merytorycznie. Najpewniej łapie go porównanie z niezależnym źródłem i przegląd kodu przed wdrożeniem.'
+      lesson: 'Błąd w logice daje dane, które technicznie wyglądają dobrze, a mówią nieprawdę. Najpewniej łapie go porównanie z niezależnym źródłem i przegląd kodu przed wdrożeniem.'
     },
     {
       id: 'mismatch', label: 'Dwa dashboardy, dwa MRR',
@@ -96,11 +96,11 @@ export const incidents = {
       lesson: 'To nie jest awaria techniczna, tylko brak decyzji. Żadne narzędzie nie naprawi metryki, która ma dwie definicje.'
     }
   ] as Incident[],
-  takeaway: '<b>Wniosek.</b> <b>Jakość danych</b> to reguły znane z góry, sprawdzane testami. <b>Obserwowalność danych</b> to wykrywanie odchyleń, których nikt nie przewidział, i szybkie ustalenie, skąd się wzięły. Potrzebujesz obu, a do tego uzgodnienia ze źródłem dla liczb, na których ktoś podejmuje decyzje finansowe.',
+  takeaway: '<b>Wniosek.</b> <b>Jakość danych</b> (data quality) to reguły znane z góry, sprawdzane testami. <b>Obserwowalność danych</b> (data observability) to wykrywanie odchyleń, których nikt nie przewidział, i szybkie ustalenie, skąd się wzięły. Potrzebujesz obu. Dla liczb, na których ktoś podejmuje decyzje finansowe, dochodzi uzgodnienie ze źródłem.',
   bridge: {
     from: 'dbt',
     known: 'W dbt znasz testy <code>unique</code>, <code>not_null</code>, <code>accepted_values</code> i <code>relationships</code> oraz kontrolę świeżości źródeł z progami <code>warn_after</code> i <code>error_after</code>.',
-    fresh: 'Narzędzie obserwowalności, np. Monte Carlo, robi podobne kontrole świeżości, wolumenu i zmian schematu, ale bez pisania progu dla każdej tabeli: normę wyznacza z historii metadanych.',
+    fresh: 'Narzędzie obserwowalności, np. Monte Carlo, robi podobne kontrole świeżości, wolumenu (liczby wierszy) i zmian schematu. Nie trzeba jednak pisać progu dla każdej tabeli: normę wyznacza z historii metadanych.',
     breaks: 'Test dbt działa w trakcie przebiegu i może go zatrzymać, zanim złe dane pójdą dalej. Monitor działa obok pipeline\'u i alarmuje po fakcie. Jedno nie zastępuje drugiego, a szczegóły konfiguracji zależą od narzędzia.'
   } as Bridge,
   more: {
@@ -108,7 +108,7 @@ export const incidents = {
     html: [
       '<b>Lineage</b> to mapa zależności: z których tabel i kolumn powstaje dana tabela i co z niej korzysta dalej. Odpowiada na dwa pytania podczas incydentu: skąd wziął się błąd (w górę) i kogo trzeba zawiadomić (w dół). dbt buduje lineage modeli z odwołań <code>ref</code> i <code>source</code>.',
       '<b>Kontrakt danych</b> to uzgodnienie między tym, kto dane wytwarza, a tym, kto je czyta: jakie pola i typy są gwarantowane, jaka świeżość, kto odpowiada i jak zapowiada się zmiany. Zamienia awarię o 3:00 w rozmowę przed wdrożeniem.',
-      'Kontrakt bez egzekwowania jest dokumentem. Egzekwuje go test na wejściu platformy, a po stronie źródła najlepiej sprawdzenie w procesie wdrożeniowym, które nie przepuści zmiany łamiącej kontrakt.'
+      'Kontrakt, którego nic nie pilnuje, jest tylko dokumentem. Pilnuje go test na wejściu platformy. Po stronie źródła najlepiej działa sprawdzenie w procesie wdrożeniowym, które nie przepuści zmiany łamiącej kontrakt.'
     ]
   } as More
 };
@@ -116,7 +116,7 @@ export const incidents = {
 /** SLI, SLO, SLA na jednym przykładzie i budżet błędów dla 90 nocnych przebiegów w kwartale. */
 export const slo = {
   title: '„Dane mają być na 7:00". Zawsze?',
-  intro: 'Finanse chcą dashboardu MRR codziennie o 7:00. Trzy pojęcia porządkują tę rozmowę. <b>SLI</b> to to, co mierzysz: godzina, o której dane były gotowe. <b>SLO</b> to cel dla tej miary: gotowe przed 7:00 w ustalonym odsetku dni. <b>SLA</b> to umowa z odbiorcą, która mówi, co się dzieje, gdy cel nie jest spełniony.',
+  intro: 'Finanse chcą dashboardu MRR codziennie o 7:00. Tę rozmowę porządkują trzy pojęcia. <b>SLI</b> (service level indicator) to to, co mierzysz: godzina, o której dane były gotowe. <b>SLO</b> (service level objective) to cel dla tej miary: gotowe przed 7:00 w ustalonym odsetku dni. <b>SLA</b> (service level agreement) to umowa z odbiorcą, która mówi, co się dzieje, gdy cel nie jest spełniony.',
   runsPerQuarter: 90,
   label: 'Cel (SLO): gotowe przed 7:00 w … dni',
   assumptions: 'Rachunek dla 90 nocnych przebiegów w kwartale. Dozwolone spóźnienia to część całkowita z 90 × (100% − cel).',
@@ -127,7 +127,7 @@ export const slo = {
     { pct: 99, verdict: 'Zero dozwolonych spóźnień w kwartale, bo 90 × 1% to mniej niż jedno. Każda awaria źródła łamie cel, więc potrzebny jest zapas czasu, dyżur i zapasowa ścieżka danych.' },
     { pct: 99.9, verdict: 'Mniej niż jedno spóźnienie na dziesięć kwartałów. Dla nocnego batcha zależnego od cudzego API to obietnica bez pokrycia, niezależnie od budżetu.' }
   ],
-  takeaway: '<b>Wniosek.</b> Każda kolejna dziewiątka kosztuje wielokrotnie więcej niż poprzednia. Cel uzgadnia się z odbiorcą, pytając, ile kosztuje go spóźnienie, a nie zgadując „jak najwięcej". To, ile spóźnień cel dopuszcza, nazywa się budżetem błędów: dopóki jest, można wdrażać zmiany, a gdy się kończy, priorytetem staje się stabilność.',
+  takeaway: '<b>Wniosek.</b> Każda kolejna dziewiątka kosztuje wielokrotnie więcej niż poprzednia. Cel ustalasz z odbiorcą: pytasz, ile kosztuje go spóźnienie, zamiast zgadywać „jak najwięcej". Liczba spóźnień, na które cel pozwala, to budżet błędów (error budget). Dopóki go masz, możesz wdrażać zmiany. Gdy się kończy, najważniejsza staje się stabilność.',
   more: {
     title: 'Jak wybrać dobry SLI dla danych',
     html: [
@@ -151,7 +151,7 @@ export const recovery: Compare & { title: string; intro: string; takeaway: strin
       rows: [
         ['Błąd człowieka w tabeli', 'Odtwarzasz to, co źródła nadal mają. API płatności oddaje np. tylko ostatnie 90 dni'],
         ['Awaria regionu chmury', 'Czekasz na przywrócenie regionu'],
-        ['RPO', 'Nieznane: zależy od retencji w cudzych systemach'],
+        ['RPO', 'Nieznane: zależy od tego, jak długo cudze systemy trzymają dane'],
         ['RTO', 'Dni: pełne ładowanie wszystkich źródeł i przeliczenie wszystkich warstw'],
         ['Koszt', 'Zerowy, dopóki nic się nie stanie']
       ],
