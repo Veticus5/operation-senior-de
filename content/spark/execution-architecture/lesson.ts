@@ -57,7 +57,7 @@ export interface Beat {
 export const beats: Beat[] = [
   {
     html: `<h1>Cztery linijki, 406 tasków.</h1>
-<p class="lede">Wiesz już, kto pracuje: driver planuje, executory liczą partycje. Wiesz też, że wiersze są liczone dopiero wtedy, gdy akcja zażąda wyniku. Brakuje środka: co dzieje się między wywołaniem akcji a pierwszym taskiem?</p>
+<p class="lede">Wiesz już, kto pracuje: driver planuje, executory liczą partycje. Wiesz też, że zwykłe transformacje tylko budują plan, a wiersze są liczone, gdy akcja zażąda wyniku. Brakuje środka: co dzieje się między wywołaniem akcji a pierwszym taskiem?</p>
 <p>Liczysz przychód per region z dwóch tabel:</p>
 <pre class="code">paid    = orders.filter(orders.status == <span class="k">"paid"</span>)
 joined  = paid.join(customers, <span class="k">"customer_id"</span>)
@@ -159,7 +159,7 @@ const SKIPPED = `Pominięty (skipped): jego pliki shuffle zapisał już wcześni
 
 export const flow = {
   question: 'Jak zapytanie staje się pracą dla executorów?',
-  intro: `Akcja prosi o wynik. Driver wysyła wtedy do wykonania porcję pracy. Ta porcja to <b>job</b>. Część tej pracy da się zrobić w każdej partycji osobno, na przykład filtr. Ale suma per data wymaga, żeby wiersze z tą samą datą trafiły do jednej partycji. Takie przenoszenie danych między partycjami to <term id="shuffle">shuffle</term>. W miejscach, w których plan wymaga shuffle'u, job jest cięty na części. Taka część to <b>stage</b>. W stage'u każdą partycję liczy osobny <b>task</b>, a wszystkie jego taski wykonują ten sam kod. Wybierz zapytanie, klikaj joby i stage'e, a potem przejdź wykonanie krok po kroku. Przełącznik <term id="aqe">AQE</term> zostaw na początku wyłączony. Tak najłatwiej zobaczyć model podstawowy.`,
+  intro: `Akcja prosi o wynik. Żeby go dać, driver wysyła do wykonania porcję pracy, jedną albo kilka. Taka porcja to <b>job</b>. Część tej pracy da się zrobić w każdej partycji osobno, na przykład filtr. Ale suma per data wymaga, żeby wiersze z tą samą datą trafiły do jednej partycji. Takie przenoszenie danych między partycjami to <term id="shuffle">shuffle</term>. W miejscach, w których plan wymaga shuffle'u, job jest cięty na części. Taka część to <b>stage</b>. W stage'u każdą partycję liczy osobny <b>task</b>, a wszystkie jego taski wykonują ten sam kod. Wybierz zapytanie, klikaj joby i stage'e, a potem przejdź wykonanie krok po kroku. Przełącznik <term id="aqe">AQE</term> zostaw na początku wyłączony. Tak najłatwiej zobaczyć model podstawowy.`,
   assumptions: `Liczby jobów, stage'y, tasków i rekordów pochodzą z labu tej lekcji: PySpark 4.0.1, <term id="local-mode">local[3]</term>, <code>orders</code> w 4 partycjach, <code>customers</code> w 2, <code>spark.sql.shuffle.partitions</code> = 200 (wartość domyślna). W zapytaniu z joinem broadcast jest wyłączony. Przebieg krok po kroku to animacja. Zakłada 3 miejsca na taski naraz: tyle wątków ma <code>local[3]</code>, a jeden task zajmuje domyślnie jeden rdzeń.`,
   cores: 3,
   defaultQuery: 'b',
@@ -218,7 +218,7 @@ paid.write.parquet("paid_orders/")`,
       off: {
         jobs: [{ why: 'Akcja <code>write</code> zażądała wyniku, więc driver utworzył job.', stages: [{ id: 0, role: 'a-all', tasks: 4, tasksWhy: TASKS_INPUT_4 }] }],
         steps: [
-          { say: `Akcja <code>write</code>: driver zamienia plan na job 0. W planie nie ma shuffle'u, więc job ma jeden stage.`, run: [] },
+          { say: `Akcja <code>write</code>: driver wysyła do wykonania job 0. W planie nie ma shuffle'u, więc job ma jeden stage.`, run: [] },
           { say: 'Stage 0: 4 taski, po jednym na partycję. Rdzenie są 3, więc 3 taski liczą się od razu, a czwarty czeka na wolny rdzeń.', run: [0] },
           { say: 'Job 0 gotowy: 1 stage, 4 taski. Każdy task zapisał swoją część wyniku.', run: [] }
         ]
@@ -436,7 +436,7 @@ Aggregate [order_date#11], [order_date#11, sum(amount#13) AS revenue#32]
       id: 'physical',
       label: '4. Physical',
       title: 'Physical Plan',
-      text: `Tu pierwszy raz pojawiają się konkretne algorytmy i ruch danych. Z tego planu driver robi job. Czytaj od dołu, od źródła.`
+      text: `Tu pierwszy raz pojawiają się konkretne algorytmy i ruch danych. Na podstawie tego planu driver wysyła joby. Czytaj od dołu, od źródła.`
     }
   ] as PlanView[],
   physicalTitle: 'Physical Plan (linie skrócone)',
