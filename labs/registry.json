@@ -31,6 +31,14 @@
       "summary": "Ten sam join 200 000 transakcji z 2 000 klientów policzony jako broadcast hash, sort merge i shuffled hash: plany fizyczne, rekordy zapisane do shuffle'u, próg kontra szacunek rozmiaru, zamiana joina przez AQE i hinty przy różnych typach joina.",
       "scope": "To uruchomienie lokalne: <code>local[3]</code>, czyli jeden proces z trzema wątkami, bez klastra i bez sieci. Lab pokazuje, którą strategię Spark zaplanował i ile rekordów zapisał do shuffle'u. Nie mierzy czasu ani pamięci, więc nie mówi, która strategia jest szybsza na klastrze. Szacunki rozmiaru w bajtach zależą od wersji Sparka i zapisanych plików.",
       "timeoutSec": 300
+    },
+    {
+      "id": "spark-data-skew-aqe-lab",
+      "script": "data_skew/skew_aqe_lab.py",
+      "title": "Data skew i AQE na prawdziwym Sparku",
+      "summary": "Osiem eksperymentów na 2 000 000 wymyślonych zamówień, z których 80% ma jeden klucz: rozmiary partycji, rekordy z shuffle'u na task w joinie, AQE z progami domyślnymi i obniżonymi, typy joina, sklejanie partycji, zmiana strategii joina, salting i NULL w kluczu.",
+      "scope": "To uruchomienie lokalne: <code>local[3]</code>, czyli jeden proces z trzema wątkami, bez klastra i bez sieci. Liczby rekordów powtarzają się przy każdym uruchomieniu, czasy tasków nie. Dane są małe, więc progi AQE są w części eksperymentów celowo obniżone: wynik pokazuje, kiedy mechanizm się włącza, a nie ile czasu oszczędza na klastrze.",
+      "timeoutSec": 300
     }
   ]
 }

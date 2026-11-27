@@ -168,8 +168,8 @@ describe('lekcje', () => {
   it('każda lekcja ma co najmniej jedno powiązane pytanie', () => {
     for (const l of lessons) expect(questions.some(q => q.topicId === l.topicId), l.id).toBe(true);
   });
-  it('kolejność nauki: Fundamentals, Lazy Evaluation, Execution Architecture, Partitioning & Shuffle, Join Strategies', () => {
-    expect(lessons.map(l => l.id)).toEqual(['spark-fundamentals', 'spark-lazy-evaluation', 'spark-execution-architecture', 'spark-partitioning-shuffle', 'spark-join-strategies']);
+  it('kolejność nauki: Fundamentals, Lazy Evaluation, Execution Architecture, Partitioning & Shuffle, Join Strategies, Data Skew & AQE', () => {
+    expect(lessons.map(l => l.id)).toEqual(['spark-fundamentals', 'spark-lazy-evaluation', 'spark-execution-architecture', 'spark-partitioning-shuffle', 'spark-join-strategies', 'spark-data-skew-aqe']);
   });
   it('partitioning & shuffle: dane symulacji są spójne z opisem i z liczbami z labu', () => {
     const { orders, sim, inputPartitions, rowsPerPartition } = ps;
@@ -349,7 +349,7 @@ describe('lekcje', () => {
 
 describe('laby uruchamiane z interfejsu', () => {
   it('nie zmieniły identyfikatorów, którymi wiążą się lekcje i pytania', () => {
-    expect(labs.map(l => l.id)).toEqual(['spark-lazy-evaluation-lab', 'spark-execution-architecture-lab', 'spark-partitioning-shuffle-lab', 'spark-join-strategies-lab']);
+    expect(labs.map(l => l.id)).toEqual(['spark-lazy-evaluation-lab', 'spark-execution-architecture-lab', 'spark-partitioning-shuffle-lab', 'spark-join-strategies-lab', 'spark-data-skew-aqe-lab']);
   });
   it('każdy lab ma opis, zakres wyniku i kod do pokazania', () => {
     for (const l of labs) {
