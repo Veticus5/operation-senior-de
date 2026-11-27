@@ -1,3 +1,4 @@
+import executionLab from '../../../../labs/execution_architecture/execution_lab.py?raw';
 import lazyLab from '../../../../labs/lazy_evaluation/lazy_lab.py?raw';
 
 /**
@@ -6,5 +7,6 @@ import lazyLab from '../../../../labs/lazy_evaluation/lazy_lab.py?raw';
  * Czy to ten sam plik, który uruchomi runner, sprawdza LabRunner: porównuje skrót SHA-256.
  */
 export const LAB_SOURCES: Record<string, string> = {
-  'spark-lazy-evaluation-lab': lazyLab
+  'spark-lazy-evaluation-lab': lazyLab,
+  'spark-execution-architecture-lab': executionLab
 };
