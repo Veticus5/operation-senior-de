@@ -71,26 +71,26 @@ export const beats: Beat[] = [
   {
     html: '<h1>Wszystkie testy zielone, a przychód urósł o 300.</h1>\n<p class="lede">Zadanie: dodać do dziennego raportu przychodu liczbę zamówień z kodem promocyjnym. Agent AI napisał zmianę w kilka minut. Kod się kompiluje, testy przechodzą.</p>\n<p>Zanim zatwierdzisz, spójrz na to, co pokazał automat, i na jedną liczbę, której nikt nie kazał mu sprawdzić.</p>',
     visual: 'green',
-    after: '<b>Wniosek.</b> Kod wygenerowany przez AI potrafi być poprawny składniowo, czytelny i zielony w testach, a mimo to dawać zły wynik biznesowy. Testy sprawdzają to, co ktoś kazał im sprawdzić. Za to, czy liczba jest prawdziwa, odpowiada inżynier, który zmianę zatwierdza.',
+    after: '<b>Wniosek.</b> Kod od AI może się kompilować, dobrze się czytać i przechodzić testy, a mimo to dawać złą liczbę. Testy sprawdzają tylko to, co ktoś kazał im sprawdzić. Za to, czy liczba jest prawdziwa, odpowiada inżynier, który zmianę zatwierdza.',
     more: {
       title: 'Skąd wzięło się dodatkowe 300',
       html: [
         'Zamówienie 104 użyło dwóch kodów promocyjnych, więc w tabeli kodów ma dwa wiersze. Po połączeniu zamówień z kodami zamówienie 104 występuje dwa razy, a <code>SUM(amount)</code> liczy jego kwotę 300 dwukrotnie.',
-        'To zjawisko nazywa się <b>fan-out</b>: join do tabeli o drobniejszym ziarnie powiela wiersze strony, z której bierzesz miary. Ziarno tabeli to odpowiedź na pytanie, co oznacza jeden wiersz.',
-        'Liczba wierszy wyniku się nie zmieniła, bo model grupuje po dniu. Testy <code>unique</code> i <code>not_null</code> na kolumnie daty też przeszły. Dlatego błąd był niewidoczny dla automatu.'
+        'Każda tabela ma <b>ziarno</b> (grain), czyli to, co oznacza jeden wiersz. W tabeli zamówień jeden wiersz to jedno zamówienie. W tabeli kodów jeden wiersz to jeden użyty kod, więc jej ziarno jest drobniejsze. Join do tabeli o drobniejszym ziarnie powiela wiersze zamówień, a razem z nimi kwoty, które sumujesz. To zjawisko nazywa się <b>fan-out</b>.',
+        'Liczba wierszy wyniku się nie zmieniła, bo model grupuje po dniu. Testy <code>unique</code> i <code>not_null</code> na kolumnie daty też przeszły. Dlatego automat niczego nie zauważył.'
       ]
     },
     next: 'Gdzie w procesie powinno to wypaść?'
   },
   {
-    html: '<h2>Kto o czym decyduje między wymaganiem a produkcją?</h2>\n<p>Firmy porządkują pracę nad oprogramowaniem w powtarzalną kolejność etapów. Nazywa się to <b>SDLC</b> (Software Development Life Cycle, cykl życia oprogramowania). Każdy etap odpowiada na inne pytanie i zostawia inny ślad. Przejdź po etapach i zobacz, gdzie agent AI przyspiesza pracę, a czego nie rozstrzyga.</p>',
+    html: '<h2>Kto o czym decyduje między wymaganiem a produkcją?</h2>\n<p>Firmy układają pracę nad oprogramowaniem w stałą kolejność etapów, od wymagania do utrzymania. Ta kolejność nazywa się <b>SDLC</b> (Software Development Life Cycle, cykl życia oprogramowania). Każdy etap odpowiada na inne pytanie i coś po sobie zostawia: zgłoszenie, kod, wynik testów. Przejdź po etapach i zobacz, gdzie agent AI przyspiesza pracę, a czego nie rozstrzyga.</p>',
     visual: 'lifecycle',
-    after: '<b>Wniosek.</b> AI przyspiesza wykonanie: szukanie w kodzie, pisanie, testy, szkic dokumentacji. Nie decyduje, co jest wymaganiem, jaka ma być architektura i czy wynik wolno wdrożyć. Te trzy decyzje mają właściciela, a właścicielem jest człowiek.',
+    after: '<b>Wniosek.</b> AI przyspiesza wykonanie: szukanie w kodzie, pisanie, testy, szkic dokumentacji. Nie decyduje o trzech rzeczach: co jest wymaganiem, jaka ma być architektura i czy wynik wolno wdrożyć. Te decyzje podejmuje człowiek i to on za nie odpowiada.',
     more: {
       title: 'Czy SDLC oznacza waterfall?',
       html: [
-        'Nie. SDLC to lista etapów, a nie nakaz przechodzenia ich raz, po kolei, dla całego projektu. W podejściu zwinnym ten sam cykl wykonujesz wiele razy na małych kawałkach: jedno zgłoszenie przechodzi od wymagania do produkcji w kilka dni.',
-        'W dużych organizacjach cykl jest dodatkowo sformalizowany: etapy mają wymagane dowody (wynik testów, akceptacja, zapis wdrożenia). To właśnie zwykle znaczy „enterprise SDLC" w ogłoszeniu o pracę.'
+        'Nie. SDLC to lista etapów, a nie nakaz przechodzenia ich raz, po kolei, dla całego projektu. W podejściu zwinnym (agile) ten sam cykl przechodzisz wiele razy, na małych kawałkach pracy: jedno zgłoszenie przechodzi od wymagania do produkcji w kilka dni.',
+        'W dużych organizacjach cykl jest bardziej formalny: etapy mają wymagane dowody (wynik testów, akceptacja, zapis wdrożenia). To właśnie zwykle znaczy „enterprise SDLC" w ogłoszeniu o pracę.'
       ]
     },
     next: 'Zacznij od wymagań'
@@ -184,9 +184,9 @@ export const requirements = {
     { text: 'Raport pokazuje dzienny przychód w podziale na kraj, tylko z zamówień opłaconych.', kind: 'F', why: 'To reguła biznesowa i zawartość wyniku. Da się ją sprawdzić na przykładzie: te zamówienia dają tę kwotę.' },
     { text: 'Dane z poprzedniego dnia są dostępne codziennie do 7:00.', kind: 'NF', why: 'Świeżość danych. Nie zmienia tego, co raport liczy, tylko kiedy wynik musi być gotowy. Wpływa na harmonogram i koszt.' },
     { text: 'Zwrot zmniejsza przychód w dniu zwrotu, a nie w dniu zamówienia.', kind: 'F', why: 'Kolejna reguła biznesowa. Takie zdania najłatwiej zgubić, bo każdy „wie", czym jest przychód, i każdy wie co innego.' },
-    { text: 'Ponowne uruchomienie potoku po awarii nie tworzy duplikatów.', kind: 'NF', why: 'Niezawodność. Tę własność nazywa się idempotencją: drugie uruchomienie daje ten sam stan co pierwsze.' },
+    { text: 'Ponowne uruchomienie potoku po awarii nie tworzy duplikatów.', kind: 'NF', why: 'Niezawodność. Drugie uruchomienie ma zostawić dane w tym samym stanie co pierwsze. Ta własność nazywa się idempotencją.' },
     { text: 'Adresy e-mail klientów są zamaskowane poza produkcją.', kind: 'NF', why: 'Bezpieczeństwo i zgodność z przepisami. Dotyczy całej platformy, a nie jednego raportu.' },
-    { text: 'Po awarii potok da się odtworzyć w ciągu czterech godzin.', kind: 'NF', why: 'Odtwarzalność. Od tej liczby zależy, czy wystarczy ponowne uruchomienie, czy potrzebna jest kopia i procedura.' }
+    { text: 'Po awarii potok da się odtworzyć w ciągu czterech godzin.', kind: 'NF', why: 'Odtwarzalność, czyli jak szybko da się wrócić do działania po awarii. Od tej liczby zależy, czy wystarczy ponowne uruchomienie, czy potrzebna jest kopia i procedura.' }
   ] as ReqItem[],
   takeaway: '<b>Wniosek.</b> <b>Wymaganie funkcjonalne</b> mówi, co system robi: jakie dane, jaka reguła, jaki wynik. <b>Wymaganie niefunkcjonalne</b> mówi, jak dobrze to robi: świeżość, wydajność, niezawodność, bezpieczeństwo, koszt. O funkcjonalne biznes upomni się sam. O niefunkcjonalne musisz zapytać, bo to one decydują o architekturze.',
   moreTitle: 'Pytania, które zadajesz, zanim powstanie kod',
@@ -203,7 +203,7 @@ export const requirements = {
   criteriaLines: [
     { code: '1. promo_orders = liczba zamówień z ≥ 1 kodem', label: 'Reguła z definicją', text: 'Mówi wprost, co liczymy: zamówienia, a nie użyte kody. Zamówienie z dwoma kodami liczy się raz. Bez tego zdania obie interpretacje są równie dobre.' },
     { code: '2. Ziarno bez zmian: jeden wiersz na dzień', label: 'Granica zmiany', text: 'Chroni wszystkich, którzy już czytają ten model. Agent AI dostaje to jako ograniczenie, a reviewer jako punkt do sprawdzenia.' },
-    { code: '3. orders i revenue identyczne jak przed zmianą', label: 'Warunek regresji', text: 'Zamienia „niczego nie zepsuj" w porównanie, które można uruchomić. To zdanie wyłapałoby błąd z początku lekcji.' },
+    { code: '3. orders i revenue identyczne jak przed zmianą', label: 'Warunek regresji', text: 'Zamienia „niczego nie zepsuj" w porównanie, które da się uruchomić. Regresja to sytuacja, w której zmiana psuje coś, co wcześniej działało. To zdanie wyłapałoby błąd z początku lekcji.' },
     { code: '4. Dla 2026-03-02: promo_orders = 1', label: 'Przykład z odpowiedzią', text: 'Konkretny przypadek, najlepiej ten trudny: dzień, w którym jedno zamówienie ma dwa kody. Przykład z oczekiwanym wynikiem to gotowy test.' },
     { code: '5. Dane gotowe do 7:00, jak dotychczas', label: 'Wymaganie niefunkcjonalne', text: 'Przypomina, że zmiana nie może wydłużyć potoku ponad ustalone okno.' }
   ] as ExplainedLine[],
@@ -213,7 +213,7 @@ export const requirements = {
 /** Środowiska: tabela porównawcza. Wiersz o agencie to zalecana praktyka, nie reguła żadnego narzędzia. */
 export const environments = {
   title: 'Gdzie wolno się pomylić?',
-  intro: 'Zmiana nie trafia od razu tam, gdzie czytają ją odbiorcy. Przechodzi przez <b>środowiska</b>: osobne kopie platformy o rosnących wymaganiach.',
+  intro: 'Zmiana nie trafia od razu tam, gdzie czytają ją odbiorcy. Najpierw przechodzi przez <b>środowiska</b>, czyli osobne kopie platformy. Im bliżej odbiorców, tym ostrzejsze zasady.',
   columns: ['', 'Development', 'Staging (test)', 'Production'],
   rows: [
     ['Po co', 'Szybkie próby jednej osoby', 'Sprawdzenie całości tak, jak zadziała na produkcji', 'Dane, z których korzystają odbiorcy'],
@@ -226,15 +226,15 @@ export const environments = {
   bridge: {
     from: 'dbt i Snowflake',
     known: 'W dbt ten sam projekt budujesz na różnych targetach: własny schemat deweloperski, schemat CI, produkcja. W Snowflake kopię bazy do testów robisz przez <code>CLONE</code>.',
-    fresh: 'Target to właśnie środowisko: ten sam kod, inne miejsce zapisu i inne uprawnienia. Klon w Snowflake na początku współdzieli zapisane dane ze źródłem i jest od niego niezależny, więc nadaje się na dane dla stagingu.',
+    fresh: 'Target to właśnie środowisko: ten sam kod, inne miejsce zapisu i inne uprawnienia. Klon w Snowflake na początku współdzieli zapisane dane ze źródłem, ale jest od niego niezależny. Dlatego nadaje się na dane dla stagingu.',
     breaks: 'Osobny schemat to nie jest pełna izolacja. Wspólny warehouse, wspólne role i wspólne źródła nadal łączą środowiska. Klon zawiera też prawdziwe dane osobowe, dopóki ich nie zamaskujesz.'
   } as Bridge,
   iacTitle: 'Infrastructure as Code: środowisko też jest kodem',
   iac: [
-    'Jeśli warehouse, role i uprawnienia ktoś wyklikał ręcznie, to staging i produkcja rozjadą się po kilku tygodniach i nikt nie będzie wiedział dlaczego.',
+    'Jeśli warehouse, role i uprawnienia ktoś wyklikał ręcznie, to staging i produkcja po kilku tygodniach przestaną być takie same i nikt nie będzie wiedział dlaczego.',
     '<b>Infrastructure as Code</b> (IaC) oznacza, że infrastrukturę opisujesz w plikach w repozytorium. Narzędzie, na przykład Terraform, porównuje opis ze stanem faktycznym, pokazuje plan zmian i dopiero po zatwierdzeniu je wykonuje.',
     'Zysk jest ten sam co przy kodzie: historia zmian, review, powtarzalne odtworzenie środowiska. Według dokumentacji Terraform pliki konfiguracji są deklaratywne, czyli opisują stan docelowy, a nie kroki.',
-    'Analogia do dbt: model też opisuje, jaka tabela ma istnieć, a nie jak ją krok po kroku zmienić. Analogia kończy się na stanie: Terraform przechowuje plik stanu infrastruktury i jego uszkodzenie albo ręczna zmiana poza narzędziem to osobna klasa problemów.'
+    'Analogia do dbt: model też opisuje, jaka tabela ma istnieć, a nie jak ją krok po kroku zmienić. Analogia kończy się na stanie. Terraform przechowuje plik stanu infrastruktury. Uszkodzenie tego pliku albo ręczna zmiana poza narzędziem to osobny rodzaj problemów.'
   ]
 };
 
@@ -254,7 +254,7 @@ export const adr = {
   moreTitle: 'Jaka dokumentacja techniczna naprawdę jest potrzebna',
   more: [
     '<b>README:</b> jak uruchomić projekt i testy. Sprawdzian: nowa osoba robi to bez pytania nikogo.',
-    '<b>Opis modeli i kolumn:</b> w dbt opisy w plikach YAML, z których powstaje dokumentacja i lineage. Najważniejsze jest ziarno modelu i definicje miar.',
+    '<b>Opis modeli i kolumn:</b> w dbt opisy w plikach YAML, z których powstaje dokumentacja i lineage, czyli graf zależności między modelami. Najważniejsze jest ziarno modelu i definicje miar.',
     '<b>ADR-y:</b> dlaczego, a nie jak.',
     '<b>Runbook:</b> co robić, gdy potok padnie: jak sprawdzić, jak uruchomić ponownie, jak się wycofać, kogo powiadomić.',
     'Dokumentacja, której nikt nie aktualizuje, szkodzi bardziej niż jej brak. Dlatego trzymasz ją przy kodzie i zmieniasz w tym samym pull requeście.'
@@ -285,19 +285,19 @@ export const pipeline = {
     { id: 'verify', label: 'Weryfikacja po wdrożeniu', kind: 'auto', what: 'Testy na produkcji, świeżość, czas wykonania, alerty.' }
   ] as PipeStage[],
   changes: [
-    { id: 'typo', label: 'Literówka w nazwie kolumny', desc: 'W SELECT jest amout zamiast amount.', stopsAt: 'compile', why: 'Najtańszy rodzaj błędu: wypada po kilkunastu sekundach. Do tej samej klasy należy funkcja, która w tej hurtowni nie istnieje.' },
+    { id: 'typo', label: 'Literówka w nazwie kolumny', desc: 'W SELECT jest amout zamiast amount.', stopsAt: 'compile', why: 'Najtańszy rodzaj błędu: wypada po kilkunastu sekundach. Tak samo wypada funkcja, która w tej hurtowni nie istnieje.' },
     { id: 'duplicate', label: 'Duplikaty klucza', desc: 'Po zmianie model oddaje dwa wiersze dla tego samego dnia.', stopsAt: 'build', why: 'Test unique na kluczu modelu zwraca wiersze łamiące regułę i potok się zatrzymuje. Testy jednostkowe przeszły, bo ich dane wejściowe nie zawierały tego przypadku.' },
     { id: 'fanout', label: 'Fan-out pod agregacją', desc: 'Błąd z początku lekcji: przychód zawyżony o 300, liczba wierszy bez zmian.', stopsAt: 'diff', why: 'Kompilacja i testy danych przechodzą. Zatrzymuje to dopiero porównanie sum z wersją produkcyjną. Test jednostkowy złapałby błąd wcześniej, gdyby ktoś dopisał przypadek zamówienia z dwoma kodami.' },
     { id: 'rule', label: 'Źle zrozumiane wymaganie', desc: 'Kod liczy użyte kody, a biznes chciał liczbę zamówień. Kolumna jest nowa, więc nie ma jej z czym porównać.', stopsAt: 'review', why: 'Żaden automat nie zna intencji. Zatrzyma to tylko człowiek, który porówna zmianę z kryteriami akceptacji. Jeśli reviewer ich nie przeczyta, błąd dojdzie do produkcji.' },
     { id: 'slow', label: 'Za wolne na prawdziwych danych', desc: 'Na danych CI model liczy się kilka sekund, na produkcji nie mieści się w oknie do 7:00.', stopsAt: 'verify', why: 'To złamane wymaganie niefunkcjonalne. Wychodzi dopiero na pełnej skali, dlatego potrzebny jest staging zbliżony do produkcji, monitoring czasu wykonania i gotowy sposób wycofania.' },
     { id: 'good', label: 'Poprawna zmiana', desc: 'Kody policzone osobno dla każdego zamówienia, stare kolumny bez zmian.', stopsAt: null, why: 'Każda bramka zostawia ślad: wynik testów, porównanie, akceptację, zapis wdrożenia. Ten ślad to dowód, że zmiana przeszła proces.' }
   ] as PipeChange[],
-  takeaway: '<b>Wniosek.</b> Każda bramka łapie inną klasę błędów, a koszt błędu rośnie z każdym krokiem w prawo. Automaty sprawdzają to, co da się zapisać jako regułę. Zgodność z intencją sprawdza człowiek. Potok nie zastępuje myślenia, tylko gwarantuje, że nic nie ominie kontroli.',
+  takeaway: '<b>Wniosek.</b> Każda bramka łapie inny rodzaj błędów. Im dalej w prawo błąd dojdzie, tym więcej kosztuje. Automaty sprawdzają to, co da się zapisać jako regułę. Zgodność z intencją sprawdza człowiek. Potok nie zastępuje myślenia, tylko gwarantuje, że nic nie ominie kontroli.',
   moreTitle: 'Jak to wygląda w dbt i GitHub',
   more: [
-    'W dbt nie budujesz w CI całego projektu. Selektor <code>state:modified+</code> wybiera modele zmienione względem ostatniego stanu produkcji i wszystko poniżej, a <code>--defer</code> każe brać niezbudowane modele nadrzędne z produkcji. Dokumentacja dbt nazywa ten wzorzec „Slim CI".',
+    'W dbt nie budujesz w CI całego projektu. Selektor <code>state:modified+</code> wybiera modele, które zmieniły się względem ostatniego stanu produkcji, i wszystko, co od nich zależy. Flaga <code>--defer</code> każe brać z produkcji te modele nadrzędne, których w CI nie zbudowałeś. Dokumentacja dbt nazywa ten wzorzec „Slim CI".',
     'Polecenie <code>dbt build</code> uruchamia modele, testy, snapshoty i seedy w kolejności zależności, więc test stoi zaraz za modelem, którego dotyczy.',
-    'W GitHub ochrona gałęzi może wymagać zatwierdzonego review i zielonych kontroli przed merge\'em. Środowisko z regułą wymaganych recenzentów wstrzymuje zadanie wdrożenia, dopóki ktoś z listy go nie zatwierdzi. To jest techniczna postać bramki „zatwierdzenie wdrożenia".',
+    'W GitHub ochrona gałęzi może wymagać zatwierdzonego review i zielonych kontroli przed merge\'em. Środowisko z regułą wymaganych recenzentów wstrzymuje zadanie wdrożenia, dopóki ktoś z listy go nie zatwierdzi. Tak technicznie wygląda bramka „zatwierdzenie wdrożenia".',
     'Potok też ma uprawnienia. Dokumentacja GitHub zaleca nadawanie tokenowi potoku najmniejszego potrzebnego dostępu.'
   ]
 };
@@ -333,7 +333,7 @@ export const release = {
       rollback: 'Nie ma czego wycofywać, dopóki nie przełączysz odbiorców. Po przełączeniu jak w blue-green.'
     }
   ] as Strategy[],
-  takeaway: '<b>Wniosek.</b> Plan wycofania powstaje przed wdrożeniem, a nie w trakcie incydentu. W danych ma dwie części: <b>kod</b> (powrót do poprzedniej wersji) i <b>dane</b> (naprawa tego, co zła wersja już zapisała). Często szybsza od wycofania jest poprawka w przód, ale to decyzja człowieka, podjęta na podstawie skali szkody.',
+  takeaway: '<b>Wniosek.</b> Plan wycofania powstaje przed wdrożeniem, a nie w trakcie incydentu. W danych ma dwie części: <b>kod</b> (powrót do poprzedniej wersji) i <b>dane</b> (naprawa tego, co zła wersja już zapisała). Często szybsza od wycofania jest poprawka w przód (forward fix), czyli naprawa nową zmianą zamiast powrotu. To decyzja człowieka, podjęta na podstawie skali szkody.',
   moreTitle: 'Narzędzia odtwarzania w Snowflake i ich granice',
   more: [
     '<b>Time Travel</b> pozwala odpytać, sklonować albo odtworzyć dane sprzed zmiany, w okresie retencji. Standardowa retencja to 1 dzień. Dłuższa, do 90 dni dla tabel trwałych, wymaga edycji Enterprise lub wyższej.',
@@ -354,16 +354,16 @@ export const teamwork = {
     ['Dane po zmianie się różnią', '„Testy przeszły"', 'Pokazuję różnicę, jej przyczynę i kto ją zaakceptował'],
     ['Trzeba pójść na skróty', 'Robię po cichu', 'Nazywam dług, zapisuję go i umawiam termin spłaty']
   ],
-  takeaway: '<b>Wniosek.</b> Praca zwinna to krótkie przyrosty pokazywane odbiorcy, żeby błąd w rozumieniu wymagania wyszedł po tygodniu, a nie po kwartale. <b>Dług techniczny</b> to koszt przyszłych zmian, który zaciągasz dzisiejszym skrótem. Świadomy i zapisany jest narzędziem. Nieświadomy rośnie sam.',
+  takeaway: '<b>Wniosek.</b> Praca zwinna (agile) to małe kawałki pracy, które szybko pokazujesz odbiorcy. Dzięki temu źle zrozumiane wymaganie wychodzi po tygodniu, a nie po kwartale. <b>Dług techniczny</b> to dzisiejszy skrót, za który płacisz później: każda następna zmiana jest trudniejsza. Świadomy i zapisany jest narzędziem. Nieświadomy rośnie sam.',
   debtTitle: 'Dług techniczny w projekcie danych',
   debt: [
-    'Typowe postacie: ta sama reguła biznesowa skopiowana do pięciu modeli, modele bez testów i bez opisanego ziarna, jednorazowe skrypty w harmonogramie, martwe modele, których nikt nie czyta.',
+    'Jak zwykle wygląda: ta sama reguła biznesowa skopiowana do pięciu modeli, modele bez testów i bez opisanego ziarna, jednorazowe skrypty w harmonogramie, martwe modele, których nikt nie czyta.',
     'Martin Fowler rozróżnia dług zaciągnięty <b>świadomie</b> i <b>nieumyślnie</b> oraz <b>rozważny</b> i <b>lekkomyślny</b>. Na rozmowie wystarczy pokazać, że odróżniasz skrót z planem spłaty od bałaganu.',
-    'Agent AI zmienia ekonomię długu. Kod powstaje szybciej, niż zespół jest w stanie go przeczytać. Jeśli nie pilnujesz granic, przybywa kodu duplikującego istniejące modele i makra. Dlatego małe pull requesty i reguła „najpierw sprawdź, czy to już istnieje".'
+    'Agent AI zmienia rachunek. Kod powstaje szybciej, niż zespół zdąży go przeczytać. Jeśli nie pilnujesz granic, przybywa kodu, który powtarza istniejące modele i makra. Stąd małe pull requesty i reguła „najpierw sprawdź, czy to już istnieje".'
   ],
   agileTitle: 'Definition of Done i demo',
   agile: [
-    'Scrum Guide definiuje <b>Definition of Done</b> jako formalny opis stanu przyrostu, gdy spełnia wymagane miary jakości. W zespole danych zwykle oznacza to: testy, dokumentacja modelu, porównanie before/after, wdrożenie i działający monitoring.',
+    '<b>Definition of Done</b> mówi, kiedy pracę wolno nazwać skończoną. Scrum Guide definiuje ją jako formalny opis stanu przyrostu, gdy spełnia wymagane miary jakości. W zespole danych zwykle oznacza to: testy, dokumentacja modelu, porównanie before/after, wdrożenie i działający monitoring.',
     'Zadanie „zrobione, ale bez testów" nie jest zrobione. Ta sama definicja obowiązuje kod napisany przez agenta.',
     'Przegląd sprintu służy do obejrzenia wyniku z odbiorcami. Pokaż dane, a nie kod: konkretny raport z konkretnymi liczbami.'
   ]
@@ -400,7 +400,7 @@ export const levels = {
       id: 'e2e', label: 'End-to-end',
       question: 'Czy cały przepływ działa od źródła do odbiorcy?',
       example: 'Pełne uruchomienie potoku na stagingu: załadowanie, transformacje, odświeżenie raportu.',
-      catches: 'Problemy na stykach: harmonogram, uprawnienia, kolejność zadań, czas wykonania.',
+      catches: 'Problemy tam, gdzie części się łączą: harmonogram, uprawnienia, kolejność zadań, czas wykonania.',
       misses: 'Rzadkie przypadki w danych. Jest wolny, więc nie uruchamiasz go przy każdej zmianie.',
       when: 'Przed wdrożeniem większej zmiany i cyklicznie.'
     },
@@ -408,7 +408,7 @@ export const levels = {
       id: 'quality', label: 'Jakości danych',
       question: 'Czy zbudowane dane spełniają reguły, które o nich zakładamy?',
       example: 'Testy danych dbt: unique i not_null na kluczu, accepted_values na statusie, relationships do klientów, świeżość źródła.',
-      catches: 'Duplikaty, puste klucze, nową wartość statusu, osierocone wiersze, spóźnione źródło.',
+      catches: 'Duplikaty, puste klucze, nową wartość statusu, wiersze bez pary w tabeli klientów (osierocone), spóźnione źródło.',
       misses: 'Wynik, który spełnia wszystkie reguły, a jest błędny. Zawyżona suma nadal jest liczbą.',
       when: 'Przy każdym zbudowaniu, także na produkcji.'
     },
@@ -425,7 +425,7 @@ export const levels = {
   bridge: {
     from: 'dbt',
     known: 'W dbt piszesz testy danych: <code>unique</code>, <code>not_null</code>, <code>relationships</code>. Każdy to zapytanie, które szuka wierszy łamiących regułę i przechodzi, gdy nie znajdzie żadnego.',
-    fresh: 'To poziom jakości danych. Poziom jednostkowy to osobny mechanizm: test jednostkowy dbt podstawia statyczne dane wejściowe i porównuje wynik modelu z oczekiwanym, zanim model powstanie.',
+    fresh: 'To poziom jakości danych. Poziom jednostkowy działa inaczej: test jednostkowy dbt podstawia modelowi kilka wpisanych na stałe wierszy i porównuje wynik z oczekiwanym, zanim model zostanie zbudowany.',
     breaks: 'Nazwa „test" jest wspólna, ale test danych niczego nie mówi o logice modelu. Sto zielonych testów <code>not_null</code> nie dowodzi, że join jest poprawny. Testy jednostkowe dbt działają tylko dla modeli SQL i od wersji 1.8.'
   } as Bridge
 };
@@ -456,7 +456,7 @@ export const recon = {
     {
       id: 'correct', label: 'C · agregacja i left join',
       sql: "with promo as (\n  select order_id, count(*) as codes\n  from stg_order_promos\n  group by order_id\n)\nselect\n  o.order_date,\n  count(distinct o.order_id) as orders,\n  sum(o.amount)              as revenue,\n  count(p.order_id)          as promo_orders\nfrom stg_orders o\nleft join promo p\n  on p.order_id = o.order_id\nwhere o.status = 'paid'\ngroup by o.order_date",
-      verdict: 'Kody są sprowadzone do ziarna zamówienia przed joinem, a LEFT JOIN zachowuje zamówienia bez kodu. Istniejące kolumny są identyczne. Ten wynik wklejasz do pull requesta jako dowód.'
+      verdict: 'Kody są najpierw policzone tak, że na jedno zamówienie przypada jeden wiersz, czyli sprowadzone do ziarna zamówienia. Dopiero potem jest join, a LEFT JOIN zachowuje zamówienia bez kodu. Istniejące kolumny są identyczne. Ten wynik wklejasz do pull requesta jako dowód.'
     }
   ] as ReconVariant[],
   checksTitle: 'Testy automatyczne',
@@ -464,7 +464,7 @@ export const recon = {
   totalsTitle: 'Uzgodnienie: liczby zbiorcze',
   diffTitle: 'Uzgodnienie: różnice po kluczu (order_date)',
   noDiff: 'Brak różnic w kolumnach orders i revenue.',
-  takeaway: '<b>Wniosek.</b> Uzgodnienie before/after ma trzy poziomy: liczba wierszy, sumy miar i różnice po kluczu. Liczba wierszy sama niczego nie dowodzi, bo agregacja ukrywa powielone wiersze. Wynik uzgodnienia to dowód w pull requeście, a nie prywatna kontrola autora.',
+  takeaway: '<b>Wniosek.</b> Uzgodnienie before/after ma trzy poziomy: liczba wierszy, sumy miar i różnice po kluczu. Liczba wierszy sama niczego nie dowodzi, bo agregacja ukrywa powielone wiersze. Wynik uzgodnienia wklejasz do pull requesta jako dowód. To nie jest prywatna kontrola autora.',
   moreTitle: 'Gdy różnica jest zamierzona',
   more: [
     'Nie każda różnica to błąd. Jeśli zgłoszenie mówi „zwroty mają pomniejszać przychód", liczby muszą się zmienić. Wtedy uzgodnienie odpowiada na inne pytanie: czy zmieniło się dokładnie to, co miało, i nic więcej.',
@@ -474,9 +474,9 @@ export const recon = {
   toolsTitle: 'Czym to zrobić na prawdziwych tabelach',
   tools: [
     'W Snowflake operator <code>MINUS</code> (albo <code>EXCEPT</code>) zwraca wiersze pierwszego zapytania, których nie ma w drugim. Uruchomiony w obie strony pokazuje wiersze, które zniknęły, i te, które doszły.',
-    'Funkcja <code>HASH_AGG</code> liczy jeden skrót z całej tabeli albo wyniku zapytania, więc szybko odpowiada na pytanie „czy cokolwiek się zmieniło". Dokumentacja zastrzega, że różne dane mogą bardzo rzadko dać ten sam skrót, więc równość skrótów nie jest dowodem.',
+    'Funkcja <code>HASH_AGG</code> liczy jeden skrót (hash) z całej tabeli albo wyniku zapytania. Porównujesz dwa skróty i szybko wiesz, czy cokolwiek się zmieniło. Dokumentacja zastrzega, że różne dane mogą bardzo rzadko dać ten sam skrót, więc równość skrótów nie jest dowodem.',
     'Pakiet dbt <code>audit_helper</code> ma gotowe makra do porównywania dwóch relacji: liczby wierszy, zgodności kolumn i klasyfikacji wierszy na zgodne, zmienione, brakujące.',
-    'Punkt odniesienia musi być stabilny. Porównuj z produkcją z tego samego momentu albo z klonem, bo inaczej nowe dane wyglądają jak różnica.'
+    'To, z czym porównujesz, nie może się zmieniać w trakcie. Porównuj z produkcją z tego samego momentu albo z klonem, bo inaczej nowe dane wyglądają jak różnica.'
   ]
 };
 
@@ -487,7 +487,7 @@ export interface IncCase { id: string; label: string; event: string; full: [stri
  */
 export const incremental = {
   title: 'Czy przyrost daje to samo co pełne przeliczenie?',
-  intro: 'Model <b>przyrostowy</b> nie przelicza całej tabeli. Przy każdym uruchomieniu przetwarza tylko wiersze wybrane filtrem, zwykle „nowsze niż to, co już mam", i dopisuje je do istniejącego wyniku. Jest tańszy, ale ma błędy, których pełna przebudowa nie ma. Sprawdź trzy zdarzenia.',
+  intro: 'Model <b>przyrostowy</b> nie przelicza całej tabeli. Przy każdym uruchomieniu przetwarza tylko wiersze wybrane filtrem, zwykle „nowsze niż to, co już mam", i dopisuje je do istniejącego wyniku. Jest tańszy, ale może się mylić tam, gdzie pełna przebudowa się nie myli. Sprawdź trzy zdarzenia.',
   assumptions: 'Ilustracja. Naiwny przyrost dopisuje wiersze bez klucza, a jego filtr jest opisany przy każdym zdarzeniu. Stan przed zdarzeniem: 03-01 = 200, 03-02 = 300, 03-03 = 210.',
   defaultId: 'late',
   columns: ['order_date', 'pełne przeliczenie', 'naiwny przyrost'],
@@ -498,7 +498,7 @@ export const incremental = {
       full: [['03-01', 200], ['03-02', 340], ['03-03', 210], ['03-04', 90]],
       incremental: [['03-01', 200], ['03-02', 300], ['03-03', 210], ['03-04', 90]],
       why: 'Filtr bierze tylko daty późniejsze niż 3 marca, więc spóźnione zamówienie nigdy nie wejdzie do wyniku. Nic nie pada i żaden test nie świeci na czerwono.',
-      test: 'Przelicz z zapasem: okno kilku ostatnich dni zamiast jednego, z kluczem, który nadpisuje istniejące wiersze. Test: dołóż spóźniony wiersz do danych testowych i porównaj z pełnym przeliczeniem.'
+      test: 'Przeliczaj z zapasem: kilka ostatnich dni zamiast jednego, z kluczem, dzięki któremu nowe wiersze nadpisują istniejące, a nie są dopisywane obok. Test: dołóż spóźniony wiersz do danych testowych i porównaj z pełnym przeliczeniem.'
     },
     {
       id: 'rerun', label: 'Ponowne uruchomienie',
@@ -506,7 +506,7 @@ export const incremental = {
       full: [['03-01', 200], ['03-02', 300], ['03-03', 210], ['03-04', 90]],
       incremental: [['03-01', 200], ['03-02', 300], ['03-03', 210], ['03-04', 180]],
       why: 'Bez klucza przyrost tylko dopisuje. Dzień 4 marca jest w tabeli dwa razy, więc każda suma po nim jest podwojona.',
-      test: 'Uruchom model dwa razy z rzędu na tych samych danych i porównaj wynik. Ma być identyczny. To test idempotencji. W dbt klucz unique_key sprawia, że istniejące wiersze są aktualizowane, a nie dopisywane.'
+      test: 'Uruchom model dwa razy z rzędu na tych samych danych i porównaj wynik. Ma być identyczny. To test idempotencji, czyli tego, że powtórka niczego nie zmienia. W dbt klucz unique_key sprawia, że istniejące wiersze są aktualizowane, a nie dopisywane.'
     },
     {
       id: 'logic', label: 'Zmiana reguły',
@@ -537,7 +537,7 @@ export const verify = {
     ['Kolejne dni', 'Świeżość, wolumen, alerty na odchylenia', 'Błędy przyrostu i spóźnione dane ujawniają się z czasem'],
     ['U odbiorcy', 'Czy raport albo system docelowy pokazuje to, czego oczekiwano', 'Model może być poprawny, a raport nadal czytać starą kolumnę']
   ],
-  takeaway: '<b>Wniosek.</b> Weryfikacja po wdrożeniu zamyka pętlę: te same kontrole co przed wdrożeniem, ale na produkcji, plus monitoring, który wykryje to, co ujawni się dopiero z czasem. Autor zmiany jest przy pierwszym uruchomieniu i mówi wprost: sprawdzone, działa.'
+  takeaway: '<b>Wniosek.</b> Po wdrożeniu powtarzasz te same kontrole co przed nim, tylko na produkcji. Do tego dochodzi monitoring, który wykryje to, co wyjdzie dopiero z czasem. Autor zmiany jest przy pierwszym uruchomieniu i mówi wprost: sprawdzone, działa.'
 };
 
 /* ------------------------------------------------------------------ etap 4: AI */
@@ -549,7 +549,7 @@ export interface FlowStep { id: string; label: string; actor: 'human' | 'agent' 
  */
 export const flow = {
   title: 'Gdzie agent pracuje sam, a gdzie czeka na człowieka?',
-  intro: '<b>Agent AI</b> to model językowy, który nie tylko pisze tekst, ale sam wykonuje kroki: czyta pliki, uruchamia polecenia, sprawdza wynik i poprawia. Praca z nim wygląda jak delegowanie zadania, więc potrzebuje tego samego co delegowanie człowiekowi: jasnego zadania, granic i punktów kontrolnych. Przejdź zgłoszenie z początku lekcji krok po kroku.',
+  intro: '<b>Agent AI</b> to model językowy, który nie tylko pisze tekst, ale sam wykonuje kroki: czyta pliki, uruchamia polecenia, sprawdza wynik i poprawia. Pracujesz z nim tak, jakbyś oddawał komuś zadanie (delegowanie). Potrzeba więc tego samego co przy człowieku: jasnego zadania, granic i punktów kontrolnych. Przejdź zgłoszenie z początku lekcji krok po kroku.',
   assumptions: 'Przykład poglądowy. Kolejność kroków jest stała, narzędzia i szczegóły zależą od zespołu.',
   actors: { human: 'Człowiek', agent: 'Agent AI', auto: 'Automat' },
   labels: { does: 'Co się dzieje', output: 'Co zostaje', gate: 'Punkt kontrolny człowieka' },
@@ -636,7 +636,7 @@ export const boundaries = {
   takeaway: '<b>Wniosek.</b> Plik instrukcji daje agentowi <b>kontekst</b>: reguły architektury, definicję „gotowe" i granice. Nie jest zabezpieczeniem. Dokumentacja Claude Code mówi wprost, że takie pliki są traktowane jako kontekst, a nie wymuszana konfiguracja. To, co ma być niemożliwe, blokujesz uprawnieniami, ochroną gałęzi i potokiem CI.',
   moreTitle: 'Zarządzanie kontekstem: co agent widzi',
   more: [
-    'Agent pracuje na tym, co ma w oknie kontekstu: instrukcjach, plikach, które przeczytał, wynikach poleceń. Czego tam nie ma, tego nie wie, i wypełni lukę zgadywaniem.',
+    'Agent wie tylko to, co ma przed sobą w danej sesji: instrukcje, pliki, które przeczytał, wyniki poleceń. To jest jego <b>okno kontekstu</b> (context window). Czego tam nie ma, tego nie wie, i wypełni lukę zgadywaniem.',
     'Krótka, konkretna instrukcja działa lepiej niż długa. Reguła, której nie da się sprawdzić („pisz dobry kod"), niczego nie zmienia.',
     'Do zadania dokładasz to, czego nie ma w repozytorium: kryteria akceptacji, przykład z oczekiwanym wynikiem, decyzje z rozmowy z biznesem.',
     'Duże zadanie dziel na kroki z osobnym sprawdzeniem. Długa sesja gubi wcześniejsze ustalenia, a duży pull request jest trudny do review niezależnie od tego, kto go napisał.',
@@ -669,7 +669,7 @@ export const review = {
     { code: 'select' },
     { code: '  o.order_date,' },
     { code: '  count(distinct o.order_id) as orders,', verdict: 'ok', title: 'Poprawne i przez to mylące', why: 'DISTINCT chroni tę kolumnę przed powielonymi wierszami. Dlatego liczba zamówień się zgadza i uśpi czujność. To, że jedna kolumna jest odporna na fan-out, nie znaczy, że odporne są pozostałe.' },
-    { code: '  sum(o.amount) as revenue,', verdict: 'problem', title: 'Zawyżony przychód', why: 'Suma liczona po joinie do tabeli o drobniejszym ziarnie. Zamówienie z dwoma kodami liczy się dwa razy. To skutek joina z linii 8: jedna usterka widoczna w dwóch miejscach.' },
+    { code: '  sum(o.amount) as revenue,', verdict: 'problem', title: 'Zawyżony przychód', why: 'Suma jest liczona po joinie do tabeli, w której jedno zamówienie może mieć kilka wierszy. Zamówienie z dwoma kodami liczy się dwa razy. To skutek joina z linii 8: jeden błąd widoczny w dwóch miejscach.' },
     { code: '  count(p.promo_code) as promo_orders,', verdict: 'problem', title: 'Liczy kody, nie zamówienia', why: 'Nazwa kolumny obiecuje zamówienia, a wyrażenie liczy wiersze tabeli kodów. Kod działa, nazwa się zgadza, wynik jest inny, niż chciał biznes.' },
     { code: '  safe_divide(count(p.promo_code), count(distinct o.order_id)) as promo_share', verdict: 'problem', title: 'Funkcja z innej hurtowni', why: 'SAFE_DIVIDE istnieje w BigQuery, nie w Snowflake. W Snowflake dzielenie odporne na zero to DIV0 albo DIV0NULL. Ten błąd jest najtańszy: wypadnie przy kompilacji. Ale mówi coś ważnego: agent pisał z pamięci, a nie z dokumentacji tej platformy.' },
     { code: "from {{ ref('stg_orders') }} o" },
@@ -679,13 +679,13 @@ export const review = {
   ] as ReviewLine[],
   takeaway: '<b>Wniosek.</b> Review kodu od AI zaczynasz od pytań, a nie od czytania składni: jakie jest ziarno każdej tabeli w joinie, czy filtr odpowiada definicji z wymagania, czy każda funkcja istnieje na tej platformie, czy nazwa kolumny mówi to, co kolumna liczy. Błędy, które się nie kompilują, są tanie. Drogie są te, które działają.',
   pythonTitle: 'To samo w Pythonie',
-  pythonIntro: 'Skrypt ładujący od agenta. Trzy z czterech linii mają ten sam charakter usterek co SQL wyżej: wiarygodny wygląd, zły skutek.',
+  pythonIntro: 'Skrypt ładujący od agenta. Trzy z czterech linii mają ten sam rodzaj błędu co SQL wyżej: wyglądają wiarygodnie, a działają źle.',
   pythonCodeTitle: 'load_orders.py · wersja od agenta',
   pythonLines: [
     { code: 'df = pd.read_csv(path)', label: 'W porządku', text: 'Zwykłe wczytanie pliku. Warto zapytać o typy kolumn i strefę czasową, ale to nie jest błąd.' },
     { code: 'df = df.drop_duplicates()', label: 'Zła logika', text: 'Bez argumentu <code>subset</code> pandas porównuje wszystkie kolumny. Dwa wiersze tego samego zamówienia, które różnią się czasem załadowania, nie są dla niego duplikatami. Deduplikacja wygląda na zrobioną, a klucz nadal się powtarza.' },
-    { code: 'df.to_sql("orders", con, if_exists="upsert")', label: 'Wymyślona opcja', text: 'Parametr <code>if_exists</code> w dokumentacji pandas 3.1 przyjmuje wartości <code>fail</code>, <code>replace</code>, <code>append</code> i <code>delete_rows</code>. Wartości <code>upsert</code> nie ma. To typowa halucynacja: opcja, która powinna istnieć, więc brzmi prawdziwie.' },
-    { code: 'except Exception: pass', label: 'Ukryty błąd', text: 'Wyjątek jest połykany, więc zadanie kończy się sukcesem także wtedy, gdy nic nie załadowało. Potok jest zielony, a danych nie ma.' }
+    { code: 'df.to_sql("orders", con, if_exists="upsert")', label: 'Wymyślona opcja', text: 'Parametr <code>if_exists</code> w dokumentacji pandas 3.1 przyjmuje wartości <code>fail</code>, <code>replace</code>, <code>append</code> i <code>delete_rows</code>. Wartości <code>upsert</code> nie ma. To typowa <b>halucynacja</b>, czyli coś, co model zmyślił: opcja, która powinna istnieć, więc brzmi prawdziwie.' },
+    { code: 'except Exception: pass', label: 'Ukryty błąd', text: 'Ta linia łapie każdy wyjątek i nic z nim nie robi, więc zadanie kończy się sukcesem także wtedy, gdy nic nie załadowało. Potok jest zielony, a danych nie ma.' }
   ] as ExplainedLine[],
   checklistTitle: 'Lista pytań do review kodu od AI',
   checklist: [
@@ -703,7 +703,7 @@ export interface Permission { what: string; level: 'allow' | 'ask' | 'deny'; why
 /** Uprawnienia agenta: przykładowa polityka dla projektu dbt. Poziomy odpowiadają regułom allow / ask / deny w Claude Code. */
 export const permissions = {
   title: 'Co agent może zrobić bez pytania?',
-  intro: 'Agent działa przez <b>narzędzia</b>: odczyt plików, powłokę, zapytania do bazy. Zewnętrzne systemy, takie jak Jira, GitHub czy hurtownia, podłącza się zwykle przez <b>MCP</b> (Model Context Protocol), czyli standard, w którym serwer udostępnia agentowi narzędzia i dane. Każde narzędzie to uprawnienie. Zasada <b>najmniejszych uprawnień</b>: agent dostaje tylko to, czego wymaga zadanie.',
+  intro: 'Agent działa przez <b>narzędzia</b>: odczyt plików, powłokę, zapytania do bazy. Zewnętrzne systemy, takie jak Jira, GitHub czy hurtownia, podłącza się zwykle przez <b>MCP</b> (Model Context Protocol). To standard, w którym serwer udostępnia agentowi narzędzia i dane. Każde narzędzie to coś, co agent może zrobić, czyli uprawnienie. Stąd zasada <b>najmniejszych uprawnień</b> (least privilege): agent dostaje tylko to, czego wymaga zadanie.',
   assumptions: 'Przykładowa polityka dla projektu dbt, nie ustawienia domyślne żadnego narzędzia.',
   levels: { allow: 'Bez pytania', ask: 'Po zgodzie', deny: 'Zablokowane' },
   rows: [
@@ -717,14 +717,14 @@ export const permissions = {
     { what: 'Jakikolwiek dostęp do produkcji', level: 'deny', why: 'Agent nie ma poświadczeń produkcyjnych. Nie da się użyć dostępu, którego się nie ma.' },
     { what: 'Merge i wdrożenie', level: 'deny', why: 'Zarezerwowane dla człowieka i potoku CD. Wymusza to ochrona gałęzi, nie dobra wola agenta.' }
   ] as Permission[],
-  takeaway: '<b>Wniosek.</b> Uprawnienia dzielisz według skutku: to, co odwracalne i lokalne, bez pytania; to, co widzą inni, po zgodzie; to, czego nie da się cofnąć albo co dotyka sekretów i produkcji, zablokowane. Najmocniejsza blokada to brak dostępu, a nie zakaz zapisany w instrukcji.',
+  takeaway: '<b>Wniosek.</b> Uprawnienia dzielisz według skutku. To, co da się cofnąć i co zostaje lokalnie, agent robi bez pytania. To, co zobaczą inni, robi po zgodzie. To, czego nie da się cofnąć albo co dotyka sekretów i produkcji, jest zablokowane. Najmocniejsza blokada to brak dostępu, a nie zakaz zapisany w instrukcji.',
   moreTitle: 'Jak to wygląda w Claude Code i MCP',
   more: [
     'W Claude Code reguły uprawnień mają trzy listy: allow, ask i deny. Są sprawdzane w kolejności deny, ask, allow, więc reguła allow nie zrobi wyjątku od deny.',
     'Hook <code>PreToolUse</code> uruchamia się przed wywołaniem narzędzia i może je zablokować. Dokumentacja wskazuje go jako sposób na zakaz, który ma działać niezależnie od decyzji modelu.',
-    'Serwery MCP z pliku <code>.mcp.json</code> w repozytorium wymagają osobnego zatwierdzenia przez użytkownika. Dokumentacja ostrzega, żeby ufać każdemu podłączanemu serwerowi, bo serwery pobierające zewnętrzną treść narażają na prompt injection.',
+    'Serwery MCP z pliku <code>.mcp.json</code> w repozytorium wymagają osobnego zatwierdzenia przez użytkownika. Dokumentacja ostrzega, żeby podłączać tylko serwery, którym ufasz, bo serwery pobierające zewnętrzną treść narażają na prompt injection, czyli na polecenia ukryte w tej treści.',
     'Specyfikacja MCP mówi, że przy wywołaniach narzędzi powinien zawsze być człowiek, który może odmówić. Opisy narzędzi z niezaufanego serwera trzeba traktować jako niezaufane.',
-    'Uprawnienia agenta to także uprawnienia konta, z którego korzysta. Konto serwisowe MCP do hurtowni z rolą administratora unieważnia całą resztę polityki.'
+    'Uprawnienia agenta to także uprawnienia konta, z którego korzysta. Jeśli konto serwisowe MCP do hurtowni ma rolę administratora, cała reszta polityki przestaje mieć znaczenie.'
   ]
 };
 
@@ -753,14 +753,14 @@ export const security = {
       setup: 'Żeby pokazać agentowi błąd w deduplikacji, kolega chce wkleić do rozmowy dwadzieścia prawdziwych wierszy klientów z adresami e-mail.',
       options: ['W porządku, to tylko dwadzieścia wierszy', 'Proponuję schemat tabeli i kilka wymyślonych wierszy, które odtwarzają ten sam błąd', 'Wklejamy, a potem kasujemy rozmowę'],
       correct: 1,
-      why: 'Do pokazania błędu logiki potrzebny jest kształt danych, a nie dane osobowe. Wymyślone wiersze z tym samym problemem dają agentowi wszystko, czego potrzebuje. Skasowanie rozmowy nie cofa tego, że dane opuściły miejsce, w którym miały być.',
-      scope: 'To, jakie dane wolno przekazać do jakiego narzędzia, określa polityka organizacji i umowa z klientem. Zasada minimalizacji działa niezależnie od narzędzia: nie przekazuj więcej, niż wymaga zadanie.'
+      why: 'Żeby pokazać błąd logiki, wystarczy układ danych: kolumny i przypadek, który psuje wynik. Dane osobowe nie są do tego potrzebne. Wymyślone wiersze z tym samym problemem dają agentowi wszystko, czego potrzebuje. Skasowanie rozmowy nie cofa tego, że dane opuściły miejsce, w którym miały być.',
+      scope: 'To, jakie dane wolno przekazać do jakiego narzędzia, określa polityka organizacji i umowa z klientem. Zasada minimalizacji danych działa niezależnie od narzędzia: nie przekazuj więcej, niż wymaga zadanie.'
     },
     {
       setup: 'Po zmianie jeden test danych nie przechodzi. Agent proponuje: „Zaktualizuję oczekiwaną wartość w teście" albo „ustawię severity na warn".',
       options: ['Zgadzam się, test był pewnie nieaktualny', 'Zatrzymuję i ustalam z wymagania, co jest błędne: kod czy test', 'Usuwam test, skoro przeszkadza'],
       correct: 1,
-      why: 'Czerwony test to informacja. Agent optymalizuje pod „testy przechodzą" i osłabienie testu jest dla niego poprawnym rozwiązaniem. Test zmieniasz tylko wtedy, gdy zmieniło się wymaganie, i taka zmiana przechodzi review jak każda inna.',
+      why: 'Czerwony test to informacja. Agent dąży do tego, żeby testy przeszły, więc osłabienie testu jest dla niego poprawnym rozwiązaniem. Test zmieniasz tylko wtedy, gdy zmieniło się wymaganie, i taka zmiana przechodzi review jak każda inna.',
       scope: 'Bywa, że to test jest zły. Wtedy poprawka testu ma w opisie uzasadnienie i odwołanie do wymagania.'
     },
     {
@@ -771,7 +771,7 @@ export const security = {
       scope: 'Są zespoły, które automatycznie wdrażają zmiany niskiego ryzyka po zielonym CI. To świadoma decyzja o zakresie automatyzacji, podjęta przez ludzi i z góry, a nie przez agenta w trakcie zadania.'
     }
   ] as Scenario[],
-  takeaway: '<b>Wniosek.</b> Trzy pytania przed każdym rozszerzeniem uprawnień: jakie dane trafią do kontekstu, co agent będzie mógł zrobić, jeśli przeczyta złośliwą treść, i czy skutek da się cofnąć. Bezpieczeństwo pracy z agentem to architektura uprawnień, a nie zaufanie do modelu.',
+  takeaway: '<b>Wniosek.</b> Trzy pytania przed każdym rozszerzeniem uprawnień: jakie dane trafią do kontekstu, co agent będzie mógł zrobić, jeśli przeczyta złośliwą treść, i czy skutek da się cofnąć. Bezpieczeństwo pracy z agentem bierze się z tego, jak ustawisz uprawnienia, a nie z zaufania do modelu.',
   moreTitle: 'Środowiska regulowane: o co zapytać przed pierwszym promptem',
   more: [
     '<b>Dozwolone narzędzia.</b> Które narzędzia AI zatwierdziła organizacja i klient? Narzędzie prywatne z danymi klienta to naruszenie umowy, nawet jeśli nic się nie stało.',
@@ -793,7 +793,7 @@ export const accountability = {
     ['Zespół', 'Za proces: czy istniała bramka, która miała ten błąd zatrzymać'],
     ['Agent AI', 'Za nic. Narzędzie nie ponosi odpowiedzialności']
   ],
-  takeaway: '<b>Wniosek.</b> Odpowiedzialności nie da się delegować narzędziu. Inżynier, który zatwierdza zmianę, odpowiada za nią tak samo jak za kod napisany ręcznie. Po incydencie pytanie nie brzmi „dlaczego AI się pomyliło", tylko „dlaczego nasz proces to przepuścił" i „którą bramkę dodajemy".'
+  takeaway: '<b>Wniosek.</b> Odpowiedzialności nie da się przekazać narzędziu. Inżynier, który zatwierdza zmianę, odpowiada za nią tak samo jak za kod napisany ręcznie. Po incydencie pytanie nie brzmi „dlaczego AI się pomyliło", tylko „dlaczego nasz proces to przepuścił" i „którą bramkę dodajemy".'
 };
 
 /* ------------------------------------------------------------------ etap 5: Interview */
@@ -837,7 +837,7 @@ export const quiz: QuizItem[] = [
     q: '„Raport musi być gotowy codziennie do 7:00". Jakie to wymaganie?',
     options: ['Funkcjonalne, bo dotyczy raportu', 'Niefunkcjonalne: świeżość danych', 'To nie jest wymaganie, tylko życzenie'],
     correct: 1,
-    why: 'Zdanie nie zmienia tego, co raport liczy, tylko kiedy wynik ma być dostępny. Takie wymagania decydują o harmonogramie, materializacji i koszcie, więc trzeba je znać przed projektem.'
+    why: 'Zdanie nie zmienia tego, co raport liczy, tylko kiedy wynik ma być dostępny. Takie wymagania decydują o harmonogramie, o sposobie budowania tabeli (materializacji) i o koszcie, więc trzeba je znać przed projektem.'
   },
   {
     q: 'Model grupuje po dniu. Po zmianie liczba wierszy jest ta sama, testy <code>unique</code> i <code>not_null</code> przechodzą. Co z tego wynika?',
@@ -874,7 +874,7 @@ export const quiz: QuizItem[] = [
     q: 'Agent napisał SQL dla Snowflake z funkcją <code>SAFE_DIVIDE</code>. Co to mówi o reszcie kodu?',
     options: ['Nic, to drobna literówka', 'Że agent pisał z pamięci wzorców innej platformy, więc resztę trzeba czytać uważniej', 'Że Snowflake nie obsługuje dzielenia'],
     correct: 1,
-    why: '<code>SAFE_DIVIDE</code> to funkcja BigQuery. Ten błąd sam wypadnie przy kompilacji. Jest jednak sygnałem: skoro jedna rzecz pochodzi z innej platformy, inne założenia, których kompilator nie sprawdzi, też mogą być nietrafione.'
+    why: '<code>SAFE_DIVIDE</code> to funkcja BigQuery. Ten błąd sam wypadnie przy kompilacji. Jest jednak sygnałem. Skoro jedna rzecz pochodzi z innej platformy, to inne założenia też mogą być błędne, a tych kompilator już nie sprawdzi.'
   },
   {
     q: 'Agent czyta przez MCP stronę z dokumentacją dostawcy. W treści jest ukryte polecenie wysłania pliku z poświadczeniami. Co najskuteczniej ogranicza skutek?',
