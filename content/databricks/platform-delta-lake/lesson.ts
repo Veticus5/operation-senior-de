@@ -1,7 +1,7 @@
 import type { Bridge, ExplainedLine, LessonMeta } from '../../types';
 
 /**
- * Lekcja 07: Databricks Platform Architecture & Delta Lake. Prowadzi od problemu (zapis do katalogu plików
+ * Lekcja 08: Databricks Platform Architecture & Delta Lake. Prowadzi od problemu (zapis do katalogu plików
  * nie jest transakcją) przez log transakcyjny Delta Lake i jego konsekwencje (wersje, konflikty, MERGE,
  * time travel, VACUUM, OPTIMIZE) do platformy Databricks jako całości (compute, Unity Catalog, Lakeflow,
  * bundles) i krótkiej mapy ekosystemu Microsoft.
@@ -12,7 +12,7 @@ import type { Bridge, ExplainedLine, LessonMeta } from '../../types';
  * <term id="...">, czyli haseł z content/glossary.ts.
  *
  * Skąd są fakty: protokół Delta (PROTOCOL.md), dokumentacja Databricks, Microsoft Learn i Snowflake,
- * otwierane 2026-11-27. Całość jest spisana w docs/verified-facts.md, sekcja „Lekcja 07".
+ * otwierane 2026-11-27. Całość jest spisana w docs/verified-facts.md, sekcja „Lekcja 08".
  * Lekcja NIE MA labu: repozytorium nie ma zależności delta-spark, a jej dodanie wymaga osobnej decyzji.
  * Wszystkie wizualizacje są więc modelami w przeglądarce i tak są podpisane. Żadna liczba w tej lekcji
  * nie jest pomiarem.
