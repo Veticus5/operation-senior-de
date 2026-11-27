@@ -17,6 +17,14 @@
       "timeoutSec": 300
     },
     {
+      "id": "spark-partitioning-shuffle-lab",
+      "script": "partitioning_shuffle/shuffle_lab.py",
+      "title": "Partycje i shuffle na prawdziwym Sparku",
+      "summary": "Sześć małych eksperymentów na 12 wierszach: gdzie leży każdy wiersz, filter bez shuffle'u, groupBy z sumami częściowymi, repartition hashem i bez klucza, coalesce oraz liczba tasków po shuffle'u z AQE i bez.",
+      "scope": "To uruchomienie lokalne: <code>local[3]</code>, czyli jeden proces z trzema wątkami, bez klastra i bez sieci. Shuffle zapisuje tu pliki na lokalny dysk, więc lab pokazuje liczbę rekordów, stage'y i tasków, a nie koszt transferu. Wyniki zależą od wersji Sparka, planu i konfiguracji, więc traktuj je jako obserwację, nie gwarancję.",
+      "timeoutSec": 300
+    },
+    {
       "id": "spark-join-strategies-lab",
       "script": "join_strategies/join_strategies_lab.py",
       "title": "Trzy strategie joina na prawdziwym Sparku",

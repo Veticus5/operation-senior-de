@@ -476,3 +476,87 @@ pre.code.labr-out{height:340px;overflow:auto;font-size:13px;line-height:1.6;marg
   .exp-view{min-height:170px}
 }
 .exo{font-size:12.5px!important;line-height:1.65!important;padding:16px 18px!important}
+/* ---------- lekcja Partitioning & Shuffle (prefiks psh-) ---------- */
+.psh{--psh-PL:#f2a65a;--psh-DE:#7fb3e6;--psh-FR:#8fcba2;--psh-IT:#c9a0e8;margin:26px 0 0}
+.psh .c-PL{--c:var(--psh-PL)}.psh .c-DE{--c:var(--psh-DE)}.psh .c-FR{--c:var(--psh-FR)}.psh .c-IT{--c:var(--psh-IT)}
+.psh-ops{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 12px}
+.psh-op{border:1px solid var(--line-2);background:transparent;border-radius:9px;padding:7px 12px;font:500 13.5px var(--mono);color:var(--ink-2);white-space:nowrap}
+.psh-op:hover{border-color:var(--ink-2);color:var(--ink)}
+.psh-op[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+.psh-code{display:flex;gap:6px 16px;flex-wrap:wrap;align-items:baseline;margin:0 0 16px;max-width:none}
+.psh-code span{font:400 12.5px var(--mono);color:var(--ink-3);overflow-wrap:anywhere}
+.psh-say{border-left:2px solid var(--accent);padding:2px 0 2px 16px;margin:0 0 16px;min-height:104px}
+.psh-say p{margin:0;font-size:17px;line-height:1.5;color:var(--ink);max-width:none}
+.psh-stepn{display:block;font:500 12px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);margin-bottom:4px}
+.psh-scene{border:1px solid var(--line);border-radius:16px;background:var(--bg-2);padding:16px 16px 12px}
+.psh-scene svg{display:block;width:100%;height:auto;overflow:visible}
+.psh-scene .viz-k{margin:0 0 8px}
+.psh-scene .psh-outk{margin:8px 0 0}
+.psh-box{fill:transparent;stroke:var(--line-2);stroke-width:1}
+.psh-box.out{stroke-dasharray:4 4;transition:stroke .4s}
+.psh-box.out.on{stroke:var(--ink-3);stroke-dasharray:none}
+.psh-boxl,.psh-stagel,.psh-band{font:500 11.5px var(--mono);fill:var(--ink-3)}
+.psh-band{letter-spacing:.06em}
+.psh-band.wide{fill:var(--accent)}
+.psh-band.narrow{fill:var(--good)}
+.psh-stagel{fill:var(--ink-2)}
+.psh-cut{stroke:var(--accent);stroke-width:1.5;stroke-dasharray:6 5}
+.psh-chip{transition:transform .9s cubic-bezier(.5,0,.2,1),opacity .5s}
+.psh-chip rect{fill:color-mix(in srgb,var(--c) 20%,var(--bg-2));stroke:var(--c);stroke-width:1.2}
+.psh-chip text{font:600 12.5px var(--mono);fill:var(--ink)}
+.psh-chip .amt{font-weight:400;fill:var(--ink-2)}
+.psh-hash{display:flex;gap:4px 14px;flex-wrap:wrap;margin:10px 0 0;font:400 12.5px var(--mono);color:var(--ink-3);max-width:none;transition:opacity .3s}
+.psh-hash.off{opacity:0}
+.psh-hash span{color:var(--c);white-space:nowrap}
+.psh-actions{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 16px}
+.psh-count{display:flex;flex-wrap:wrap;gap:8px 36px;align-items:center;margin:20px 0 0}
+.psh-count p{display:flex;align-items:center;gap:12px;margin:0;font-size:15px;line-height:1.3;color:var(--ink-2)}
+.psh-count b{font:600 48px/1 var(--display);color:var(--accent);min-width:1ch;white-space:nowrap}
+.psh-count p.psh-verdict{flex-basis:100%;display:block;font-size:16.5px;line-height:1.55;color:var(--ink);min-height:4.7em;max-width:none}
+.psh-count p.psh-verdict b{font:600 16.5px/1.55 var(--body);color:var(--ink)}
+.psh-sizer{margin-top:22px}
+.psh-sizer b{font-size:40px}
+.psh-cores{flex-basis:100%;margin:6px 0 10px}
+.psh-cores .viz-k{display:block}
+.psh-corerow{display:flex;gap:4px;flex-wrap:wrap}
+.psh-corerow i{width:22px;height:22px;border-radius:5px;border:1px dashed var(--line-2);transition:background .3s,border-color .3s}
+.psh-corerow i.busy{border-style:solid;border-color:var(--accent);background:var(--accent)}
+.psh-count p.psh-verdict.fit-verdict{padding-left:16px;min-height:6.3em}
+/* trzy partycje z kafelkami (Intuicja) */
+.psh-parts{list-style:none;margin:0 0 20px;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.psh-parts li{border:1px solid var(--line-2);border-radius:12px;padding:12px}
+.psh-parts .viz-k{display:block}
+.psh-tiles{display:flex;gap:6px;flex-wrap:wrap}
+.psh-tiles i{font:600 12.5px var(--mono);font-style:normal;color:var(--ink);border:1px solid var(--c);background:color-mix(in srgb,var(--c) 20%,var(--bg-2));border-radius:6px;padding:4px 8px;white-space:nowrap}
+.psh-tiles i b{font-weight:400;color:var(--ink-2)}
+.read .psh-tiles i b{font-weight:400;color:var(--ink-2)}
+.psh-ask{margin-top:0}
+/* droga rekordu przez shuffle */
+.psh-cost{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.psh-cost li{display:grid;grid-template-columns:30px minmax(0,1fr);gap:14px;padding:0 0 18px;position:relative}
+.psh-cost li:not(:last-child)::before{content:"";position:absolute;left:14px;top:30px;bottom:0;border-left:1px dashed var(--line-2)}
+.psh-costn{width:30px;height:30px;border-radius:50%;border:1px solid var(--accent);color:var(--accent);font:500 13px/28px var(--mono);text-align:center}
+.psh-cost p{margin:0;font-size:16.5px;line-height:1.55;color:var(--ink-2);max-width:none}
+.psh-cost p.psh-costk{font:600 19px/1.5 var(--display);color:var(--ink);display:flex;gap:4px 12px;flex-wrap:wrap;align-items:baseline}
+.psh-costk span{font:400 12.5px var(--mono);color:var(--ink-3)}
+.psh-table{margin-top:20px;font-size:14px}
+.psh-table th[scope="row"]{color:var(--ink-3);font-weight:500;border-top:1px solid var(--line);white-space:nowrap}
+.psh-table thead th{font-size:13px;color:var(--ink)}
+pre.code.psh-out{font-size:13px;line-height:1.6}
+@media (prefers-reduced-motion:reduce){.psh-chip{transition:none}}
+@media (max-width:640px){
+  .psh-scene{padding:12px 10px 10px}
+  .psh-chip text{font-size:11.5px}
+  .psh-chip .amt{font-size:10px}
+  .psh-boxl,.psh-stagel,.psh-band{font-size:10.5px}
+  .psh-op{font-size:12.5px;padding:6px 9px}
+  .psh-say{min-height:148px}
+  .psh-count{gap:8px 20px}.psh-count b{font-size:36px}.psh-sizer b{font-size:30px}
+  .psh-count p.psh-verdict{min-height:9em}
+  .psh-parts{grid-template-columns:1fr}
+  .psh .segc button{font-size:13px;padding:6px 9px}
+  pre.code.psh-out{font-size:11.5px;padding:14px}
+  .data.psh-table{display:table;width:100%;table-layout:fixed;font-size:12px}
+  .psh-table th,.psh-table td{padding-right:10px;overflow-wrap:anywhere;vertical-align:top}
+  .psh-table th[scope="row"]{white-space:normal;width:24%}
+}

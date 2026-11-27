@@ -5,6 +5,7 @@ import type { Bridge } from '@content/types';
 import { beats, experiments, interview, labId, mechanism, plans, pushdown, simNotes, tasks } from '@content/spark/lazy-evaluation/lesson';
 import * as fundamentals from '@content/spark/fundamentals/lesson';
 import * as execution from '@content/spark/execution-architecture/lesson';
+import * as partitioning from '@content/spark/partitioning-shuffle/lesson';
 import { LAB_SOURCES } from './lib/labSources';
 import { parseRich, plainText, termIds } from './lib/richText';
 
@@ -39,7 +40,20 @@ const executionRich: string[] = [
   ...x.practice.experiments.flatMap(e => [e.setup, e.ask, e.scope, ...e.notes, ...(e.more?.html ?? [])]),
   ...x.quiz.flatMap(q => [q.q, q.why])
 ];
-const lessonBridges: Bridge[] = [...beats.flatMap(b => (b.bridge ? [b.bridge] : [])), ...experiments.flatMap(e => (e.bridge ? [e.bridge] : [])), pushdown.bridge, ...fundamentalsBridges, ...executionBridges];
+/** Lekcja 03 (Partitioning & Shuffle): mosty i wszystkie fragmenty HTML. */
+const ps = partitioning;
+const partitioningBridges: Bridge[] = [...ps.beats.flatMap(b => (b.bridge ? [b.bridge] : [])), ps.sizing.bridge];
+const partitioningRich: string[] = [
+  ...ps.beats.flatMap(b => [b.html, b.after ?? '', ...(b.more?.html ?? [])]),
+  ps.sim.assumptions, ps.sim.counters.shuffle, ps.sim.counters.stages, ps.sim.counters.tasks, ...ps.sim.takeaway, ...ps.sim.notes, ...ps.sim.ways,
+  ps.cost.takeaway, ...ps.cost.ui, ...ps.cost.partial, ...ps.cost.avoid,
+  ps.plan.intro, ps.plan.takeaway, ...ps.plan.stage, ...ps.plan.lines.map(l => l.text),
+  ps.sizing.intro, ...Object.values(ps.sizing.labels), ...ps.sizing.takeaway, ...ps.sizing.aqe,
+  ps.choose.takeaway, ps.choose.filesNote, ...ps.choose.hints,
+  ...ps.experiments.flatMap(e => [e.ask, e.setup, e.scope, ...e.notes, ...(e.more?.html ?? [])]),
+  ...ps.quiz.flatMap(q => [q.q, q.setup ?? '', q.why, ...q.options])
+];
+const lessonBridges: Bridge[] = [...beats.flatMap(b => (b.bridge ? [b.bridge] : [])), ...experiments.flatMap(e => (e.bridge ? [e.bridge] : [])), pushdown.bridge, ...fundamentalsBridges, ...executionBridges, ...partitioningBridges];
 const lessonRich: string[] = [
   ...beats.flatMap(b => [b.html, ...(b.more?.html ?? [])]),
   mechanism.takeaway,
@@ -53,7 +67,8 @@ const lessonRich: string[] = [
   ...lessonBridges.flatMap(b => [b.known, b.fresh, b.breaks]),
   ...labs.map(l => l.scope),
   ...fundamentalsRich,
-  ...executionRich
+  ...executionRich,
+  ...partitioningRich
 ];
 
 describe('baza pytań', () => {
@@ -153,8 +168,73 @@ describe('lekcje', () => {
   it('każda lekcja ma co najmniej jedno powiązane pytanie', () => {
     for (const l of lessons) expect(questions.some(q => q.topicId === l.topicId), l.id).toBe(true);
   });
-  it('kolejność nauki: Fundamentals, Lazy Evaluation, Execution Architecture, potem Join Strategies', () => {
-    expect(lessons.map(l => l.id)).toEqual(['spark-fundamentals', 'spark-lazy-evaluation', 'spark-execution-architecture', 'spark-join-strategies']);
+  it('kolejność nauki: Fundamentals, Lazy Evaluation, Execution Architecture, Partitioning & Shuffle, Join Strategies', () => {
+    expect(lessons.map(l => l.id)).toEqual(['spark-fundamentals', 'spark-lazy-evaluation', 'spark-execution-architecture', 'spark-partitioning-shuffle', 'spark-join-strategies']);
+  });
+  it('partitioning & shuffle: dane symulacji są spójne z opisem i z liczbami z labu', () => {
+    const { orders, sim, inputPartitions, rowsPerPartition } = ps;
+    expect(orders.length).toBe(inputPartitions * rowsPerPartition);
+    expect(orders.map(o => o.id)).toEqual(orders.map((_, i) => i + 1));
+    const part = (i: number) => Math.floor(i / rowsPerPartition);
+    const op = (id: string) => sim.ops.find(o => o.id === id)!;
+    expect(sim.ops.map(o => o.id)).toContain(sim.defaultOp);
+    for (const o of sim.ops) {
+      expect(o.steps.length, o.id).toBeGreaterThanOrEqual(3);
+      // Shuffle to granica stage'a: operacja wide ma dwa stage'e, narrow jeden i zero rekordów w shuffle'u.
+      expect(o.lab.stages, o.id).toBe(o.kind === 'wide' ? 2 : 1);
+      expect(o.lab.tasks.length, o.id).toBe(o.lab.stages);
+      expect(o.lab.tasks[0], o.id).toBe(o.id === 'coalesce' ? o.outPartitions : inputPartitions);
+      expect(o.lab.tasks[o.lab.tasks.length - 1], o.id).toBe(o.outPartitions);
+      if (o.kind === 'narrow') expect(o.lab.shuffleRecords, o.id).toBe(0);
+    }
+    // groupBy: do shuffle'u trafia jedna suma częściowa na parę (partycja wejścia, kraj).
+    const pairs = new Set(orders.map((o, i) => `${part(i)}|${o.country}`)).size;
+    expect(op('groupBy').lab.shuffleRecords).toBe(pairs);
+    expect(pairs).toBe(10);
+    expect(op('repartitionKey').lab.shuffleRecords).toBe(orders.length);
+    expect(op('repartition').lab.shuffleRecords).toBe(orders.length);
+    // Hash: każdy kraj ma jedną partycję docelową w zakresie 0..3. Round-robin: każdy wiersz dokładnie raz, równo.
+    for (const o of orders) expect(sim.hashTarget[o.country]).toBeLessThan(op('repartitionKey').outPartitions);
+    expect(sim.roundRobin.flat().sort((a, b) => a - b)).toEqual(orders.map(o => o.id));
+    expect(new Set(sim.roundRobin.map(ids => ids.length))).toEqual(new Set([3]));
+    expect(sim.coalesceGroups.flat().sort()).toEqual([0, 1, 2]);
+    expect(sim.coalesceGroups.length).toBe(op('coalesce').outPartitions);
+    // Liczby w opisach: po filtrze 3, 3 i 2 wiersze; PL w trzech partycjach wejścia, sumy częściowe 160, 120 i 50.
+    const kept = [0, 1, 2].map(p => orders.filter((o, i) => part(i) === p && o.amount >= sim.minAmount).length);
+    expect(kept).toEqual([3, 3, 2]);
+    const pl = [0, 1, 2].map(p => orders.filter((o, i) => part(i) === p && o.country === 'PL').reduce((n, o) => n + o.amount, 0));
+    expect(pl).toEqual([160, 120, 50]);
+    const sizes = [0, 1, 2, 3].map(t => orders.filter(o => sim.hashTarget[o.country] === t).length);
+    expect(sizes).toEqual([2, 2, 5, 3]);
+  });
+  it('partitioning & shuffle: ilustracja liczby partycji, eksperymenty i sprawdzian są kompletne', () => {
+    expect(ps.beats.length).toBe(3);
+    expect(ps.peek.correct).toBeLessThan(ps.peek.options.length);
+    expect(ps.cost.steps.length).toBe(4);
+    expect(ps.sizing.verdicts.length).toBe(ps.sizing.options.length);
+    expect(ps.sizing.options).toContain(ps.sizing.defaultOption);
+    // Werdykty cytują rozmiary: 25 GB, 250 MB i 2,5 MB muszą wynikać z liczb ilustracji.
+    expect(ps.sizing.options.map(n => (ps.sizing.totalGb * 1000) / n)).toEqual([25000, 250, 2.5]);
+    expect(ps.plan.lines.length).toBe(5);
+    expect(ps.experiments.length).toBe(5);
+    for (const e of ps.experiments) {
+      expect(e.correct, e.ask).toBeLessThan(e.choices.length);
+      expect(words(e.setup), e.ask).toBeGreaterThanOrEqual(8);
+      expect(words(e.scope), e.ask).toBeGreaterThanOrEqual(8);
+      expect(e.output.length, e.ask).toBeGreaterThan(40);
+    }
+    expect(ps.quiz.length).toBe(6);
+    for (const q of ps.quiz) {
+      expect(q.correct, q.q).toBeLessThan(q.options.length);
+      expect(new Set(q.options).size, q.q).toBe(q.options.length);
+      expect(words(q.why), q.q).toBeGreaterThanOrEqual(12);
+    }
+  });
+  it('partitioning & shuffle: etap Interview nie dubluje banku i bierze z niego dwa pytania', () => {
+    expect('questionPl' in ps.interview).toBe(false);
+    expect('followUps' in ps.interview).toBe(false);
+    expect(questions.filter(q => q.topicId === ps.meta.topicId).map(q => q.id)).toEqual(['spark-narrow-wide-shuffle']);
+    for (const id of ps.relatedQuestionIds) expect(questions.some(q => q.id === id), id).toBe(true);
   });
   it('spark fundamentals: ilustracje są spójne z opisem', () => {
     expect(f.beats.length).toBe(3);
@@ -269,7 +349,7 @@ describe('lekcje', () => {
 
 describe('laby uruchamiane z interfejsu', () => {
   it('nie zmieniły identyfikatorów, którymi wiążą się lekcje i pytania', () => {
-    expect(labs.map(l => l.id)).toEqual(['spark-lazy-evaluation-lab', 'spark-execution-architecture-lab', 'spark-join-strategies-lab']);
+    expect(labs.map(l => l.id)).toEqual(['spark-lazy-evaluation-lab', 'spark-execution-architecture-lab', 'spark-partitioning-shuffle-lab', 'spark-join-strategies-lab']);
   });
   it('każdy lab ma opis, zakres wyniku i kod do pokazania', () => {
     for (const l of labs) {
@@ -285,8 +365,9 @@ describe('laby uruchamiane z interfejsu', () => {
   it('lekcje i pytania wskazują tylko laby z rejestru', () => {
     expect(labById(labId)).toBeDefined();
     expect(labById(x.labId)).toBeDefined();
+    expect(labById(ps.labId)).toBeDefined();
     for (const q of questions) for (const id of q.labIds ?? []) expect(labById(id), `${q.id}: ${id}`).toBeDefined();
-    expect(questions.filter(q => q.labIds?.length).map(q => q.id)).toEqual(['spark-transformations-actions', 'spark-job-stage-task', 'spark-session-vs-context', 'spark-query-plans', 'spark-join-strategies']);
+    expect(questions.filter(q => q.labIds?.length).map(q => q.id)).toEqual(['spark-transformations-actions', 'spark-narrow-wide-shuffle', 'spark-job-stage-task', 'spark-session-vs-context', 'spark-query-plans', 'spark-join-strategies', 'spark-repartition-coalesce']);
   });
   it('pytanie i lekcja o lazy evaluation prowadzą do tego samego labu', () => {
     const q = questions.find(x => x.topicId === 'spark.lazy-evaluation');
