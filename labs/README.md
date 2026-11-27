@@ -9,7 +9,7 @@ cd labs
 uv run lazy_evaluation/lazy_lab.py
 ```
 
-Lab z rejestru `registry.json` da się też uruchomić z interfejsu: `npm run dev:labs` w katalogu głównym, potem przycisk „Uruchom lab" w lekcji albo w pytaniu. Runner wykonuje dokładnie to samo polecenie co wyżej. W rejestrze są trzy laby: `lazy_evaluation/lazy_lab.py`, `execution_architecture/execution_lab.py` i `partitioning_shuffle/shuffle_lab.py`.
+Lab z rejestru `registry.json` da się też uruchomić z interfejsu: `npm run dev:labs` w katalogu głównym, potem przycisk „Uruchom lab" w lekcji albo w pytaniu. Runner wykonuje dokładnie to samo polecenie co wyżej. W rejestrze są cztery laby: `lazy_evaluation/lazy_lab.py`, `execution_architecture/execution_lab.py`, `partitioning_shuffle/shuffle_lab.py` i `join_strategies/join_strategies_lab.py`.
 
 Inny skrypt uruchamiasz tak samo, podając jego ścieżkę. Żeby sprawdzić inną wersję Sparka bez zmiany projektu:
 
@@ -25,6 +25,7 @@ uv run --no-project --with pyspark==4.3.0 python lazy_evaluation/lazy_lab.py
 | `execution_architecture/execution_lab.py` | lekcja Spark Execution Architecture i pytania banku o tym samym temacie | SparkSession a SparkContext, cztery plany jednego zapytania, joby, stage'e i taski trzech zapytań z AQE i bez, wariant z broadcast joinem, ponowienie nieudanego taska (`local[3]` kontra `local[3,4]`) |
 | `partitioning_shuffle/shuffle_lab.py` | lekcja Partitioning & Shuffle, symulacja i eksperymenty 1–5 | gdzie leży każdy wiersz przed operacją i po niej, liczba stage'y i tasków, rekordy zapisane do shuffle'u, podział hashem i round-robin, coalesce, liczba tasków po shuffle'u z AQE i bez |
 | `interview_bank/spark_checks.py` | Interview Bank, pytania o Sparku | wartości domyślne, hint broadcast a typ joina, co wędruje przez shuffle, trzy sposoby podziału na partycje, taski a równoległość, praca wykonana przez driver |
+| `join_strategies/join_strategies_lab.py` | lekcja Spark Join Strategies (plany w etapie Praktyka, eksperymenty 1–3) i pytanie „Strategie joina" | ten sam join jako broadcast hash, sort merge i shuffled hash: plany fizyczne i rekordy zapisane do shuffle'u; próg broadcastu kontra szacunek rozmiaru; zamiana joina przez AQE; hinty przy różnych typach joina |
 
 Zasada: jeśli lekcja albo pytanie w banku podaje liczbę „z uruchomienia", musi istnieć lab, który ją odtwarza.
 

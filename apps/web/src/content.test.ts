@@ -80,7 +80,7 @@ describe('baza pytań', () => {
     expect(questions.map(q => q.id)).toEqual([
       'spark-architecture-basics', 'spark-vs-pandas-warehouse',
       'spark-transformations-actions', 'spark-narrow-wide-shuffle', 'spark-job-stage-task', 'spark-session-vs-context', 'spark-query-plans', 'spark-slow-job', 'spark-data-skew', 'spark-aqe',
-      'spark-salting', 'spark-broadcast-join', 'spark-repartition-coalesce', 'delta-acid-log', 'delta-merge-idempotency', 'delta-optimize-vacuum',
+      'spark-salting', 'spark-broadcast-join', 'spark-join-strategies', 'spark-repartition-coalesce', 'delta-acid-log', 'delta-merge-idempotency', 'delta-optimize-vacuum',
       'delta-liquid-clustering', 'delta-change-data-feed', 'delta-medallion', 'databricks-bundles-cicd', 'databricks-unity-catalog', 'databricks-structured-streaming'
     ]);
   });
@@ -168,8 +168,8 @@ describe('lekcje', () => {
   it('każda lekcja ma co najmniej jedno powiązane pytanie', () => {
     for (const l of lessons) expect(questions.some(q => q.topicId === l.topicId), l.id).toBe(true);
   });
-  it('kolejność nauki: Fundamentals, Lazy Evaluation, Execution Architecture, Partitioning & Shuffle', () => {
-    expect(lessons.map(l => l.id)).toEqual(['spark-fundamentals', 'spark-lazy-evaluation', 'spark-execution-architecture', 'spark-partitioning-shuffle']);
+  it('kolejność nauki: Fundamentals, Lazy Evaluation, Execution Architecture, Partitioning & Shuffle, Join Strategies', () => {
+    expect(lessons.map(l => l.id)).toEqual(['spark-fundamentals', 'spark-lazy-evaluation', 'spark-execution-architecture', 'spark-partitioning-shuffle', 'spark-join-strategies']);
   });
   it('partitioning & shuffle: dane symulacji są spójne z opisem i z liczbami z labu', () => {
     const { orders, sim, inputPartitions, rowsPerPartition } = ps;
@@ -349,7 +349,7 @@ describe('lekcje', () => {
 
 describe('laby uruchamiane z interfejsu', () => {
   it('nie zmieniły identyfikatorów, którymi wiążą się lekcje i pytania', () => {
-    expect(labs.map(l => l.id)).toEqual(['spark-lazy-evaluation-lab', 'spark-execution-architecture-lab', 'spark-partitioning-shuffle-lab']);
+    expect(labs.map(l => l.id)).toEqual(['spark-lazy-evaluation-lab', 'spark-execution-architecture-lab', 'spark-partitioning-shuffle-lab', 'spark-join-strategies-lab']);
   });
   it('każdy lab ma opis, zakres wyniku i kod do pokazania', () => {
     for (const l of labs) {
@@ -367,7 +367,7 @@ describe('laby uruchamiane z interfejsu', () => {
     expect(labById(x.labId)).toBeDefined();
     expect(labById(ps.labId)).toBeDefined();
     for (const q of questions) for (const id of q.labIds ?? []) expect(labById(id), `${q.id}: ${id}`).toBeDefined();
-    expect(questions.filter(q => q.labIds?.length).map(q => q.id)).toEqual(['spark-transformations-actions', 'spark-narrow-wide-shuffle', 'spark-job-stage-task', 'spark-session-vs-context', 'spark-query-plans', 'spark-repartition-coalesce']);
+    expect(questions.filter(q => q.labIds?.length).map(q => q.id)).toEqual(['spark-transformations-actions', 'spark-narrow-wide-shuffle', 'spark-job-stage-task', 'spark-session-vs-context', 'spark-query-plans', 'spark-join-strategies', 'spark-repartition-coalesce']);
   });
   it('pytanie i lekcja o lazy evaluation prowadzą do tego samego labu', () => {
     const q = questions.find(x => x.topicId === 'spark.lazy-evaluation');

@@ -455,6 +455,44 @@ export const sparkQuestions: Question[] = [
     ]
   },
   {
+    id: 'spark-join-strategies',
+    topicId: 'spark.broadcast-join',
+    area: 'spark',
+    priority: 'P0',
+    title: 'Strategie joina',
+    question: {
+      pl: 'Jakie strategie joina ma Spark i jak między nimi wybiera?',
+      en: 'What join strategies does Spark have, and how does it choose between them?'
+    },
+    answer: {
+      pl: 'Dla joina z warunkiem równości Spark ma trzy główne strategie. Broadcast hash join rozsyła małą stronę do każdego executora, więc duża strona nie potrzebuje shuffle\'u na potrzeby joina. Sort merge join wymaga, żeby obie strony były podzielone i posortowane po kluczu, co zwykle oznacza shuffle i sortowanie po obu stronach. Shuffled hash join dzieli obie strony tak samo, ale zamiast sortować buduje w każdej partycji tablicę hashującą. Spark patrzy najpierw na hinty, potem porównuje szacowany rozmiar z progiem broadcastu i używa tylko strategii, która obsługuje dany typ joina. Wybór opiera się na szacunkach, więc zanim cokolwiek zmienię, czytam plan fizyczny.',
+      en: 'For an equi-join Spark has three main strategies. A broadcast hash join ships the small side to every executor, so the large side needs no shuffle for the join. A sort-merge join needs both sides partitioned and sorted by the key, which usually means a shuffle and a sort on each side. A shuffled hash join partitions both sides the same way, but builds a hash table in each partition instead of sorting. Spark checks hints first, then compares the estimated size with the broadcast threshold, and it only uses a strategy that supports the join type. The choice rests on estimates, so I read the physical plan before I change anything.'
+    },
+    senior: {
+      pl: 'Próg to w Apache Spark domyślnie 10 MB i jest włącznie: szacunek równy progowi jeszcze się mieści. Gdy broadcast odpada, Apache Spark bez hintu zwykle kończy na sort merge, bo preferSortMergeJoin jest domyślnie włączone, a shuffled hash widzę po hincie albo po zamianie przez AQE. Jeśli dane są już zgodnie podzielone albo posortowane, shuffle lub sortowanie może zostać pominięte. Szacunek pochodzi z plików albo statystyk i może nie uwzględniać filtra, więc przy AQE patrzę na plan końcowy.',
+      en: 'The threshold is 10 megabytes by default in Apache Spark and it is inclusive: an estimate equal to it still qualifies. When broadcast is not possible, Apache Spark without a hint usually ends up with sort-merge, because preferSortMergeJoin is on by default, and I see shuffled hash after a hint or an AQE conversion. If the data is already partitioned or sorted compatibly, the shuffle or the sort can be skipped. The estimate comes from files or statistics and may not reflect a filter, so with AQE I look at the final plan.'
+    },
+    explain: [
+      'Żeby połączyć dwie tabele po kluczu, Spark musi sprawić, żeby pasujące wiersze znalazły się w jednym miejscu. Zwykle robi to na jeden z dwóch sposobów. Może przenieść wiersze obu tabel tak, żeby ten sam klucz trafił do tej samej <term id="partition">partycji</term> (<term id="shuffle">shuffle</term>), albo dać każdemu <term id="executor">executorowi</term> pełną kopię mniejszej tabeli (broadcast).',
+      'Po shuffle\'u są dwa sposoby łączenia w partycji. Sort merge sortuje obie strony po kluczu i przechodzi przez nie równocześnie. Shuffled hash buduje z jednej strony, zwykle mniejszej, tablicę hashującą, czyli słownik w pamięci, i wyszukuje w niej wiersze drugiej strony. Pierwszy płaci sortowaniem, drugi pamięcią.',
+      'Pomiar lokalny (lab, 200 000 transakcji i 2 000 klientów): broadcast hash join nie zapisał do shuffle\'u nic, a sort merge i shuffled hash zapisały każdy wiersz obu stron. W planie różnią się tym, że shuffled hash nie ma węzłów <code>Sort</code>.',
+      'Wybór opiera się na szacunku. W labie zmiana progu o jeden bajt wokół szacunku zmieniła strategię z broadcast na sort merge, a filtr, który zostawił 84 wiersze z 2 000, szacunku nie zmienił. Dopiero <term id="aqe">AQE</term>, znając prawdziwy rozmiar po shuffle\'u, zamieniło join na broadcast w trakcie wykonania.'
+    ],
+    keywords: ['sort merge join', 'shuffled hash join', 'broadcast hash join', 'preferSortMergeJoin', 'join hint', 'build side', 'statistics'],
+    followUps: [
+      { q: 'Why does Spark prefer sort-merge over shuffled hash by default?', a: 'Both normally need both sides shuffled. The difference is memory: a shuffled hash join holds one partition of the build side in a hash table, which can fail if that partition is large or skewed, while sort-merge does not need a whole side in memory. That is why spark.sql.join.preferSortMergeJoin is true by default.', pl: 'Oba zwykle wymagają shuffle\'u. Sort merge jest bezpieczniejszy pamięciowo, więc jest preferowany.' },
+      { q: 'Why can broadcasting be the wrong choice even when the table fits?', a: 'In Apache Spark the table is collected to the driver and every executor needs its own copy, so the cost grows with both table size and cluster size, and it has to fit in memory in each of those places. For a multi-gigabyte table a shuffle is often cheaper and safer. There is also a hard cap: in the Spark 4.0 code a built broadcast relation of 8 gigabytes or more fails the query.', pl: 'Koszt rośnie z rozmiarem tabeli i liczbą executorów, dochodzi pamięć drivera. Limit 8 GB dotyczy zbudowanej relacji w kodzie Spark 4.0, nie rozmiaru plików.' },
+      { q: 'One side is tiny after a filter, but the plan shows a sort-merge join. Why?', a: 'The planner works from a size estimate, and the estimate may not reflect the filter. With AQE the join can be converted to a broadcast join at runtime, once the real size is known, so I check the final plan. Up-to-date statistics or a broadcast hint can get the broadcast planned up front, but neither is a guarantee: statistics only improve the estimate, and a hint needs a join type the strategy supports.', pl: 'Decyduje szacunek, nie rzeczywisty rozmiar. Statystyki i hint mogą pomóc, ale niczego nie gwarantują.' },
+      { q: 'How do you tell from a plan which strategy was used?', a: 'By the join node name: BroadcastHashJoin, SortMergeJoin or ShuffledHashJoin. What sits under it explains the cost, typically a BroadcastExchange on one side, or a hash-partitioned Exchange on both sides, with or without Sort. But those nodes alone prove nothing: a broadcast nested loop join also has a BroadcastExchange, and an Exchange or Sort can be missing when the data is already laid out compatibly.', pl: 'Dowodem jest nazwa węzła joina. Exchange i Sort pod nim tylko tłumaczą koszt.' }
+    ],
+    mistakes: [
+      '„Broadcast jest zawsze najszybszy", bez warunku rozmiaru i pamięci.',
+      'Mylenie shuffled hash join z broadcast hash join. Oba używają tablicy hashującej, ale tylko pierwszy robi shuffle obu stron.',
+      'Mówienie o progu 10 MB tak, jakby dotyczył rzeczywistego rozmiaru tabeli, a nie szacunku.'
+    ],
+    labIds: ['spark-join-strategies-lab']
+  },
+  {
     id: 'spark-repartition-coalesce',
     topicId: 'spark.repartition-coalesce',
     labIds: ['spark-partitioning-shuffle-lab'],

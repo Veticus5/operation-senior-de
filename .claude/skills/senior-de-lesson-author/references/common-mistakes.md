@@ -23,5 +23,9 @@ Initial rules derived from MVP review, issue #1. Verify technical details agains
 | "Bronze/Silver/Gold equals dbt staging/intermediate/marts." | A useful analogy, not a one-to-one mapping. Replay depends on retention. |
 | "I measured X" in an interview answer before the learner ran a lab. | Attribute the result to the supplied lab; use first person only after actual execution. |
 | "The lab ran in X seconds, therefore production runs in Y." | Report measured environment and result; don't extrapolate without evidence. |
+| "Shuffle moves N GB over the network" computed as table size, or broadcast cost as size × executors. | Call it an illustrative logical data volume. Wire bytes depend on compression, local shuffle reads, broadcast block distribution and in-memory representation. |
+| "A join always shuffles and sorts both sides" / "otherwise Spark picks sort-merge". | Qualify: compatible partitioning or ordering can remove the Exchange or Sort; the fallback depends on join type, config and AQE. |
+| "BroadcastExchange in the plan means broadcast hash join." | The join node name is the evidence; broadcast nested loop join also has a BroadcastExchange. |
+| A size limit from source code stated as a table or file size limit. | Scope it to what the code measures (e.g. the built broadcast relation) and to the version reviewed. |
 
 When addressing review, record a new generalized rule only if it is useful for future content and grounded in evidence. Include a short bad/better example if possible. Avoid accumulating long historical transcripts.
