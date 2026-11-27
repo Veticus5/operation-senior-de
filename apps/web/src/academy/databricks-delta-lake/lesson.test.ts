@@ -158,7 +158,7 @@ describe('lekcja Databricks Platform & Delta Lake', () => {
   it('scenariusze i sprawdzian mają poprawne odpowiedzi oraz wyjaśnienia', () => {
     expect(l.choose.cases.length).toBe(4);
     // Każda z trzech platform i wariant „obie" są dobrą odpowiedzią dokładnie raz, żeby ćwiczenie nie sugerowało rankingu.
-    expect(l.choose.cases.map(c => c.options[c.correct])).toEqual(['Snowflake', 'Databricks', 'Microsoft Fabric', 'Nie: dołożyć drugi silnik i współdzielić dane w otwartym formacie tabel']);
+    expect(l.choose.cases.map(c => c.options[c.correct])).toEqual(['Snowflake', 'Databricks', 'Microsoft Fabric', 'Nie migrować: najpierw sprawdzić opcje ML w Snowflake, a drugi silnik dołożyć tylko przy realnej potrzebie']);
     for (const c of l.choose.cases) {
       expect(c.correct, c.setup).toBeLessThan(c.options.length);
       expect(new Set(c.options).size, c.setup).toBe(c.options.length);

@@ -275,7 +275,7 @@ export const conflict = {
     'W hurtowni silnik zakłada blokady albo kolejkuje transakcje. Tu nie ma serwera, który mógłby trzymać blokadę: są tylko pliki. Delta stosuje więc <b>optimistic concurrency control</b>: każdy pisze swoje pliki bez pytania, a konflikt sprawdza się dopiero w chwili commitu.',
     'Wybierz parę operacji i przejdź po krokach.'
   ],
-  assumptions: 'Model według dokumentacji Databricks: domyślny poziom izolacji zapisu WriteSerializable. Oba joby startują, gdy tabela ma wersję 4.',
+  assumptions: 'Model według dokumentacji Databricks: domyślny poziom izolacji zapisu WriteSerializable. Oba joby startują, gdy tabela ma wersję 4. Tabela nie ma kolumn identity i nikt w tym czasie nie zmienia jej schematu ani właściwości. Reguły zależą od wersji Databricks Runtime i funkcji włączonych na tabeli.',
   steps: [
     'Oba joby czytają tabelę w wersji 4. Każdy zapamiętuje, które pliki przeczytał.',
     'Oba zapisują nowe pliki Parquet do katalogu tabeli. Dopóki nie ma commitu, nikt ich nie widzi.',
@@ -284,12 +284,12 @@ export const conflict = {
   ],
   cases: [
     {
-      id: 'append', label: 'INSERT + INSERT',
+      id: 'append', label: 'INSERT + INSERT (blind append)',
       a: 'INSERT nowych zamówień', b: 'INSERT innych zamówień',
-      setup: 'Dwa joby dopisują nowe wiersze. Żaden nie czyta ani nie usuwa istniejących plików.',
+      setup: 'Dwa joby dopisują nowe wiersze zwykłym INSERT albo zapisem w trybie append. Żaden nie czyta tabeli docelowej: nie ma podzapytania ani warunku, który się do niej odwołuje. Takie dopisanie nazywa się blind append.',
       ok: true,
       check: 'A dodał tylko nowe pliki. B niczego z nich nie potrzebował.',
-      verdict: 'Brak konfliktu. B zapisuje swój commit jako wersję 6 bez powtarzania pracy. Dwa appendy nie mogą się pogryźć.'
+      verdict: 'Brak konfliktu przy tych założeniach. B zapisuje swój commit jako wersję 6 bez powtarzania pracy. To nie jest reguła dla każdego INSERT: gdy zapis czyta tabelę docelową, gdy ktoś w trakcie zmienia metadane tabeli albo gdy tabela ma kolumnę identity, wynik może być inny. Szczegóły są w rozwinięciu niżej.'
     },
     {
       id: 'same-file', label: 'UPDATE + UPDATE, ten sam plik',
@@ -305,18 +305,18 @@ export const conflict = {
       setup: 'Te same dwa UPDATE, ale tabela spełnia warunki row-level concurrency: Databricks Runtime 14.3 LTS lub nowszy, włączone deletion vectors, brak partycjonowania.',
       ok: true,
       check: 'A i B zmieniły ten sam plik, ale różne wiersze. Konflikt jest sprawdzany na poziomie wierszy.',
-      verdict: 'Brak konfliktu. Databricks sam rozstrzyga sytuację, w której równoległe zapisy zmieniają różne wiersze. Gdyby oba zmieniały ten sam wiersz, konflikt by został.'
+      verdict: 'Brak konfliktu w tym przypadku: Databricks wykrywa zmiany na poziomie wierszy i sam rozstrzyga zapisy do różnych wierszy tego samego pliku. Row-level concurrency zmniejsza liczbę konfliktów, ale ich nie usuwa. Konflikt zostaje przy tym samym wierszu, a przy złożonych warunkach, np. z podzapytaniem, wracają zwykłe reguły na poziomie plików.'
     },
     {
       id: 'insert-update', label: 'INSERT + UPDATE',
       a: 'INSERT nowych zamówień', b: 'UPDATE starych zamówień',
-      setup: 'Job A dopisuje nowe wiersze, job B zmienia istniejące.',
+      setup: 'Job A dopisuje nowe wiersze i nie czyta tabeli (blind append), job B zmienia istniejące.',
       ok: true,
       check: 'A tylko dodał pliki. Przy domyślnym WriteSerializable to nie unieważnia UPDATE.',
       verdict: 'Brak konfliktu na poziomie domyślnym. Na poziomie Serializable ta para może się pogryźć i wtedy przegrywa UPDATE, nie INSERT.'
     }
   ] as ConflictCase[],
-  takeaway: '<b>Wniosek.</b> Równoległe zapisy do jednej tabeli są normalne i zwykle bezpieczne. Konflikt powstaje wtedy, gdy drugi piszący oparł się na plikach, które pierwszy właśnie zmienił. Przegrany dostaje błąd, a nie uszkodzoną tabelę. Liczbę konfliktów zmniejsza się tak, żeby joby dotykały rozłącznych plików albo, z row-level concurrency, rozłącznych wierszy.',
+  takeaway: '<b>Wniosek.</b> Równoległe zapisy do jednej tabeli są normalne i często przechodzą bez konfliktu. Konflikt powstaje wtedy, gdy drugi piszący oparł się na czymś, co pierwszy właśnie zmienił: na plikach albo na metadanych tabeli. Przegrany dostaje błąd, a nie uszkodzoną tabelę. Liczbę konfliktów zmniejsza się tak, żeby joby dotykały rozłącznych plików albo, z row-level concurrency, rozłącznych wierszy. Dokładne reguły zależą od wersji Databricks Runtime i funkcji tabeli.',
   more: [
     {
       title: 'Poziomy izolacji i co widzi czytelnik',
@@ -327,10 +327,20 @@ export const conflict = {
       ]
     },
     {
+      title: 'Kiedy INSERT jednak wchodzi w konflikt',
+      html: [
+        'W tabeli konfliktów z dokumentacji Databricks „INSERT” oznacza dopisanie, które nie czyta tabeli docelowej: zwykły INSERT albo tryb append, bez podzapytań i warunków odwołujących się do tej tabeli. INSERT z podzapytaniem do tej samej tabeli podlega tym samym ograniczeniom co MERGE.',
+        'Poziom izolacji ma znaczenie. Przy domyślnym WriteSerializable blind append nie wchodzi w konflikt. Przy Serializable może wejść w konflikt z równoległym UPDATE, DELETE albo MERGE.',
+        'Zmiana metadanych w trakcie zapisu, np. <code>ALTER TABLE</code>, zmiana właściwości tabeli albo zapis, który zmienia schemat, może wywrócić wszystkie równoległe zapisy, także INSERT. To samo dotyczy aktualizacji protokołu tabeli.',
+        'Tabele z kolumnami identity nie obsługują równoległych transakcji. Dokumentacja mówi to wprost.',
+        'Row-level concurrency działa tylko na tabelach, które spełniają warunki: Databricks Runtime 14.3 LTS lub nowszy, deletion vectors, brak partycjonowania. Przy warunkach na typach złożonych, wyrażeniach niedeterministycznych i podzapytaniach wracają reguły na poziomie plików. Wykrywanie na poziomie wierszy wydłuża też zapis.'
+      ]
+    },
+    {
       title: 'Jak czytać wyjątki konfliktu',
       html: [
         '<code>ConcurrentAppendException</code>: ktoś dodał pliki tam, skąd Twoja operacja czytała. <code>ConcurrentDeleteReadException</code>: ktoś usunął plik, który przeczytałeś. <code>ConcurrentDeleteDeleteException</code>: ktoś usunął plik, który Ty też usuwasz, np. dwie kompaktacje naraz.',
-        '<code>MetadataChangedException</code>: w trakcie zmienił się schemat albo właściwości tabeli. <code>ProtocolChangedException</code>: tabela została zaktualizowana do nowszego protokołu albo kilka jobów tworzy ją jednocześnie.',
+        '<code>MetadataChangedException</code>: w trakcie zmienił się schemat albo właściwości tabeli. Może dotknąć każdego równoległego zapisu, także INSERT. <code>ProtocolChangedException</code>: tabela została zaktualizowana do nowszego protokołu albo kilka jobów tworzy ją jednocześnie.',
         '<code>ConcurrentTransactionException</code>: dwa zapytania streamingowe używają tego samego checkpointu. To błąd konfiguracji, nie pech.',
         'Dokumentacja Delta Lake radzi rozdzielać zbiory plików, np. partycjonowaniem i jawnym warunkiem na kolumnę partycji. Databricks dodaje, że partycjonowanie po kolumnie o wielu wartościach szkodzi wydajności, i dla tabel bez partycji daje row-level concurrency.'
       ]
@@ -366,8 +376,8 @@ export const merge = {
   ],
   duplicateLabel: 'Źródło ma dwa wiersze dla id = 2',
   error: 'MERGE kończy się błędem: dwa wiersze źródła pasują do tego samego wiersza celu i oba chcą go zmienić. Delta nie zgaduje, który ma wygrać. Tabela zostaje w poprzedniej wersji.',
-  bySourceNote: 'Uwaga na tę klauzulę: usuwa z celu wszystko, czego nie ma w źródle. Ma sens tylko wtedy, gdy źródło jest pełnym obrazem danych. Dla paczki przyrostowej skasowałaby klientów, którzy się po prostu nie zmienili.',
-  takeaway: '<b>Wniosek.</b> MERGE to join źródła z celem plus reguły dla trzech grup wierszy: dopasowanych, obecnych tylko w źródle i obecnych tylko w celu. Jest atomowy, bo kończy się jednym commitem. Wymaga jednoznacznego źródła: najwyżej jeden wiersz źródła na wiersz celu, dlatego paczkę deduplikuje się przed MERGE.',
+  bySourceNote: 'Uwaga na tę klauzulę: usuwa z celu wszystko, czego nie ma w źródle. Ma sens tylko wtedy, gdy źródło jest pełnym, wiarygodnym obrazem danych albo gdy dodatkowy warunek zawęża usuwanie do zakresu, który paczka pokrywa w całości, np. jednego dnia. Dla zwykłej paczki CDC z samymi zmianami skasowałaby klientów, którzy się po prostu nie zmienili.',
+  takeaway: '<b>Wniosek.</b> MERGE to join źródła z celem plus reguły dla trzech grup wierszy: dopasowanych, obecnych tylko w źródle i obecnych tylko w celu. Jest atomowy, bo kończy się jednym commitem. Wymaga jednoznacznego źródła: najwyżej jeden wiersz źródła na klucz. Duplikat klucza, który pasuje do wiersza celu i go zmienia, kończy się błędem. Duplikat nowego klucza wstawia dwa wiersze bez błędu. Dlatego paczkę deduplikuje się przed MERGE.',
   codeTitle: 'To samo w SQL',
   lines: [
     {
@@ -398,10 +408,19 @@ export const merge = {
     {
       code: 'WHEN NOT MATCHED BY SOURCE THEN DELETE',
       label: 'Wiersz jest tylko w celu',
-      text: 'Dostępne w Databricks SQL i Databricks Runtime 12.2 LTS lub nowszym. Bezpieczne wyłącznie przy źródle będącym pełnym obrazem.'
+      text: 'Dostępne w Databricks SQL i Databricks Runtime 12.2 LTS lub nowszym. Bezpieczne tylko przy źródle będącym pełnym, wiarygodnym obrazem albo z dodatkowym warunkiem po <code>AND</code>, który zawęża usuwanie do zakresu pokrytego przez źródło. Nigdy dla zwykłej paczki zmian.'
     }
   ] as ExplainedLine[],
   more: [
+    {
+      title: 'Duplikaty w źródle: trzy różne przypadki',
+      html: [
+        'Kilka wierszy źródła pasuje do jednego wiersza celu, a klauzula go zmienia: wynik byłby niejednoznaczny, więc MERGE kończy się błędem. To pokazuje przełącznik w symulacji.',
+        'Wyjątek: bezwarunkowy <code>DELETE</code>. Dokumentacja Databricks dopuszcza wtedy wiele dopasowań, bo usunięcie wiersza daje ten sam wynik niezależnie od tego, który wiersz źródła je wywołał.',
+        'Dwa wiersze źródła mają ten sam nowy klucz, którego nie ma w celu: żaden nie jest dopasowany, więc <code>WHEN NOT MATCHED</code> wstawi oba. Powstaje duplikat i nie ma błędu. To wniosek z definicji klauzuli (wstawia wiersz dla każdego niedopasowanego wiersza źródła), nie wynik z labu.',
+        'Deduplikacja paczki do jednego wiersza na klucz zamyka oba problemy naraz.'
+      ]
+    },
     {
       title: 'UPDATE i DELETE to ten sam mechanizm',
       html: [
@@ -464,7 +483,7 @@ export const timeTravel = {
     'Skoro stare pliki zostają w katalogu, tabela pamięta swoje wcześniejsze wersje. To <b>time travel</b>. Pliki zajmują jednak miejsce, więc ktoś musi je kiedyś usunąć. Robi to <code>VACUUM</code>.',
     'Tabela z poprzedniej symulacji: pięć commitów w dniach od 0 do 4. Ustaw dzisiejszy dzień i zdecyduj, czy ktoś uruchomił VACUUM.'
   ],
-  assumptions: 'Model uproszczony na wartościach domyślnych: retencja usuniętych plików 7 dni, retencja logu 30 dni. Wiek wersji liczę od dnia jej commitu. Wpisy logu starsze niż 30 dni model usuwa od razu (w rzeczywistości dzieje się to przy zapisie checkpointu).',
+  assumptions: 'Model uproszczony na wartościach domyślnych: retencja usuniętych plików 7 dni, retencja logu 30 dni. Wiek wersji liczę od dnia jej commitu. Wpisy logu starsze niż 30 dni model usuwa od razu. W rzeczywistości log jest sprzątany automatycznie po zapisie checkpointu, więc wpis nie znika dokładnie 30. dnia.',
   fileRetentionDays: 7,
   logRetentionDays: 30,
   days: [5, 9, 40],
@@ -472,9 +491,9 @@ export const timeTravel = {
   statuses: {
     ok: { label: 'dostępna', text: 'Wpis w logu i wszystkie pliki tej wersji istnieją.' },
     current: { label: 'bieżąca', text: 'Aktualny stan tabeli. VACUUM nigdy nie usuwa plików bieżącej wersji.' },
-    outside: { label: 'poza oknem', text: 'Pliki jeszcze leżą, ale wersja jest starsza niż 7 dni. Na Databricks Runtime 18.0 lub nowszym takie zapytanie jest blokowane. W starszych wersjach może zadziałać do pierwszego VACUUM, więc nie wolno na tym polegać.' },
+    outside: { label: 'poza oknem', text: 'Pliki jeszcze leżą, ale wersja jest starsza niż retencja usuniętych plików (7 dni). Databricks blokuje takie zapytanie od Databricks Runtime 18.0, a dla tabel managed w Unity Catalog już od 12.2 LTS. Tam, gdzie blokady nie ma, odczyt może zadziałać do pierwszego VACUUM, więc nie wolno na tym polegać.' },
     files: { label: 'pliki usunięte', text: 'VACUUM skasował co najmniej jeden plik tej wersji. Wpis w logu jest, ale nie ma czego czytać.' },
-    log: { label: 'log usunięty', text: 'Wpis logu przekroczył retencję 30 dni i został uprzątnięty. Tej wersji nie da się już odtworzyć, nawet bez VACUUM.' }
+    log: { label: 'log usunięty', text: 'Wpis logu przekroczył retencję 30 dni i model uznaje go za uprzątnięty. Naprawdę dzieje się to po zapisie checkpointu, a nie dokładnie 30. dnia. Po sprzątnięciu tej wersji nie da się już odtworzyć, nawet bez VACUUM.' }
   } as Record<string, { label: string; text: string }>,
   takeaway: [
     '<b>Wniosek.</b> Żeby odczytać starszą wersję, muszą istnieć oba składniki: jej wpis w logu i jej pliki danych. VACUUM usuwa pliki, których bieżąca wersja już nie używa i które zostały oznaczone jako usunięte dawniej niż próg retencji, domyślnie 7 dni. Dopiero VACUUM zwalnia miejsce.',
@@ -519,7 +538,8 @@ export const timeTravel = {
     {
       title: 'Jak wydłużyć okno i ile to kosztuje',
       html: [
-        'Dwie właściwości tabeli: <code>delta.deletedFileRetentionDuration</code> (domyślnie 7 dni) i <code>delta.logRetentionDuration</code> (domyślnie 30 dni). Żeby cofać się o 30 dni, obie muszą na to pozwalać. Od Databricks Runtime 18.0 retencja logu nie może być krótsza niż retencja plików.',
+        'Dwie właściwości tabeli: <code>delta.deletedFileRetentionDuration</code> (domyślnie 7 dni) i <code>delta.logRetentionDuration</code> (domyślnie 30 dni). Żeby cofać się o 30 dni, obie muszą na to pozwalać: potrzebny jest i log, z którego da się odtworzyć wersję, i jej pliki. Od Databricks Runtime 18.0 retencja logu nie może być krótsza niż retencja plików.',
+        'Log jest sprzątany automatycznie po zapisie checkpointu. Dokumentacja nie obiecuje, że wpis zniknie dokładnie w dniu przekroczenia retencji, więc nie planuj niczego na ten dzień.',
         'Koszt: każdy przepisany plik leży w magazynie przez cały okres retencji. Tabela, która codziennie przepisuje większość danych, przy 30 dniach trzyma ich wielokrotność.',
         'VACUUM ma tryby FULL (domyślny) i LITE. LITE korzysta z logu zamiast listować cały katalog. Dokumentacja Databricks podaje dla niego dwie różne wersje minimalne (16.1 i 16.4 LTS), więc sprawdź swoją.',
         'VACUUM usuwa też z katalogu tabeli pliki, którymi Delta nie zarządza. Trzymanie tam własnych plików to proszenie się o kłopot.'
@@ -687,7 +707,7 @@ export const arch = {
     {
       id: 'control', name: 'Control plane', owner: 'databricks',
       items: ['aplikacja webowa i API', 'Unity Catalog', 'Lakeflow Jobs', 'notebooki i zapytania'],
-      text: 'Usługi, którymi zarządza Databricks na własnym koncie: interfejs workspace, harmonogram jobów, katalog z uprawnieniami, przechowywanie kodu notebooków. Tu nie są przetwarzane Twoje dane. Stąd wychodzą polecenia do compute.'
+      text: 'Usługi, którymi zarządza Databricks na własnym koncie: interfejs workspace, harmonogram jobów, katalog z uprawnieniami, przechowywanie kodu notebooków. Zapytań na Twoich tabelach nie liczy control plane, tylko compute plane. Stąd wychodzą polecenia do compute.'
     },
     {
       id: 'serverless', name: 'Serverless compute plane', owner: 'databricks',
@@ -706,20 +726,20 @@ export const arch = {
     }
   ] as ArchBox[],
   defaultBox: 'control',
-  takeaway: '<b>Wniosek.</b> „Serverless” mówi, gdzie działa compute, a nie gdzie leżą dane. Control plane zawsze jest po stronie Databricks. Compute działa albo u Databricks (serverless), albo u Ciebie (classic). Pliki tabel leżą w object storage i w typowej konfiguracji jest to magazyn na Twoim koncie.',
+  takeaway: '<b>Wniosek.</b> „Serverless” mówi, gdzie działa compute, a nie gdzie leżą dane. W tej architekturze control plane działa na koncie Databricks. Compute działa albo u Databricks (serverless), albo na Twoim koncie chmurowym (classic). Pliki tabel leżą w object storage i w klasycznym workspace jest to magazyn na Twoim koncie. Szczegóły, np. sieć i nazwy zasobów, zależą od chmury.',
   bridgeTitle: 'Analogia: trzy warstwy Snowflake',
   bridge: {
     from: 'Snowflake',
     known: 'Snowflake ma trzy warstwy: storage, compute (virtual warehouses) i cloud services. Wszystkie działają po stronie usługi, a Ty widzisz tylko SQL.',
     fresh: 'Control plane odpowiada warstwie cloud services, a SQL warehouse to odpowiednik virtual warehouse. Serverless jest najbliżej doświadczenia ze Snowflake: bierzesz compute i nie widzisz maszyn.',
-    breaks: 'Storage nie jest częścią usługi w tym samym sensie: pliki leżą w magazynie w otwartym formacie i mogą je czytać inne silniki. Compute bywa na Twoim koncie, z Twoją siecią i Twoim rachunkiem od dostawcy chmury. I compute to nie tylko SQL: ten sam katalog obsługuje joby w Pythonie, streaming i modele.'
+    breaks: 'Storage nie jest częścią usługi w tym samym sensie: pliki leżą w magazynie w otwartym formacie i inne silniki mogą je czytać, o ile obsługują funkcje użyte w tabeli i mają do niej uprawnienia. Compute bywa na Twoim koncie, z Twoją siecią i Twoim rachunkiem od dostawcy chmury. I compute to nie tylko SQL: ten sam katalog obsługuje joby w Pythonie, streaming i modele.'
   } as Bridge,
   more: [
     {
       title: 'Konto, workspace, metastore',
       html: [
         '<b>Konto</b> Databricks to poziom najwyższy: rozliczenia, użytkownicy, lista workspace\'ów. <b>Workspace</b> to środowisko pracy: notebooki, joby, compute. Konto może mieć wiele workspace\'ów, np. osobne dla dev i prod.',
-        '<b>Metastore</b> Unity Catalog jest obiektem na poziomie konta i może być podpięty do wielu workspace\'ów w tym samym regionie. Dzięki temu tabela i jej uprawnienia są wspólne dla wszystkich workspace\'ów, a nie przypisane do jednego.'
+        '<b>Metastore</b> Unity Catalog jest obiektem na poziomie konta i może być podpięty do wielu workspace\'ów w tym samym regionie. Dzięki temu tabela i jej uprawnienia są wspólne dla workspace\'ów podpiętych do tego samego metastore, a nie przypisane do jednego. Workspace z innym metastore, np. w innym regionie, ich nie widzi.'
       ]
     }
   ] as More[]
@@ -1036,7 +1056,7 @@ export interface CompareDim { id: string; label: string; snowflake: string; data
 export const compare = {
   title: 'Snowflake, Databricks, Fabric: te same klocki, inaczej podzielone',
   intro: [
-    'Wszystkie trzy platformy rozdzielają storage od compute i wszystkie potrafią dziś czytać otwarte formaty tabel. Różnią się tym, ile oddajesz usłudze i co jest dla nich punktem wyjścia. Wybierz wymiar.'
+    'Wszystkie trzy platformy rozdzielają storage od compute i wszystkie obsługują dziś otwarte formaty tabel, każda w innym zakresie. Różnią się tym, ile oddajesz usłudze i co jest dla nich punktem wyjścia. Wybierz wymiar.'
   ],
   assumptions: 'Zestawienie według dokumentacji trzech dostawców (listopad 2026). Wiersz „Mocna strona” to ocena inżynierska autora, nie cytat. Platformy szybko się do siebie zbliżają.',
   platforms: ['Snowflake', 'Databricks', 'Fabric'],
@@ -1044,7 +1064,7 @@ export const compare = {
     {
       id: 'storage', label: 'Dane i format',
       snowflake: 'Domyślnie magazyn zarządzany przez Snowflake, dane w mikropartycjach, których nie widzisz. Alternatywa: tabele Apache Iceberg w Twoim magazynie.',
-      databricks: 'Pliki w object storage w otwartym formacie: Delta Lake jako domyślny, Iceberg jako opcja. Inne silniki mogą je czytać.',
+      databricks: 'Pliki w object storage w otwartym formacie: Delta Lake jako domyślny, Iceberg jako opcja. Inne silniki mogą je czytać, jeśli obsługują funkcje użyte w tabeli i mają do niej dostęp.',
       fabric: 'OneLake: jeden magazyn na tenant, tabele w Delta Parquet albo Iceberg. Skróty do danych poza OneLake.'
     },
     {
@@ -1073,7 +1093,7 @@ export const compare = {
     }
   ] as CompareDim[],
   defaultDim: 'storage',
-  takeaway: '<b>Wniosek.</b> Pytanie „która platforma jest lepsza” nie ma odpowiedzi. Dobra odpowiedź zaczyna się od obciążenia, zespołu i tego, co firma już ma. A coraz częściej brzmi „obie”: wspólny otwarty format tabel czytany przez dwa silniki.',
+  takeaway: '<b>Wniosek.</b> Pytanie „która platforma jest lepsza” nie ma odpowiedzi. Dobra odpowiedź zaczyna się od obciążenia, zespołu i tego, co firma już ma. Czasem odpowiedzią są dwie platformy na wspólnym otwartym formacie tabel. To jednak dodatkowy koszt, który musi uzasadnić potrzeba biznesowa, a nie wybór domyślny.',
   more: [
     {
       title: 'Otwarte formaty: dlaczego wybór nie musi być ostateczny',
@@ -1081,6 +1101,7 @@ export const compare = {
         'Snowflake dokumentuje tabele Apache Iceberg z plikami w Twoim magazynie oraz odczyt tabel zapisanych przez silniki Delta Lake (tabele Iceberg tworzone z plików Delta).',
         'Databricks dokumentuje odczyt tabel Delta przez klientów Iceberg: funkcja UniForm dopisuje metadane Iceberg do tabeli Delta. Dostęp klientów Iceberg jest tylko do odczytu. Tabele managed mogą być też w formacie Iceberg.',
         'OneLake przechowuje tabele w Delta albo Iceberg i potrafi wystawić dane z Unity Catalog przez skróty, bez kopiowania.',
+        'Sam format niczego nie gwarantuje. Żeby drugi silnik przeczytał tabelę, musi obsługiwać funkcje, których ona używa (np. deletion vectors albo column mapping) i jej wersję protokołu, katalog musi tę tabelę wystawić, a tożsamość musi mieć uprawnienia.',
         'Praktyczny wniosek: dane można trzymać raz, a silnik dobierać do obciążenia. Koszt to złożoność: dwa katalogi, dwa modele uprawnień i ograniczenia zgodności, które trzeba sprawdzić dla konkretnych wersji.'
       ]
     }
@@ -1113,14 +1134,14 @@ export const choose = {
       options: ['Databricks i osobno Power BI', 'Microsoft Fabric', 'Snowflake i osobno Azure Data Factory'],
       correct: 1,
       why: 'Wymaganiem jest prostota i integracja z tym, co firma już ma. Fabric dostarcza pobieranie, przetwarzanie, hurtownię i Power BI jako jeden SaaS na wspólnym magazynie, a Direct Lake czyta tabele Delta bez osobnego kopiowania do modelu.',
-      scope: 'Gdy pojawią się ciężkie obciążenia inżynierskie albo ML, tabele Delta w OneLake pozwalają dołożyć Databricks bez migracji danych.'
+      scope: 'Gdy pojawią się ciężkie obciążenia inżynierskie albo ML, można rozważyć dołożenie Databricks. Tabele Delta w OneLake to ułatwiają, ale zgodność funkcji tabel i uprawnienia trzeba sprawdzić dla konkretnego przypadku.'
     },
     {
       setup: 'Firma od lat używa Snowflake do raportowania i jest z niego zadowolona. Nowy zespół chce trenować modele i przetwarzać duże logi w Sparku. Zarząd pyta, czy trzeba wszystko migrować na jedną platformę.',
-      options: ['Tak, wszystko na Databricks', 'Tak, wszystko zostaje w Snowflake, bez Sparka', 'Nie: dołożyć drugi silnik i współdzielić dane w otwartym formacie tabel'],
+      options: ['Tak, wszystko na Databricks', 'Tak, wszystko zostaje w Snowflake, bez Sparka', 'Nie migrować: najpierw sprawdzić opcje ML w Snowflake, a drugi silnik dołożyć tylko przy realnej potrzebie'],
       correct: 2,
-      why: 'Migracja działającej hurtowni to duży koszt bez korzyści dla raportowania. Oba silniki potrafią czytać otwarte formaty tabel, więc nowe obciążenia mogą działać w Databricks, a wyniki być dostępne w Snowflake bez podwójnego ładowania.',
-      scope: 'Dwie platformy to dwa modele uprawnień i dwa rachunki. Trzeba ustalić, który katalog jest właścicielem której tabeli, i sprawdzić ograniczenia zgodności formatów dla używanych wersji.'
+      why: 'Migracja działającej hurtowni to duży koszt bez korzyści dla raportowania. Druga platforma też kosztuje, więc nie jest odpowiedzią domyślną. Najpierw pytam, czego dokładnie potrzebuje nowy zespół i czy obsłuży to obecna platforma: Snowflake ma własne narzędzia do Pythona i ML (Snowpark, Snowflake ML). Jeśli potrzeba biznesowa uzasadnia Sparka, drugi silnik i dane współdzielone w otwartym formacie tabel są rozsądniejsze niż migracja.',
+      scope: 'Dwie platformy to dwa modele uprawnień i dwa rachunki. Trzeba ustalić, który katalog jest właścicielem której tabeli. Odczyt tej samej tabeli z dwóch silników nie wynika z samego formatu: zależy od funkcji tabeli i wersji protokołu, od integracji katalogów i od uprawnień.'
     }
   ] as Scenario[],
   takeaway: '<b>Wniosek.</b> Schemat odpowiedzi na pytanie o wybór platformy: jakie obciążenia (SQL, kod, streaming, ML), kto będzie tym pracował, co już jest w firmie, ile kontroli jest potrzebne, a ile obsługi zespół udźwignie. Nazwa platformy pada na końcu.'
@@ -1136,10 +1157,10 @@ export const myths = {
     { myth: '„UPDATE zmienia wiersz w pliku.”', fact: 'Pliki Parquet są niezmienne. UPDATE zapisuje nowe pliki i oznacza stare jako usunięte albo, z deletion vectors, zapisuje znacznik obok pliku.' },
     { myth: '„OPTIMIZE zwalnia miejsce.”', fact: 'OPTIMIZE dopisuje nowe, większe pliki, a stare zostawia. Miejsce zwalnia dopiero VACUUM, po okresie retencji.' },
     { myth: '„Time travel to nasz backup.”', fact: 'Starsze wersje istnieją tylko do VACUUM i do wygaśnięcia logu. Dokumentacja Databricks odradza traktowanie historii tabeli jako długoterminowej kopii zapasowej.' },
-    { myth: '„Dwa joby nie mogą pisać do jednej tabeli naraz.”', fact: 'Mogą. Dwa appendy nigdy się nie gryzą. Konflikt powstaje dopiero wtedy, gdy oba zmieniają te same pliki albo, z row-level concurrency, te same wiersze.' },
+    { myth: '„Dwa joby nie mogą pisać do jednej tabeli naraz.”', fact: 'Mogą. Dopisania, które nie czytają tabeli (blind append), nie wchodzą ze sobą w konflikt. Konflikt powstaje, gdy operacje oparły się na tych samych plikach albo, z row-level concurrency, na tych samych wierszach, oraz gdy ktoś w trakcie zmienił metadane tabeli.' },
     { myth: '„Databricks to hostowany Spark.”', fact: 'Spark to warstwa wykonania. Platforma dokłada format tabel z transakcjami, zarządzany compute, Unity Catalog, orkiestrację i sposób wdrażania.' },
     { myth: '„Serverless znaczy, że nasze dane leżą u Databricks.”', fact: 'Serverless mówi, gdzie działa compute. Pliki tabel leżą w object storage, w typowej konfiguracji na koncie klienta.' },
-    { myth: '„Unity Catalog to nowa nazwa Hive metastore.”', fact: 'Hive metastore to rejestr tabel jednego workspace. Unity Catalog działa ponad workspace\'ami i obejmuje uprawnienia, lineage, audyt oraz obiekty inne niż tabele.' },
+    { myth: '„Unity Catalog to nowa nazwa Hive metastore.”', fact: 'Hive metastore to rejestr tabel jednego workspace. Unity Catalog jest wspólny dla workspace\'ów podpiętych do tego samego metastore i obejmuje uprawnienia, lineage, audyt oraz obiekty inne niż tabele.' },
     { myth: '„Lakehouse i Warehouse w Fabric to dwie kopie danych.”', fact: 'Oba przechowują dane w formacie Delta w OneLake. Różnią się silnikiem i sposobem zapisu: Spark kontra T-SQL.' }
   ] as Myth[]
 };
@@ -1179,15 +1200,16 @@ export const quiz: QuizItem[] = [
   },
   {
     q: 'Dwa joby jednocześnie dopisują nowe wiersze do tej samej tabeli Delta. Czego się spodziewasz?',
+    setup: 'Założenia: zwykły INSERT bez podzapytań do tej tabeli, tabela bez kolumn identity, nikt w tym czasie nie zmienia jej schematu.',
     options: ['Drugi job dostanie wyjątek konfliktu', 'Wiersze drugiego joba nadpiszą wiersze pierwszego', 'Oba commity się udadzą, jeden po drugim'],
     correct: 2,
-    why: 'Według dokumentacji INSERT i INSERT nie mogą wejść w konflikt. Drugi job zauważy, że numer commitu jest zajęty, sprawdzi, że pierwszy tylko dodał pliki, i zapisze swój commit pod kolejnym numerem.'
+    why: 'Według dokumentacji Databricks dopisania, które nie czytają tabeli, nie wchodzą ze sobą w konflikt. Drugi job zauważy, że numer commitu jest zajęty, sprawdzi, że pierwszy tylko dodał pliki, i zapisze swój commit pod kolejnym numerem. Przy innych założeniach (INSERT czytający tabelę, zmiana metadanych w trakcie, kolumna identity) wynik może być inny.'
   },
   {
     q: 'Paczka dla <code>MERGE</code> zawiera dwa wiersze z tym samym kluczem, oba pasują do jednego wiersza tabeli docelowej i klauzula <code>WHEN MATCHED</code> robi UPDATE. Co się stanie?',
     options: ['Wygra ostatni wiersz paczki', 'MERGE zakończy się błędem', 'Powstaną dwa wiersze w celu'],
     correct: 1,
-    why: 'Operacja może się nie udać, gdy kilka wierszy źródła pasuje do tego samego wiersza celu i próbuje go zmienić, bo wynik byłby niejednoznaczny. Dlatego źródło deduplikuje się przed MERGE, zostawiając jeden wiersz na klucz.'
+    why: 'Operacja może się nie udać, gdy kilka wierszy źródła pasuje do tego samego wiersza celu i próbuje go zmienić, bo wynik byłby niejednoznaczny. Dlatego źródło deduplikuje się przed MERGE, zostawiając jeden wiersz na klucz. Wyjątkiem jest bezwarunkowy DELETE, który dopuszcza wiele dopasowań.'
   },
   {
     q: 'Zapis do tabeli zawiera kolumnę, której tabela nie ma. Nie włączono ewolucji schematu. Co zrobi Delta?',
