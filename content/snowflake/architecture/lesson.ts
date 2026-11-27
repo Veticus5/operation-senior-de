@@ -1,7 +1,7 @@
 import type { Bridge, ExplainedLine, LessonMeta } from '../../types';
 
 /**
- * Lekcja 07: Snowflake Architecture & Performance Engineering. Dla kogoś, kto używa Snowflake na co dzień,
+ * Lekcja 10: Snowflake Architecture & Performance Engineering. Dla kogoś, kto używa Snowflake na co dzień,
  * a na rozmowie ma wytłumaczyć mechanizm: trzy warstwy, mikropartycje i pruning, cache, skalowanie,
  * koszty oraz funkcje produkcyjne (Streams & Tasks, Time Travel, klony, sharing, RBAC).
  *
@@ -9,7 +9,7 @@ import type { Bridge, ExplainedLine, LessonMeta } from '../../types';
  * <term id="...">, czyli haseł z content/glossary.ts.
  *
  * Skąd są fakty: oficjalna dokumentacja Snowflake, sprawdzona 2026-11-27 i spisana w docs/verified-facts.md,
- * sekcja „Lekcja 07". Repozytorium nie ma konta Snowflake, więc w tej lekcji NIE MA pomiarów ani labu.
+ * sekcja „Lekcja 10". Repozytorium nie ma konta Snowflake, więc w tej lekcji NIE MA pomiarów ani labu.
  * Wszystkie symulacje i tabele z liczbami (layers, prune, cache, profiles, scale, coverage, stream, clone)
  * są ilustracjami: liczby są dobrane tak, żeby mechanizm było widać. Liczby z dokumentacji są podpisane.
  * Studium przypadku podaje tylko trzy liczby z prawdziwego projektu (96 godzin, 128 i 30 minut) i celowo

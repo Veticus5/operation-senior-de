@@ -81,11 +81,13 @@ describe('baza pytań', () => {
       'spark-architecture-basics', 'spark-vs-pandas-warehouse',
       'spark-transformations-actions', 'spark-narrow-wide-shuffle', 'spark-job-stage-task', 'spark-session-vs-context', 'spark-query-plans', 'spark-slow-job', 'spark-data-skew', 'spark-aqe',
       'spark-salting', 'spark-broadcast-join', 'spark-join-strategies', 'spark-repartition-coalesce', 'delta-acid-log', 'delta-merge-idempotency', 'delta-optimize-vacuum',
-      'delta-liquid-clustering', 'delta-change-data-feed', 'delta-medallion', 'databricks-bundles-cicd', 'databricks-unity-catalog', 'databricks-structured-streaming',
+      'delta-liquid-clustering', 'delta-change-data-feed', 'delta-medallion', 'delta-concurrent-writes', 'databricks-bundles-cicd', 'databricks-unity-catalog', 'databricks-structured-streaming',
+      'databricks-beyond-spark', 'databricks-snowflake-fabric-choice',
       'arch-oltp-olap', 'arch-normalization', 'arch-keys-integrity', 'arch-indexes', 'arch-partition-pruning', 'arch-query-optimization', 'arch-acid-isolation',
       'arch-warehouse-lake-lakehouse', 'arch-etl-elt', 'arch-storage-compute', 'arch-choose-architecture',
       'delivery-requirements-to-production', 'delivery-testing-data-pipelines', 'delivery-release-rollback', 'delivery-ai-daily-work', 'delivery-agent-boundaries',
       'delivery-validate-ai-code', 'delivery-ai-tech-debt', 'delivery-ai-regulated', 'delivery-ai-accountability',
+      'modeling-star-schema-grain', 'modeling-fan-out-double-counting', 'modeling-fact-table-types', 'modeling-scd-types', 'modeling-late-arriving-data', 'modeling-semantic-layer', 'modeling-kimball-inmon-data-vault',
       'snowflake-architecture-layers', 'snowflake-micro-partitions-pruning', 'snowflake-clustering', 'snowflake-caching', 'snowflake-scaling',
       'snowflake-slow-query', 'snowflake-cost-control', 'snowflake-streams-tasks', 'snowflake-time-travel-cloning', 'snowflake-access-sharing'
     ]);
@@ -174,8 +176,8 @@ describe('lekcje', () => {
   it('każda lekcja ma co najmniej jedno powiązane pytanie', () => {
     for (const l of lessons) expect(questions.some(q => q.topicId === l.topicId), l.id).toBe(true);
   });
-  it('kolejność nauki: Fundamentals, Lazy Evaluation, Execution Architecture, Partitioning & Shuffle, Join Strategies, Data Skew & AQE, Database & Data Architecture, Enterprise SDLC & AI, Snowflake Architecture', () => {
-    expect(lessons.map(l => l.id)).toEqual(['spark-fundamentals', 'spark-lazy-evaluation', 'spark-execution-architecture', 'spark-partitioning-shuffle', 'spark-join-strategies', 'spark-data-skew-aqe', 'database-architecture', 'enterprise-ai-delivery', 'snowflake-architecture-performance']);
+  it('kolejność nauki: Fundamentals, Lazy Evaluation, Execution Architecture, Partitioning & Shuffle, Join Strategies, Data Skew & AQE, Database & Data Architecture, Enterprise SDLC & AI, Databricks Platform & Delta Lake, Advanced Data Modeling, Snowflake Architecture', () => {
+    expect(lessons.map(l => l.id)).toEqual(['spark-fundamentals', 'spark-lazy-evaluation', 'spark-execution-architecture', 'spark-partitioning-shuffle', 'spark-join-strategies', 'spark-data-skew-aqe', 'database-architecture', 'enterprise-ai-delivery', 'databricks-platform-delta-lake', 'data-modeling-dimensional', 'snowflake-architecture-performance']);
   });
   it('partitioning & shuffle: dane symulacji są spójne z opisem i z liczbami z labu', () => {
     const { orders, sim, inputPartitions, rowsPerPartition } = ps;

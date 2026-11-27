@@ -10,6 +10,8 @@ import { JoinLesson } from './academy/join-strategies/JoinLesson';
 import { SkewLesson } from './academy/data-skew-aqe/SkewLesson';
 import { DatabaseLesson } from './academy/database-architecture/DatabaseLesson';
 import { DeliveryLesson } from './academy/enterprise-ai-delivery/DeliveryLesson';
+import { DeltaLesson } from './academy/databricks-delta-lake/DeltaLesson';
+import { ModelingLesson } from './academy/data-modeling/ModelingLesson';
 import { SnowflakeLesson } from './academy/snowflake-architecture/SnowflakeLesson';
 import { BankHome } from './interview-bank/BankHome';
 import { QuestionView } from './interview-bank/QuestionView';
@@ -22,6 +24,8 @@ import { meta as joinMeta } from '@content/spark/join-strategies/lesson';
 import { meta as skewMeta } from '@content/spark/data-skew-aqe/lesson';
 import { meta as databaseMeta } from '@content/architecture/database-architecture/lesson';
 import { meta as deliveryMeta } from '@content/delivery/enterprise-ai-delivery/lesson';
+import { meta as deltaMeta } from '@content/databricks/platform-delta-lake/lesson';
+import { meta as modelingMeta } from '@content/data-modeling/dimensional-modeling/lesson';
 import { meta as snowflakeMeta } from '@content/snowflake/architecture/lesson';
 
 /** Lekcje mają własne komponenty (symulatory są specyficzne dla tematu). Rejestr: id lekcji -> komponent. */
@@ -34,6 +38,8 @@ const LESSONS: Record<string, (props: { stage?: string }) => JSX.Element> = {
   [skewMeta.id]: SkewLesson,
   [databaseMeta.id]: DatabaseLesson,
   [deliveryMeta.id]: DeliveryLesson,
+  [deltaMeta.id]: DeltaLesson,
+  [modelingMeta.id]: ModelingLesson,
   [snowflakeMeta.id]: SnowflakeLesson
 };
 

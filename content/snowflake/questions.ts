@@ -4,7 +4,7 @@ import type { Question } from '../types';
  * Pytania: Snowflake, architektura i performance engineering.
  *
  * Źródła: oficjalna dokumentacja Snowflake (docs.snowflake.com), sprawdzona 2026-11-27 i spisana
- * w docs/verified-facts.md, sekcja „Lekcja 07". Nie ma tu pomiarów: repozytorium nie ma konta Snowflake,
+ * w docs/verified-facts.md, sekcja „Lekcja 10". Nie ma tu pomiarów: repozytorium nie ma konta Snowflake,
  * więc żadna liczba nie jest opisana jako wynik uruchomienia. Liczby pochodzą z dokumentacji
  * (np. 50–500 MB, 24 godziny, 60 sekund) i są tak opisane.
  *
