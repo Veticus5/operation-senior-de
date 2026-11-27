@@ -11,6 +11,9 @@ Initial rules derived from MVP review, issue #1. Verify technical details agains
 | "Partition count is simultaneous parallelism." | Task count and available execution slots are different. |
 | "Driver never processes data." | Driver coordinates execution and can perform local work, including handling collected results. |
 | "Every wide operation moves all rows with the same key." | Explain dependencies and redistribution; account for partial aggregation, range partitioning and existing distribution. |
+| "Narrow means one input partition per output partition." | A narrow dependency reads one or a few whole parent partitions and never splits a parent across many children; coalesce without shuffle is narrow. Logical groupBy/join need not add a physical shuffle. |
+| "Empty tasks mean the data is not skewed" (or any quiz implying two symptoms exclude each other). | Empty and overloaded partitions can coexist; judge skew by the size distribution of non-empty partitions. |
+| "round-robin gives equal partitions" / "AQE coalesces to 64 MB". | Round-robin gives similar row counts, not equal bytes. 64 MB is advisory (ignored by default with parallelismFirst), 128 MB is a file-scan planning limit. |
 | "Exchange always means shuffle." | BroadcastExchange is a distinct exchange type. |
 | "A broadcast hint forces the strategy." | A hint requests/prioritizes a strategy; applicability and constraints matter. |
 | "PushedFilters proves data was skipped." | It shows filter pushdown; actual skipping depends on source, metadata and data. |
@@ -22,5 +25,9 @@ Initial rules derived from MVP review, issue #1. Verify technical details agains
 | "AQE will split the skewed partition" once thresholds are met. | Meeting the size and join-side conditions makes a partition eligible; confirm the split in the final plan. Scope "joins only" to the skew-join rule. |
 | "Stage time equals the longest task." / "Normal shuffle read means no skew." | The longest task is a lower bound outside a simulation where all tasks start together. Metrics are evidence, not proof. |
 | "The lab ran in X seconds, therefore production runs in Y." | Report measured environment and result; don't extrapolate without evidence. |
+| "Shuffle moves N GB over the network" computed as table size, or broadcast cost as size × executors. | Call it an illustrative logical data volume. Wire bytes depend on compression, local shuffle reads, broadcast block distribution and in-memory representation. |
+| "A join always shuffles and sorts both sides" / "otherwise Spark picks sort-merge". | Qualify: compatible partitioning or ordering can remove the Exchange or Sort; the fallback depends on join type, config and AQE. |
+| "BroadcastExchange in the plan means broadcast hash join." | The join node name is the evidence; broadcast nested loop join also has a BroadcastExchange. |
+| A size limit from source code stated as a table or file size limit. | Scope it to what the code measures (e.g. the built broadcast relation) and to the version reviewed. |
 
 When addressing review, record a new generalized rule only if it is useful for future content and grounded in evidence. Include a short bad/better example if possible. Avoid accumulating long historical transcripts.

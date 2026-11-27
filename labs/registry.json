@@ -9,6 +9,30 @@
       "timeoutSec": 300
     },
     {
+      "id": "spark-execution-architecture-lab",
+      "script": "execution_architecture/execution_lab.py",
+      "title": "Od zapytania do tasków na prawdziwym Sparku",
+      "summary": "Cztery części: SparkSession a SparkContext, cztery plany jednego zapytania, joby, stage'e i taski trzech zapytań z AQE i bez, oraz task, który pada przy pierwszej próbie.",
+      "scope": "To uruchomienie lokalne: <code>local[3]</code>, czyli jeden proces z trzema wątkami, bez klastra, na małych danych testowych. Liczby jobów, stage'y i tasków zależą od wersji Sparka, planu i konfiguracji, więc traktuj je jako obserwację, nie gwarancję. Część z awarią taska uruchamia Sparka ponownie jako <code>local[3,4]</code>.",
+      "timeoutSec": 300
+    },
+    {
+      "id": "spark-partitioning-shuffle-lab",
+      "script": "partitioning_shuffle/shuffle_lab.py",
+      "title": "Partycje i shuffle na prawdziwym Sparku",
+      "summary": "Sześć małych eksperymentów na 12 wierszach: gdzie leży każdy wiersz, filter bez shuffle'u, groupBy z sumami częściowymi, repartition hashem i bez klucza, coalesce oraz liczba tasków po shuffle'u z AQE i bez.",
+      "scope": "To uruchomienie lokalne: <code>local[3]</code>, czyli jeden proces z trzema wątkami, bez klastra i bez sieci. Shuffle zapisuje tu pliki na lokalny dysk, więc lab pokazuje liczbę rekordów, stage'y i tasków, a nie koszt transferu. Wyniki zależą od wersji Sparka, planu i konfiguracji, więc traktuj je jako obserwację, nie gwarancję.",
+      "timeoutSec": 300
+    },
+    {
+      "id": "spark-join-strategies-lab",
+      "script": "join_strategies/join_strategies_lab.py",
+      "title": "Trzy strategie joina na prawdziwym Sparku",
+      "summary": "Ten sam join 200 000 transakcji z 2 000 klientów policzony jako broadcast hash, sort merge i shuffled hash: plany fizyczne, rekordy zapisane do shuffle'u, próg kontra szacunek rozmiaru, zamiana joina przez AQE i hinty przy różnych typach joina.",
+      "scope": "To uruchomienie lokalne: <code>local[3]</code>, czyli jeden proces z trzema wątkami, bez klastra i bez sieci. Lab pokazuje, którą strategię Spark zaplanował i ile rekordów zapisał do shuffle'u. Nie mierzy czasu ani pamięci, więc nie mówi, która strategia jest szybsza na klastrze. Szacunki rozmiaru w bajtach zależą od wersji Sparka i zapisanych plików.",
+      "timeoutSec": 300
+    },
+    {
       "id": "spark-data-skew-aqe-lab",
       "script": "data_skew/skew_aqe_lab.py",
       "title": "Data skew i AQE na prawdziwym Sparku",

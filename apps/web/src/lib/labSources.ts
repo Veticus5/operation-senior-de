@@ -1,4 +1,7 @@
+import executionLab from '../../../../labs/execution_architecture/execution_lab.py?raw';
 import lazyLab from '../../../../labs/lazy_evaluation/lazy_lab.py?raw';
+import shuffleLab from '../../../../labs/partitioning_shuffle/shuffle_lab.py?raw';
+import joinLab from '../../../../labs/join_strategies/join_strategies_lab.py?raw';
 import skewAqeLab from '../../../../labs/data_skew/skew_aqe_lab.py?raw';
 
 /**
@@ -8,5 +11,8 @@ import skewAqeLab from '../../../../labs/data_skew/skew_aqe_lab.py?raw';
  */
 export const LAB_SOURCES: Record<string, string> = {
   'spark-lazy-evaluation-lab': lazyLab,
+  'spark-execution-architecture-lab': executionLab,
+  'spark-partitioning-shuffle-lab': shuffleLab,
+  'spark-join-strategies-lab': joinLab,
   'spark-data-skew-aqe-lab': skewAqeLab
 };

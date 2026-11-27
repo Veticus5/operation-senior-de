@@ -97,8 +97,28 @@ export const glossary: Record<string, GlossaryEntry> = {
     term: 'JVM',
     def: 'Maszyna wirtualna Javy: środowisko, w którym działają procesy silnika Sparka. Kod w Pythonie steruje nimi z zewnątrz.'
   },
+  rdd: {
+    term: 'RDD',
+    def: 'Starsze, niskopoziomowe API Sparka: rozproszona kolekcja obiektów bez nazwanych kolumn i bez optymalizatora zapytań. DataFrame dokłada do tej idei schemat i optymalizację.'
+  },
+  dag: {
+    term: 'DAG',
+    def: 'Directed acyclic graph: graf zależności między krokami obliczeń. Skierowany, bo zależność ma kierunek. Acykliczny, bo żaden krok nie zależy od samego siebie, więc zawsze da się ustalić kolejność wykonania.'
+  },
+  exchange: {
+    term: 'Exchange',
+    def: 'Węzeł planu fizycznego, który przenosi dane. Z podziałem na partycje, np. hashpartitioning, oznacza przetasowanie danych i początek nowego etapu wykonania. BroadcastExchange to inny rodzaj: rozsyła małą tabelę i przetasowaniem nie jest.'
+  },
+  'broadcast-join': {
+    term: 'Broadcast join',
+    def: 'Sposób łączenia tabel, w którym mała tabela jest rozsyłana w całości do wszystkich procesów roboczych. Duża tabela zostaje na miejscu i nie trzeba jej tasować.'
+  },
   accumulator: {
     term: 'Akumulator',
     def: 'Licznik, do którego zadania mogą tylko dodawać, a wynik odczytuje driver. Dobry do diagnostyki. Gdy Spark ponawia zadanie, licznik użyty w transformacji może zostać zwiększony więcej niż raz.'
+  },
+  'join-hint': {
+    term: 'Hint (wskazówka joina)',
+    def: 'Dopisek w zapytaniu albo w kodzie, którym prosisz Sparka o konkretny sposób łączenia tabel, np. broadcast. Spark go uwzględnia, jeśli ten sposób obsługuje dany typ joina. To prośba, nie gwarancja.'
   }
 };
