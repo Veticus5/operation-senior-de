@@ -148,5 +148,37 @@ export const glossary: Record<string, GlossaryEntry> = {
   'service-principal': {
     term: 'Service principal',
     def: 'Tożsamość techniczna dla automatów, a nie dla ludzi. Używają jej joby i narzędzia CI/CD, żeby wdrożenie nie zależało od konta konkretnej osoby i jej uprawnień.'
+  },
+  snowpipe: {
+    term: 'Snowpipe',
+    def: 'Usługa Snowflake, która ładuje nowe pliki do tabeli krótko po ich pojawieniu się, zwykle w ciągu minut. Działa na zasobach zarządzanych przez Snowflake, bez własnego warehouse\'u.'
+  },
+  variant: {
+    term: 'VARIANT',
+    def: 'Typ kolumny w Snowflake, który przechowuje dane półstrukturalne, np. cały dokument JSON, bez deklarowania z góry listy pól. Pola wyciąga się dopiero w zapytaniu.'
+  },
+  'dbt-test': {
+    term: 'Test dbt',
+    def: 'Reguła sprawdzana po zbudowaniu modelu, np. że kolumna nie ma pustych wartości albo że klucz jest unikalny. Test, który znajdzie wiersze łamiące regułę, kończy się niepowodzeniem.'
+  },
+  'virtual-warehouse': {
+    term: 'Warehouse (Snowflake)',
+    def: 'Zasób obliczeniowy w Snowflake, który wykonuje zapytania. Ma rozmiar, od którego zależy moc i cena za godzinę, i można go wyłączać niezależnie od przechowywanych danych.'
+  },
+  orchestrator: {
+    term: 'Orkiestrator',
+    def: 'Narzędzie, które uruchamia kroki pipeline\'u we właściwej kolejności, ponawia nieudane i pokazuje, co się wykonało. Przykłady to Airflow i Dagster.'
+  },
+  'streams-tasks': {
+    term: 'Streams i Tasks',
+    def: 'Dwa mechanizmy Snowflake. Stream pamięta, które zmiany w tabeli zostały już przetworzone. Task uruchamia instrukcję SQL według harmonogramu albo wtedy, gdy stream ma nowe dane.'
+  },
+  'monte-carlo': {
+    term: 'Monte Carlo',
+    def: 'Komercyjne narzędzie do obserwowalności danych. Śledzi m.in. świeżość tabel, liczbę wierszy i zmiany schematu oraz zależności między tabelami, i alarmuje o odchyleniach od dotychczasowego zachowania.'
+  },
+  'time-travel': {
+    term: 'Time Travel',
+    def: 'Funkcja Snowflake, która pozwala odczytać albo przywrócić tabelę w stanie z przeszłości, w granicach ustawionego okresu retencji. Standardowo to 1 dzień.'
   }
 };
