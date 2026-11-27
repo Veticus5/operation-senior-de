@@ -111,7 +111,8 @@ describe('baza pytań', () => {
       /runs both automatically/i, /robi automatycznie predictive/i,
       /always be reprocessed/i, /raw data is never lost/i,
       /same idea under different names/i,
-      /write intermediate results as shuffle files/i
+      /write intermediate results as shuffle files/i,
+      /nothing runs until an action/i, /do akcji nic się nie wykonuje/i
     ];
     for (const q of questions) {
       const spoken = [q.answer.pl, q.answer.en, q.senior?.pl ?? '', q.senior?.en ?? '', ...q.followUps.map(f => f.a)];
