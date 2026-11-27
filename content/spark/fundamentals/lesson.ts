@@ -279,7 +279,7 @@ export const choose = {
     title: 'Gdzie ten podział się zaciera',
     html: [
       'Spark ma <b>pandas API on Spark</b>. Piszesz składnią pandas, a liczy klaster. Dane leżą wtedy na wielu maszynach, więc nie wszystko zachowuje się tak jak w zwykłym pandas.',
-      'W drugą stronę: Databricks ma SQL warehouses, czyli zasób obliczeniowy do odpytywania danych w SQL, też napędzany Sparkiem. Snowflake obsługuje z kolei tabele Iceberg, których pliki leżą w zewnętrznym storage.',
+      'W drugą stronę: Databricks ma SQL warehouses, czyli zasób obliczeniowy do odpytywania danych w SQL. Działa w nich Photon, czyli własny silnik Databricks zgodny z API Sparka. Snowflake obsługuje z kolei tabele Iceberg, których pliki leżą w zewnętrznym storage.',
       'Dlatego pytanie coraz rzadziej brzmi „Spark czy hurtownia", a coraz częściej „który silnik do którego zadania".'
     ]
   }
