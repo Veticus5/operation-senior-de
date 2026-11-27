@@ -1,5 +1,6 @@
 import executionLab from '../../../../labs/execution_architecture/execution_lab.py?raw';
 import lazyLab from '../../../../labs/lazy_evaluation/lazy_lab.py?raw';
+import shuffleLab from '../../../../labs/partitioning_shuffle/shuffle_lab.py?raw';
 
 /**
  * Kod labów pokazywany w interfejsie, wkompilowany w aplikację, żeby był widoczny także bez runnera.
@@ -8,5 +9,6 @@ import lazyLab from '../../../../labs/lazy_evaluation/lazy_lab.py?raw';
  */
 export const LAB_SOURCES: Record<string, string> = {
   'spark-lazy-evaluation-lab': lazyLab,
-  'spark-execution-architecture-lab': executionLab
+  'spark-execution-architecture-lab': executionLab,
+  'spark-partitioning-shuffle-lab': shuffleLab
 };

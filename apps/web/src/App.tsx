@@ -5,18 +5,21 @@ import { AcademyHome } from './academy/AcademyHome';
 import { LazyLesson } from './academy/lazy-evaluation/LazyLesson';
 import { FundamentalsLesson } from './academy/spark-fundamentals/FundamentalsLesson';
 import { ExecutionLesson } from './academy/execution-architecture/ExecutionLesson';
+import { PartitioningLesson } from './academy/partitioning-shuffle/PartitioningLesson';
 import { BankHome } from './interview-bank/BankHome';
 import { QuestionView } from './interview-bank/QuestionView';
 import { Review } from './interview-bank/Review';
 import { meta as lazyMeta } from '@content/spark/lazy-evaluation/lesson';
 import { meta as fundamentalsMeta } from '@content/spark/fundamentals/lesson';
 import { meta as executionMeta } from '@content/spark/execution-architecture/lesson';
+import { meta as partitioningMeta } from '@content/spark/partitioning-shuffle/lesson';
 
 /** Lekcje mają własne komponenty (symulatory są specyficzne dla tematu). Rejestr: id lekcji -> komponent. */
 const LESSONS: Record<string, (props: { stage?: string }) => JSX.Element> = {
   [fundamentalsMeta.id]: FundamentalsLesson,
   [lazyMeta.id]: LazyLesson,
-  [executionMeta.id]: ExecutionLesson
+  [executionMeta.id]: ExecutionLesson,
+  [partitioningMeta.id]: PartitioningLesson
 };
 
 export function App() {

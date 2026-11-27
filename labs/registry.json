@@ -15,6 +15,14 @@
       "summary": "Cztery części: SparkSession a SparkContext, cztery plany jednego zapytania, joby, stage'e i taski trzech zapytań z AQE i bez, oraz task, który pada przy pierwszej próbie.",
       "scope": "To uruchomienie lokalne: <code>local[3]</code>, czyli jeden proces z trzema wątkami, bez klastra, na małych danych testowych. Liczby jobów, stage'y i tasków zależą od wersji Sparka, planu i konfiguracji, więc traktuj je jako obserwację, nie gwarancję. Część z awarią taska uruchamia Sparka ponownie jako <code>local[3,4]</code>.",
       "timeoutSec": 300
+    },
+    {
+      "id": "spark-partitioning-shuffle-lab",
+      "script": "partitioning_shuffle/shuffle_lab.py",
+      "title": "Partycje i shuffle na prawdziwym Sparku",
+      "summary": "Sześć małych eksperymentów na 12 wierszach: gdzie leży każdy wiersz, filter bez shuffle'u, groupBy z sumami częściowymi, repartition hashem i bez klucza, coalesce oraz liczba tasków po shuffle'u z AQE i bez.",
+      "scope": "To uruchomienie lokalne: <code>local[3]</code>, czyli jeden proces z trzema wątkami, bez klastra i bez sieci. Shuffle zapisuje tu pliki na lokalny dysk, więc lab pokazuje liczbę rekordów, stage'y i tasków, a nie koszt transferu. Wyniki zależą od wersji Sparka, planu i konfiguracji, więc traktuj je jako obserwację, nie gwarancję.",
+      "timeoutSec": 300
     }
   ]
 }

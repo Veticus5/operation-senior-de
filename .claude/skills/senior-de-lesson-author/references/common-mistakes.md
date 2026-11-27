@@ -11,6 +11,9 @@ Initial rules derived from MVP review, issue #1. Verify technical details agains
 | "Partition count is simultaneous parallelism." | Task count and available execution slots are different. |
 | "Driver never processes data." | Driver coordinates execution and can perform local work, including handling collected results. |
 | "Every wide operation moves all rows with the same key." | Explain dependencies and redistribution; account for partial aggregation, range partitioning and existing distribution. |
+| "Narrow means one input partition per output partition." | A narrow dependency reads one or a few whole parent partitions and never splits a parent across many children; coalesce without shuffle is narrow. Logical groupBy/join need not add a physical shuffle. |
+| "Empty tasks mean the data is not skewed" (or any quiz implying two symptoms exclude each other). | Empty and overloaded partitions can coexist; judge skew by the size distribution of non-empty partitions. |
+| "round-robin gives equal partitions" / "AQE coalesces to 64 MB". | Round-robin gives similar row counts, not equal bytes. 64 MB is advisory (ignored by default with parallelismFirst), 128 MB is a file-scan planning limit. |
 | "Exchange always means shuffle." | BroadcastExchange is a distinct exchange type. |
 | "A broadcast hint forces the strategy." | A hint requests/prioritizes a strategy; applicability and constraints matter. |
 | "PushedFilters proves data was skipped." | It shows filter pushdown; actual skipping depends on source, metadata and data. |
