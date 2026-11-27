@@ -5,6 +5,7 @@ import { databricksQuestions } from './databricks/questions';
 import { architectureQuestions } from './architecture/questions';
 import { deliveryQuestions } from './delivery/questions';
 import { modelingQuestions } from './data-modeling/questions';
+import { snowflakeQuestions } from './snowflake/questions';
 import { meta as fundamentals } from './spark/fundamentals/lesson';
 import { meta as lazyEvaluation } from './spark/lazy-evaluation/lesson';
 import { meta as executionArchitecture } from './spark/execution-architecture/lesson';
@@ -15,13 +16,14 @@ import { meta as databaseArchitecture } from './architecture/database-architectu
 import { meta as enterpriseAiDelivery } from './delivery/enterprise-ai-delivery/lesson';
 import { meta as platformDeltaLake } from './databricks/platform-delta-lake/lesson';
 import { meta as dimensionalModeling } from './data-modeling/dimensional-modeling/lesson';
+import { meta as snowflakeArchitecture } from './snowflake/architecture/lesson';
 
 export * from './types';
 export * from './labs';
 
 /** Rejestr treści. Nowe pytania dopisujesz do pliku obszaru, nową lekcję rejestrujesz tutaj. Kolejność listy to kolejność nauki. */
-export const questions: Question[] = [...sparkQuestions, ...deltaQuestions, ...databricksQuestions, ...architectureQuestions, ...deliveryQuestions, ...modelingQuestions];
-export const lessons: LessonMeta[] = [fundamentals, lazyEvaluation, executionArchitecture, partitioningShuffle, joinStrategies, dataSkewAqe, databaseArchitecture, enterpriseAiDelivery, platformDeltaLake, dimensionalModeling];
+export const questions: Question[] = [...sparkQuestions, ...deltaQuestions, ...databricksQuestions, ...architectureQuestions, ...deliveryQuestions, ...modelingQuestions, ...snowflakeQuestions];
+export const lessons: LessonMeta[] = [fundamentals, lazyEvaluation, executionArchitecture, partitioningShuffle, joinStrategies, dataSkewAqe, databaseArchitecture, enterpriseAiDelivery, platformDeltaLake, dimensionalModeling, snowflakeArchitecture];
 
 export const lessonByTopic = (topicId: string): LessonMeta | undefined => lessons.find(l => l.topicId === topicId);
 export const questionsByTopic = (topicId: string): Question[] => questions.filter(q => q.topicId === topicId);
