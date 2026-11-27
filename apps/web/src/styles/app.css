@@ -353,6 +353,129 @@ pre.code.labr-out{height:340px;overflow:auto;font-size:13px;line-height:1.6;marg
   .labr details.labr-src>div{padding:8px}
 }
 
+/* ---------- lekcja Spark Execution Architecture (klasy z prefiksem ex) ---------- */
+/* liczby z labu: akcja, joby, stage'e, taski */
+.exc{margin:28px 0 0}
+.exc-row{border:1px solid var(--line);border-radius:14px;background:var(--bg-2);padding:14px 18px;margin:0 0 10px}
+.exc-row .viz-k{margin-bottom:10px}
+.exc-nums{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:0}
+.exc-nums div{display:flex;flex-direction:column;gap:4px}
+.exc-nums dd{margin:0;font:600 clamp(30px,6vw,46px)/1 var(--display);color:var(--accent)}
+.exc-nums dt{font:400 12.5px var(--mono);color:var(--ink-3)}
+.exc-row:last-child .exc-nums dd{color:var(--ink)}
+
+/* symulator: joby, stage'e, taski */
+.exs-wrap .exs-intro{max-width:76ch}
+.exs{margin:22px 0 0}
+.exs-controls{display:flex;gap:10px;flex-wrap:wrap;margin:6px 0 18px}
+.exs-controls .segc button{white-space:nowrap}
+.exs-grid{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:24px;align-items:start}
+.exs-code{margin:0 0 8px!important;font-size:13.5px!important;padding:14px 18px!important}
+.exs-note{margin:0 0 16px;max-width:none}
+.exs-count{display:flex;flex-wrap:wrap;gap:8px 30px;align-items:center;margin:0 0 16px;min-height:52px}
+.exs-count p{display:flex;align-items:center;gap:10px;margin:0;font-size:14.5px;line-height:1.25;color:var(--ink-2)}
+.exs-count b{font:600 48px/1 var(--display);color:var(--accent);min-width:1ch}
+.exs-count .skip b{color:var(--ink-3)}
+.exs-scene{border:1px solid var(--line);border-radius:16px;background:var(--bg-2);padding:16px}
+.exs-driver{border:1px solid var(--line-2);border-radius:12px;padding:12px 16px;transition:border-color .3s}
+.exs-driver.on{border-color:var(--accent)}
+.exs-driver .viz-k{display:flex;justify-content:space-between;gap:12px}
+.exs-driver .viz-k span:last-child{letter-spacing:.04em;text-transform:none}
+.exs-say{margin:0;font-size:16px;line-height:1.5;color:var(--ink);max-width:none;min-height:4.5em}
+.exs-jobs{list-style:none;margin:14px 0 0;padding:0;display:flex;flex-direction:column;gap:10px}
+.exs-job{border:1px solid var(--line-2);border-radius:14px;padding:10px;transition:border-color .3s}
+.exs-job.run{border-color:var(--accent)}
+.exs-job.done{border-color:color-mix(in srgb,var(--good) 55%,var(--line-2))}
+.exs-jobhead{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;width:100%;border:1px solid transparent;border-radius:9px;background:transparent;padding:6px 10px;text-align:left}
+.exs-jobhead b{font:600 17px var(--display)}
+.exs-jobhead span{font:400 12.5px var(--mono);color:var(--ink-3)}
+.exs-jobhead:hover{background:var(--bg-3)}
+.exs-jobhead[aria-pressed="true"],.exs-stage[aria-pressed="true"]{border-color:var(--ink);background:var(--bg-3)}
+.exs-row{list-style:none;margin:8px 0 0;padding:0;display:grid;grid-template-columns:minmax(0,1fr);gap:8px}
+.exs-row[data-n="2"]{grid-template-columns:repeat(2,minmax(0,1fr))}
+.exs-row.skipped{grid-template-columns:repeat(auto-fill,minmax(118px,1fr))}
+.exs-cut{display:flex;align-items:center;gap:10px;margin:8px 0 0;max-width:none;font:500 11.5px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--accent)}
+.exs-cut::before,.exs-cut::after{content:"";flex:1;border-top:1px dashed var(--accent-dim)}
+.exs-stage{display:flex;flex-direction:column;gap:6px;width:100%;height:100%;border:1px solid var(--line-2);border-radius:11px;background:var(--bg);padding:10px 12px;text-align:left;transition:border-color .3s,opacity .3s}
+.exs-stage:hover{border-color:var(--ink-2)}
+.exs-stage-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.exs-stage-h b{font:600 15px var(--body)}
+.exs-stage-h em{font:400 12px var(--mono);font-style:normal;color:var(--ink-3)}
+.exs-stage-t{font-size:14.5px;line-height:1.35;color:var(--ink-2)}
+.exs-stage-n{font:400 12px var(--mono);color:var(--ink-3)}
+.exs-tasks{display:flex;flex-wrap:wrap;gap:3px}
+.exs-tasks i{width:9px;height:9px;border-radius:2px;border:1px solid var(--line-2);transition:background .3s,border-color .3s}
+.exs-tasks i.run{border-color:var(--accent);background:var(--accent)}
+.exs-stage.run{border-color:var(--accent)}
+.exs-stage.run .exs-stage-h em{color:var(--accent)}
+.exs-stage.done .exs-tasks i{border-color:var(--good);background:color-mix(in srgb,var(--good) 55%,transparent)}
+.exs-stage.done .exs-stage-h em{color:var(--good)}
+.exs-stage.skip{border-style:dashed;background:transparent;padding:7px 10px;gap:2px}
+.exs-stage.skip .exs-stage-h b{font-weight:500;color:var(--ink-3)}
+.exs-legend{display:flex;gap:6px 16px;flex-wrap:wrap;margin:14px 0 0;font:400 12px var(--mono);color:var(--ink-3);max-width:none}
+.exs-legend span{display:inline-flex;gap:6px;align-items:center}
+.exs-legend span::before{content:"";width:10px;height:10px;border-radius:3px;border:1px solid var(--line-2)}
+.exs-legend .run::before{border-color:var(--accent);background:var(--accent)}
+.exs-legend .done::before{border-color:var(--good);background:color-mix(in srgb,var(--good) 55%,transparent)}
+.exs-legend .skip::before{border-style:dashed}
+.exs-legend .sq::before{width:9px;height:9px;border-radius:2px}
+.exs-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.exs-inspect{position:sticky;top:120px;border:1px solid var(--line);border-radius:16px;padding:18px 20px;min-height:340px}
+.exs-inspect h3{font-size:20px;margin:0 0 10px}
+.exs-inspect p{font-size:16px;line-height:1.55;margin:0 0 12px;max-width:none}
+.exs-inspect dl{margin:0 0 12px}
+.exs-inspect dt{font:500 11.5px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);margin:14px 0 4px}
+.exs-inspect dd{margin:0;font-size:15.5px;line-height:1.5;color:var(--ink)}
+.exs-ops{display:flex;flex-wrap:wrap;gap:6px}
+.exs-ops span{font:400 12.5px var(--mono);color:var(--ink-2);border:1px solid var(--line);border-radius:7px;padding:2px 8px}
+.exs-ops span:not(:last-child)::after{content:" →";color:var(--ink-3)}
+.exs-hint{margin:16px 0 0!important;color:var(--ink-3)}
+.exs-wrap+.read{margin-top:8px}
+
+/* graf stage'y */
+.exd{margin:24px 0 0}
+.exd-graph{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:16px;background:var(--bg-2);padding:18px;margin:0 0 10px}
+.exd-col{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px;flex:1;min-width:0}
+.exd-node{border:1px solid var(--line-2);border-radius:11px;background:var(--bg);padding:10px 12px;display:flex;flex-direction:column;gap:2px}
+.exd-node b{font:600 15px var(--body)}
+.exd-node span{font-size:14.5px;line-height:1.3;color:var(--ink-2)}
+.exd-node i{font:400 12px var(--mono);font-style:normal;color:var(--ink-3)}
+.exd-arrow{margin:0;display:flex;flex-direction:column;align-items:center;gap:2px;font:500 11px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--accent);flex:none}
+.exd-arrow::after{content:"→";font-size:20px;line-height:1}
+.exd figcaption{max-width:none}
+
+/* cztery plany */
+.exp{margin:22px 0 0}
+.exp .badge{display:flex}
+.exp-tabs{margin:0 0 16px;max-width:100%;flex-wrap:wrap}
+.exp-tabs button{white-space:nowrap}
+.exp-view{min-height:118px}
+.exp-view h3{font-size:19px}
+.exp-view p{font-size:16.5px;line-height:1.6;color:var(--ink-2);max-width:none}
+.exp-code{font-size:13px!important;line-height:1.65!important}
+.exu{margin:8px 0 0;padding-left:22px;display:flex;flex-direction:column;gap:12px;max-width:64ch}
+.exu li::marker{color:var(--accent);font-family:var(--mono);font-size:.85em}
+.exu b{color:var(--ink);font-weight:600}
+
+@media (max-width:900px){
+  .exs-grid{grid-template-columns:minmax(0,1fr)}
+  .exs-inspect{position:static;min-height:0}
+}
+@media (max-width:640px){
+  .exs-controls .segc button{font-size:13px;padding:6px 9px;white-space:normal;text-align:left}
+  .exs-count{gap:6px 20px}.exs-count b{font-size:38px}
+  .exs-scene{padding:12px}
+  .exs-job{padding:8px}
+  .exs-stage{padding:9px 10px}
+  .exs-say{min-height:6em}
+  .exd-graph{flex-direction:column;align-items:stretch;padding:14px}
+  .exd-col{flex-direction:row}
+  .exd-col .exd-node{flex:1;min-width:0}
+  .exd-arrow::after{content:"↓"}
+  .exp-tabs button{font-size:13px;padding:6px 9px}
+  .exp-view{min-height:170px}
+}
+.exo{font-size:12.5px!important;line-height:1.65!important;padding:16px 18px!important}
 /* ---------- lekcja Partitioning & Shuffle (prefiks psh-) ---------- */
 .psh{--psh-PL:#f2a65a;--psh-DE:#7fb3e6;--psh-FR:#8fcba2;--psh-IT:#c9a0e8;margin:26px 0 0}
 .psh .c-PL{--c:var(--psh-PL)}.psh .c-DE{--c:var(--psh-DE)}.psh .c-FR{--c:var(--psh-FR)}.psh .c-IT{--c:var(--psh-IT)}

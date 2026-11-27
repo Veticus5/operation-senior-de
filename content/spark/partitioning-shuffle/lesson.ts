@@ -261,7 +261,7 @@ export const cost = {
   avoid: [
     'Join z małą tabelą może pójść inną drogą: Spark rozsyła małą tabelę w całości do executorów (broadcast), a duża strona nie jest przegrupowywana. W planie widać wtedy <code>BroadcastExchange</code>. Mimo słowa „Exchange" to nie jest shuffle.',
     'Shuffle nie jest też potrzebny, gdy dane są już podzielone tak, jak wymaga operacja. W labie <code>repartition(4, "country")</code>, a po nim <code>groupBy("country")</code>, dało plan z jednym węzłem <code>Exchange</code>, a nie z dwoma: Spark nie przegrupowuje drugi raz danych, które już leżą po kluczu.',
-    'Wynik shuffle\'u bywa też użyty ponownie. Pliki shuffle\'u zostają na dysku, więc gdy kolejna akcja potrzebuje tego samego przegrupowania, stage, który je zapisał, może zostać pominięty. Poprzednia lekcja pokazywała to na liczniku wierszy.'
+    'Wynik shuffle\'u bywa też użyty ponownie. Pliki shuffle\'u zostają na dysku, więc gdy kolejna akcja potrzebuje tego samego przegrupowania, stage, który je zapisał, może zostać pominięty. Lekcja o lazy evaluation pokazywała to na liczniku wierszy.'
   ]
 };
 
