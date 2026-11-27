@@ -32,7 +32,7 @@ const partitioningRich: string[] = [
   ps.cost.takeaway, ...ps.cost.ui, ...ps.cost.partial, ...ps.cost.avoid,
   ps.plan.intro, ps.plan.takeaway, ...ps.plan.stage, ...ps.plan.lines.map(l => l.text),
   ps.sizing.intro, ...Object.values(ps.sizing.labels), ...ps.sizing.takeaway, ...ps.sizing.aqe,
-  ps.choose.takeaway, ...ps.choose.hints,
+  ps.choose.takeaway, ps.choose.filesNote, ...ps.choose.hints,
   ...ps.experiments.flatMap(e => [e.ask, e.setup, e.scope, ...e.notes, ...(e.more?.html ?? [])]),
   ...ps.quiz.flatMap(q => [q.q, q.setup ?? '', q.why, ...q.options])
 ];
@@ -297,7 +297,7 @@ describe('laby uruchamiane z interfejsu', () => {
     expect(labById(labId)).toBeDefined();
     expect(labById(ps.labId)).toBeDefined();
     for (const q of questions) for (const id of q.labIds ?? []) expect(labById(id), `${q.id}: ${id}`).toBeDefined();
-    expect(questions.filter(q => q.labIds?.length).map(q => q.id)).toEqual(['spark-transformations-actions']);
+    expect(questions.filter(q => q.labIds?.length).map(q => q.id)).toEqual(['spark-transformations-actions', 'spark-narrow-wide-shuffle', 'spark-repartition-coalesce']);
   });
   it('pytanie i lekcja o lazy evaluation prowadzą do tego samego labu', () => {
     const q = questions.find(x => x.topicId === 'spark.lazy-evaluation');

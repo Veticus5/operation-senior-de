@@ -332,6 +332,7 @@ export function PartitioningLesson({ stage }: { stage?: string }) {
               </tbody>
             </table>
             <Html as="p" className="takeaway" html={choose.takeaway} />
+            <Html as="p" className="takeaway" html={choose.filesNote} />
             <Deeper title={choose.hintsTitle} html={choose.hints} />
           </section>
 

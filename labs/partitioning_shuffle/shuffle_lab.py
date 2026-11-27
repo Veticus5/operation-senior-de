@@ -122,6 +122,10 @@ for s in stages:
 then_group = by_key.groupBy("country").agg(F.sum("amount"))
 n_exchange = then_group._jdf.queryExecution().executedPlan().toString().count("Exchange")
 print(f"   repartition(4, country), potem groupBy(country): węzłów Exchange w planie: {n_exchange}")
+spark.conf.set("spark.sql.shuffle.partitions", "7")
+print(f"   liczba partycji przy spark.sql.shuffle.partitions = 7: repartition(4, country) -> {orders.repartition(4, 'country').rdd.getNumPartitions()}, "
+      f"repartition(country) bez liczby -> {orders.repartition('country').rdd.getNumPartitions()}")
+spark.conf.set("spark.sql.shuffle.partitions", "4")
 print("   repartition(4): bez klucza")
 no_key = orders.repartition(4)
 show_layout(no_key)

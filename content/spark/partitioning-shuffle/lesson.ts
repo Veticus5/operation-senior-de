@@ -79,7 +79,7 @@ export const beats: Beat[] = [
     next: 'Jak je zebrać w jednym miejscu?'
   },
   {
-    html: '<h2>Umówić się, dokąd jedzie każdy klucz</h2>\n<p>Najprościej byłoby ściągnąć wszystko do jednego procesu i tam policzyć. Przy dwunastu wierszach to działa. Przy miliardzie jeden proces tego nie pomieści i właśnie po to dane były dzielone.</p>\n<p>Spark robi inaczej. Ustala regułę, która każdemu kluczowi przypisuje jedną partycję docelową, np. „PL zawsze do partycji 2". Każdy task odsyła swoje rekordy tam, gdzie każe reguła. Po tej przeprowadzce wszystko, co dotyczy PL, leży w jednej partycji i jeden task może to dokończyć.</p>\n<p>Ta przeprowadzka nazywa się <b>shuffle</b>: przegrupowanie danych między partycjami. Operacje, które da się policzyć bez niej, mają zależność <b>narrow</b> (wąską): partycja wyniku powstaje z jednej partycji wejścia. Te, które potrzebują danych z wielu partycji wejścia, mają zależność <b>wide</b> (szeroką).</p>',
+    html: '<h2>Umówić się, dokąd jedzie każdy klucz</h2>\n<p>Najprościej byłoby ściągnąć wszystko do jednego procesu i tam policzyć. Przy dwunastu wierszach to działa. Przy miliardzie jeden proces tego nie pomieści i właśnie po to dane były dzielone.</p>\n<p>Spark robi inaczej. Ustala regułę, która każdemu kluczowi przypisuje jedną partycję docelową, np. „PL zawsze do partycji 2". Każdy task odsyła swoje rekordy tam, gdzie każe reguła. Po tej przeprowadzce wszystko, co dotyczy PL, leży w jednej partycji i jeden task może to dokończyć.</p>\n<p>Ta przeprowadzka nazywa się <b>shuffle</b>: przegrupowanie danych między partycjami. Gdy przeprowadzka nie jest potrzebna, zależność nazywa się <b>narrow</b> (wąska): każda partycja wyniku powstaje z jednej albo kilku całych partycji wejścia i żadnej partycji wejścia nie trzeba rozdzielać między wiele partycji wyniku. Gdy rekordy z jednej partycji wejścia muszą trafić do wielu partycji wyniku, zależność jest <b>wide</b> (szeroka) i wymaga shuffle\'u.</p>',
     next: 'Czy ja tego nie znam z SQL?'
   },
   {
@@ -141,7 +141,7 @@ export const sim = {
         'Reszta zostaje w tej samej partycji, w której była. Żaden wiersz nie zmienił partycji.'
       ],
       lab: { shuffleRecords: 0, stages: 1, tasks: [3] },
-      verdict: 'Zależność narrow. Partycje wyniku powstają z pojedynczych partycji wejścia, więc nie ma czego przenosić. Partycje zrobiły się za to nierówne: 3, 3 i 2 wiersze.'
+      verdict: 'Zależność narrow, tutaj jeden do jednego: każda partycja wyniku powstaje z jednej partycji wejścia, więc nie ma czego przenosić. Partycje zrobiły się za to nierówne: 3, 3 i 2 wiersze.'
     },
     {
       id: 'groupBy',
@@ -187,10 +187,10 @@ export const sim = {
       steps: [
         'Każdy task dostaje swoją partycję.',
         'Bez klucza Spark rozdaje wiersze po kolei między partycje docelowe (round-robin). Przez shuffle znów przechodzi wszystkie 12 wierszy.',
-        'Partycje są równe: po 3 wiersze. Za to kraje są rozrzucone: PL leży teraz w trzech partycjach.'
+        'W tym uruchomieniu wyszło po 3 wiersze w partycji. Za to kraje są rozrzucone: PL leży teraz w trzech partycjach.'
       ],
       lab: { shuffleRecords: 12, stages: 2, tasks: [3, 4] },
-      verdict: 'Pełny shuffle bez klucza. Wyrównuje rozmiary, ale nie patrzy na klucze, więc nie przygotowuje danych pod grupowanie ani join.'
+      verdict: 'Pełny shuffle bez klucza. Daje zbliżone liczby wierszy w partycjach, ale nie gwarantuje równych rozmiarów w bajtach i nie patrzy na klucze, więc nie przygotowuje danych pod grupowanie ani join.'
     },
     {
       id: 'coalesce',
@@ -199,19 +199,20 @@ export const sim = {
       sql: 'SELECT /*+ COALESCE(2) */ …',
       kind: 'narrow',
       outPartitions: 2,
-      band: 'bez shuffle\'u · jeden stage',
+      band: 'jeden stage · 2 taski czytają 3 partycje',
       steps: [
-        'Każdy task dostaje swoją partycję.',
-        'Spark skleja całe partycje: partycja 0 zostaje, partycje 1 i 2 stają się jedną. Nikt nie rozdaje wierszy pojedynczo.',
+        'Trzy partycje wejścia. Tym razem tasków będzie tyle, ile partycji wyniku: dwa, a nie trzy.',
+        'Spark skleja całe partycje. Pierwszy task czyta partycję 0, drugi czyta partycje 1 i 2, jedną po drugiej. Nikt nie rozdaje wierszy pojedynczo.',
         'Są 2 partycje zamiast 3, ale nierówne: 4 i 8 wierszy. Nie powstał żaden plik shuffle\'u ani nowy stage.'
       ],
       lab: { shuffleRecords: 0, stages: 1, tasks: [2] },
-      verdict: 'Zależność narrow. Tanie zmniejszenie liczby partycji, które niczego nie wyrównuje. Na klastrze sklejane partycje mogą leżeć na różnych maszynach, więc dane potrafią zmienić węzeł, ale bez mechanizmu shuffle\'u.'
+      verdict: 'Zależność narrow, choć nie jeden do jednego: partycja wyniku powstaje z kilku całych partycji wejścia, a żadna partycja wejścia nie jest dzielona. Liczbę partycji zmniejsza bez shuffle\'u, ale niczego nie wyrównuje, a pracę trzech tasków wykonują teraz dwa. Na klastrze sklejane partycje mogą leżeć na różnych maszynach, więc dane potrafią zmienić węzeł, ale bez mechanizmu shuffle\'u.'
     }
   ] as SimOp[],
   takeaway: [
-    '<b>Wniosek.</b> Kafelki jadą prosto w dół, gdy partycję wyniku da się zbudować z jednej partycji wejścia albo ze sklejenia całych partycji. Krzyżują się, gdy o miejscu rekordu ma zdecydować reguła: hash klucza albo rozdawanie po kolei. To drugie to shuffle.',
-    'Tam, gdzie jest shuffle, zapytanie dzieli się na dwa <term id="stage">stage\'e</term>: taski sprzed pasa zapisują dane dla shuffle\'u, taski zza pasa je odczytują. Dlatego liczba shuffle\'i w planie wyznacza liczbę granic między stage\'ami.'
+    '<b>Wniosek.</b> Kafelki jadą prosto w dół, gdy partycja wyniku powstaje z jednej albo kilku całych partycji wejścia: to zależność narrow, bez shuffle\'u. Krzyżują się, gdy rekordy z jednej partycji wejścia trzeba rozdać do wielu partycji wyniku według reguły: hasha klucza albo rozdawania po kolei. To zależność wide i shuffle.',
+    'W tych pięciu planach każdy shuffle dzieli pracę na dwa <term id="stage">stage\'e</term>: taski sprzed pasa zapisują dane dla shuffle\'u, taski zza pasa je odczytują. W planie fizycznym jeden węzeł shuffle\'u to jedna taka granica. Ile stage\'y i jobów zobaczysz w interfejsie, zależy też od AQE i od ponownego użycia wcześniejszych wyników.',
+    '<code>groupBy</code> i <code>join</code> to operacje w Twoim kodzie. O tym, czy powstanie shuffle, decyduje plan fizyczny: gdy dane są już podzielone po kluczu albo mała tabela jest rozsyłana w całości (broadcast), shuffle\'u może nie być.'
   ],
   notesTitle: 'Co tu jest ilustracją, a co wynikiem ze Sparka',
   notes: [
@@ -225,7 +226,7 @@ export const sim = {
   waysTitle: 'Hash, round-robin, zakresy: trzy reguły podziału',
   ways: [
     '<b>Hash klucza.</b> Spark liczy hash z kolumn klucza i bierze resztę z dzielenia przez liczbę partycji. W labie numer partycji każdego kraju zgadzał się z <code>pmod(hash(country), 4)</code>. Ta sama wartość klucza zawsze daje ten sam numer, więc jeden klucz trafia do jednej partycji. Tak dzielą <code>groupBy</code>, join przez shuffle i <code>repartition</code> z kolumną.',
-    '<b>Round-robin.</b> <code>repartition(n)</code> bez kolumn rozdaje wiersze po kolei. W istniejącym labie <code>spark_checks.py</code> 100 000 wierszy na 8 partycji dało rozmiary 12 498–12 501, a jeden klucz trafił do wszystkich 8 partycji.',
+    '<b>Round-robin.</b> <code>repartition(n)</code> bez kolumn rozdaje wiersze po kolei. W istniejącym labie <code>spark_checks.py</code> 100 000 wierszy na 8 partycji dało rozmiary 12 498–12 501, a jeden klucz trafił w tym uruchomieniu do wszystkich 8 partycji. To zbliżone liczby wierszy, a nie gwarancja: reguła nie patrzy na rozmiar wierszy w bajtach ani na klucze.',
     '<b>Zakresy.</b> <code>repartitionByRange</code> i <code>orderBy</code> dzielą dane na przedziały wartości: małe wartości do pierwszej partycji, większe do kolejnych. W tym samym labie jeden klucz też leżał w jednej partycji.',
     'Żadna z reguł opartych na kluczu nie wyrównuje rozmiarów. Gdy 80% wierszy miało jeden klucz, niepuste partycje po <code>repartition(8, k)</code> miały od 2 000 do 80 000 wierszy.'
   ]
@@ -239,10 +240,10 @@ export const cost = {
   steps: [
     { k: 'Serializacja', where: 'task przed shuffle\'em', text: 'Obiekt w pamięci trzeba zamienić na ciąg bajtów, żeby dało się go zapisać i wysłać. Po drugiej stronie bajty są zamieniane z powrotem. To praca procesora przy każdym rekordzie.' },
     { k: 'Dysk', where: 'maszyna, która wysyła', text: 'Task zapisuje dane dla shuffle\'u do plików na lokalnym dysku swojej maszyny, ułożone według partycji docelowej. Pliki zostają, dopóki są potrzebne, żeby nie tworzyć ich ponownie.' },
-    { k: 'Sieć', where: 'między maszynami', text: 'Taski następnego stage\'a pobierają swoje bloki z maszyn, które je zapisały. Na klastrze to transfer po sieci. Czas czekania na te dane widać w metrykach taska.' },
+    { k: 'Sieć', where: 'tylko bloki z innych maszyn', text: 'Taski następnego stage\'a pobierają swoje bloki. Blok zapisany na tej samej maszynie jest czytany lokalnie, a blok z innego executora idzie siecią. Czas czekania na zdalne dane widać w metrykach taska.' },
     { k: 'Pamięć', where: 'task po shuffle\'u', text: 'Żeby pogrupować albo posortować odebrane rekordy, task buduje struktury w pamięci. Gdy dane się nie mieszczą, Spark zrzuca je na dysk (spill): zapytanie zwykle się kończy, ale wolniej.' }
   ],
-  takeaway: '<b>Wniosek.</b> Shuffle kosztuje cztery razy: procesor na serializację, dysk na pliki shuffle\'u, sieć na transfer i pamięć na odbiór. Dlatego przy optymalizacji pierwsze pytania brzmią: ile jest shuffle\'i w planie, ile danych przez każdy przechodzi i czy każdy jest potrzebny.',
+  takeaway: '<b>Wniosek.</b> Shuffle kosztuje cztery razy: procesor na serializację, dysk na pliki shuffle\'u, sieć na bloki pobierane z innych maszyn i pamięć na odbiór. Dlatego przy optymalizacji pierwsze pytania brzmią: ile jest shuffle\'i w planie, ile danych przez każdy przechodzi i czy każdy jest potrzebny.',
   uiTitle: 'Gdzie te koszty widać w Spark UI',
   ui: [
     'W widoku stage\'a <term id="spark-ui">Spark UI</term> są osobne metryki. <b>Shuffle Write</b>: bajty i rekordy zapisane na dysk dla przyszłego shuffle\'u. <b>Shuffle Read</b>: bajty i rekordy odczytane, lokalnie i z innych executorów.',
@@ -297,7 +298,7 @@ export const plan = {
       text: 'Źródło: 12 wierszy w 3 partycjach, zbudowane w pamięci na potrzeby labu. Liczby po znaku <code>#</code> to wewnętrzne identyfikatory kolumn. Gwiazdka z numerem, np. <code>*(1)</code>, oznacza grupę operatorów skompilowanych razem. To nie jest numer stage\'a z interfejsu, choć w tym planie podział wypada w tym samym miejscu.'
     }
   ] as ExplainedLine[],
-  takeaway: '<b>Wniosek.</b> <code>Exchange</code> z rodzajem podziału to shuffle, a shuffle to granica stage\'a. W labie ten plan dał 2 stage\'e: pierwszy miał 3 taski (po jednym na partycję wejścia) i zapisał 10 rekordów, drugi miał 4 taski i te 10 rekordów odczytał.',
+  takeaway: '<b>Wniosek.</b> <code>Exchange</code> z rodzajem podziału to shuffle. W tym planie wyznacza on granicę między dwoma stage\'ami. W labie plan dał 2 stage\'e: pierwszy miał 3 taski (po jednym na partycję wejścia) i zapisał 10 rekordów, drugi miał 4 taski i te 10 rekordów odczytał.',
   stageTitle: 'Dlaczego granica wypada akurat na shuffle\'u',
   stage: [
     'Stage to grupa tasków, które da się policzyć jednym ciągiem, bez czekania na inne partycje. Filtr, wybór kolumn i suma częściowa łączą się w jeden taki ciąg: task czyta partycję i robi wszystko po kolei.',
@@ -310,7 +311,7 @@ export const plan = {
 export const sizing = {
   title: 'Ile partycji to dobrze?',
   intro: 'Po shuffle\'u ktoś musi zdecydować, na ile partycji podzielić dane. W Apache Spark robi to ustawienie <code>spark.sql.shuffle.partitions</code>, domyślnie 200, niezależnie od tego, czy danych jest 12 wierszy, czy 2 TB. Zobacz, co ta liczba znaczy dla jednego, stałego zbioru.',
-  assumptions: 'Ilustracja, nie pomiar: 100 GB danych po shuffle\'u, klaster z 16 rdzeniami, równe partycje, jeden rdzeń liczy jeden task naraz. Liczby to zwykła arytmetyka.',
+  assumptions: 'Ilustracja, nie pomiar: 100 GB danych po shuffle\'u, klaster z 16 rdzeniami, równe partycje, jeden rdzeń liczy jeden task naraz. Liczby to zwykła arytmetyka, liczona dziesiętnie: 1 GB = 1000 MB.',
   totalGb: 100,
   cores: 16,
   options: [4, 400, 40000],
@@ -318,7 +319,7 @@ export const sizing = {
   labels: { size: 'na jedną<br />partycję', parallel: 'tasków<br />jednocześnie', rounds: 'liczba<br />tur' },
   verdicts: [
     { state: 'no', head: 'Za mało partycji', text: 'Każdy task dostaje 25 GB. Musi je posortować albo pogrupować w pamięci, więc grozi zrzut na dysk albo brak pamięci. Do tego pracują 4 rdzenie z 16: reszta nie ma co robić, bo tasków jest tylko tyle, ile partycji.' },
-    { state: 'ok', head: 'Rozsądny zakres', text: 'Partycja ma 250 MB, a wszystkie rdzenie mają pracę. Tasków jest więcej niż rdzeni i to dobrze: gdy jeden skończy, rdzeń bierze następny. Dokumentacja Sparka zaleca ogólnie 2–3 taski na rdzeń klastra.' },
+    { state: 'ok', head: 'Partycje umiarkowanej wielkości', text: 'Partycja ma 250 MB i wszystkie rdzenie mają pracę. Liczba 400 jest tu dobrana pod rozmiar partycji, a nie pod liczbę rdzeni: 16 rdzeni przerobi ją w 25 turach. Zalecenie z dokumentacji, 2–3 taski na rdzeń, dałoby tu 32–48 partycji po 2–3 GB. To punkt wyjścia dla równoległości, a nie reguła rozmiaru. Czy 250 MB to dobry rozmiar, zależy od operacji i pamięci executora.' },
     { state: 'risk', head: 'Za dużo partycji', text: 'Partycja ma 2,5 MB. Każdy task trzeba zaplanować, uruchomić i rozliczyć, a tych jest 40 000, więc rośnie narzut na samą obsługę. Jeśli taki wynik zapiszesz, powstanie też mnóstwo małych plików.' }
   ] as { state: 'ok' | 'risk' | 'no'; head: string; text: string }[],
   takeaway: [
@@ -348,11 +349,14 @@ export const choose = {
   rows: [
     { k: 'Shuffle', repartition: 'tak, pełny', coalesce: 'nie' },
     { k: 'Kierunek', repartition: 'więcej albo mniej partycji', coalesce: 'tylko mniej' },
-    { k: 'Rozmiary', repartition: 'bez klucza równe, po kluczu zależne od danych', coalesce: 'takie, jakie wyjdą ze sklejenia' },
+    { k: 'Liczba partycji', repartition: 'podana wprost; bez liczby bierze spark.sql.shuffle.partitions', coalesce: 'podana wprost, nie więcej niż było' },
+    { k: 'Rozmiary', repartition: 'bez klucza zbliżona liczba wierszy, po kluczu zależnie od danych', coalesce: 'takie, jakie wyjdą ze sklejenia' },
+    { k: 'Koszt', repartition: 'serializacja, dysk i sieć dla wszystkich wierszy', coalesce: 'bez shuffle\'u, ale wcześniejszą pracę liczy mniej tasków' },
     { k: 'Po kluczu', repartition: 'tak: jeden klucz w jednej partycji', coalesce: 'nie' },
     { k: 'Granica stage\'a', repartition: 'tak', coalesce: 'nie' }
   ],
-  takeaway: '<b>Wniosek.</b> <code>repartition</code> bierzesz, gdy potrzebujesz innego układu danych: równych partycji albo podziału po kluczu. Płacisz za to pełnym shuffle\'em. <code>coalesce</code> bierzesz, gdy chcesz tylko mniej partycji, np. mniej plików na końcu, i nierówne rozmiary Ci nie przeszkadzają.',
+  takeaway: '<b>Wniosek.</b> <code>repartition</code> bierzesz, gdy potrzebujesz innego układu danych: zbliżonych partycji albo podziału po kluczu. Płacisz za to pełnym shuffle\'em. <code>coalesce</code> bierzesz, gdy chcesz tylko mniej partycji i nierówne rozmiary Ci nie przeszkadzają. Zwykle jest tańszy, ale nie zawsze: po drastycznym <code>coalesce</code> wcześniejszą pracę liczy mniej tasków.',
+  filesNote: 'Liczba partycji przy zapisie wpływa na liczbę plików, ale jej nie wyznacza. Zależy ona też od sposobu zapisu, np. od <code>partitionBy</code>, więc „<code>coalesce(1)</code> to jeden plik" jest prawdą tylko w najprostszym przypadku.',
   hintsTitle: 'To samo w SQL: hinty',
   hints: [
     'W Spark SQL te same operacje zapisuje się hintami w zapytaniu: <code>/*+ COALESCE(3) */</code>, <code>/*+ REPARTITION(3) */</code>, <code>/*+ REPARTITION_BY_RANGE(c) */</code> i <code>/*+ REBALANCE */</code>. Dokumentacja opisuje je jako sposób na strojenie wydajności i ograniczenie liczby plików wyjściowych.',
@@ -410,14 +414,15 @@ export const experiments: Experiment[] = [
   },
   {
     ask: '<code>repartition(4, "country")</code>. Ile wierszy będzie miała największa partycja?',
-    setup: `Te same 12 wierszy: PL ma 5 zamówień, DE 3, FR 2, IT 2. ${ENV}.`,
+    setup: `Te same 12 wierszy: PL ma 5 zamówień, DE 3, FR 2, IT 2. W tym labie hash wysyła każdy z czterech krajów do innej partycji (FR → 0, IT → 1, PL → 2, DE → 3). ${ENV}.`,
     choices: ['3', '5', '12'],
     correct: 1,
     mono: true,
-    output: "4. repartition(4, country): podział hashem klucza\n   partycja 0: wierszy 2  [4, 9]\n   partycja 1: wierszy 2  [7, 12]\n   partycja 2: wierszy 5  [1, 3, 6, 8, 11]\n   partycja 3: wierszy 3  [2, 5, 10]\n   DE: partycja 3, pmod(hash(country), 4) = 3\n   FR: partycja 0, pmod(hash(country), 4) = 0\n   IT: partycja 1, pmod(hash(country), 4) = 1\n   PL: partycja 2, pmod(hash(country), 4) = 2\n   plan: Exchange hashpartitioning(country#1, 4), REPARTITION_BY_NUM, [plan_id=227]\n   …\n   repartition(4): bez klucza\n   partycja 0: wierszy 3  [1, 8, 11]\n   partycja 1: wierszy 3  [3, 7, 10]\n   partycja 2: wierszy 3  [2, 5, 9]\n   partycja 3: wierszy 3  [4, 6, 12]\n   plan: Exchange RoundRobinPartitioning(4), REPARTITION_BY_NUM, [plan_id=339]\n   w ilu partycjach leży kraj: {'DE': 2, 'FR': 2, 'IT': 2, 'PL': 3}",
+    output: "4. repartition(4, country): podział hashem klucza\n   partycja 0: wierszy 2  [4, 9]\n   partycja 1: wierszy 2  [7, 12]\n   partycja 2: wierszy 5  [1, 3, 6, 8, 11]\n   partycja 3: wierszy 3  [2, 5, 10]\n   DE: partycja 3, pmod(hash(country), 4) = 3\n   FR: partycja 0, pmod(hash(country), 4) = 0\n   IT: partycja 1, pmod(hash(country), 4) = 1\n   PL: partycja 2, pmod(hash(country), 4) = 2\n   plan: Exchange hashpartitioning(country#1, 4), REPARTITION_BY_NUM, [plan_id=227]\n   …\n   liczba partycji przy spark.sql.shuffle.partitions = 7: repartition(4, country) -> 4, repartition(country) bez liczby -> 7\n   repartition(4): bez klucza\n   partycja 0: wierszy 3  [1, 8, 11]\n   partycja 1: wierszy 3  [3, 7, 10]\n   partycja 2: wierszy 3  [2, 5, 9]\n   partycja 3: wierszy 3  [4, 6, 12]\n   plan: Exchange RoundRobinPartitioning(4), REPARTITION_BY_NUM, [plan_id=367]\n   w ilu partycjach leży kraj: {'DE': 2, 'FR': 2, 'IT': 2, 'PL': 3}",
     notes: [
-      'Pięć: wszystkie zamówienia z PL trafiły do jednej partycji, bo mają ten sam klucz. Podział hashem trzyma klucz razem i właśnie dlatego nie wyrównuje rozmiarów.',
+      'Pięć: wszystkie zamówienia z PL trafiły do jednej partycji, bo mają ten sam klucz. Podział hashem trzyma klucz razem i właśnie dlatego nie wyrównuje rozmiarów. Pięć to tutaj minimum: gdyby hash wysłał dwa kraje do tej samej partycji, największa byłaby jeszcze większa.',
       'Bez klucza wyszło po 3 wiersze w każdej partycji, ale PL leży w trzech z nich. W planie widać różnicę w jednym słowie: <code>hashpartitioning</code> kontra <code>RoundRobinPartitioning</code>.',
+      'Linia o liczbie partycji: liczba podana wprost wygrywa. <code>repartition("country")</code> bez liczby wziął wartość <code>spark.sql.shuffle.partitions</code>, czyli tutaj 7.',
       'Gdy jeden klucz ma większość wierszy, jego partycja jest wielokrotnie większa od pozostałych. To data skew, osobny temat w banku pytań.'
     ],
     scope: 'Numer partycji danego kraju zależy od funkcji hash i od liczby partycji. Przy innej liczbie partycji te same kraje trafią gdzie indziej.'
@@ -470,16 +475,16 @@ export const quiz: QuizItem[] = [
   },
   {
     q: 'Plan ma dwa węzły <code>Exchange hashpartitioning</code> i żadnego innego Exchange. Ile granic stage\'ów wyznacza?',
-    setup: 'Założenia: Apache Spark, patrzysz na plan fizyczny, bez ponownego użycia wcześniejszych wyników.',
+    setup: 'Założenia: Apache Spark, jeden plan fizyczny wykonany w całości, AQE wyłączone, bez ponownego użycia wcześniejszych wyników.',
     options: ['Jedną', 'Dwie', 'Nie da się powiedzieć bez liczby partycji'],
     correct: 1,
-    why: 'Każdy shuffle to granica: taski przed nim zapisują dane, taski za nim je czytają. Dwa shuffle\'e dają dwie granice, czyli trzy grupy tasków. Liczba partycji zmienia liczbę tasków, a nie liczbę granic.'
+    why: 'W takim planie każdy shuffle to granica: taski przed nim zapisują dane, taski za nim je czytają. Dwa shuffle\'e dają dwie granice, czyli trzy grupy tasków. Liczba partycji zmienia liczbę tasków, a nie liczbę granic. Poza tymi założeniami interfejs może pokazać inną liczbę stage\'y i jobów.'
   },
   {
     q: '<code>repartition(8, "customer_id")</code>, a jeden klient ma 70% wszystkich wierszy. Jak będą wyglądać partycje?',
     options: ['Osiem równych partycji', 'Jedna partycja z co najmniej 70% wierszy, reszta dużo mniejsza', 'Wiersze tego klienta rozłożone równo na 8 partycji'],
     correct: 1,
-    why: 'Hash wysyła ten sam klucz zawsze do tej samej partycji, więc wszystkie wiersze tego klienta trafią razem. Równe partycje daje <code>repartition(8)</code> bez klucza, ale wtedy klient jest rozrzucony po wszystkich.'
+    why: 'Hash wysyła ten sam klucz zawsze do tej samej partycji, więc wszystkie wiersze tego klienta trafią razem. Zbliżone liczby wierszy daje <code>repartition(8)</code> bez klucza, ale wtedy wiersze klienta są rozrzucone po partycjach.'
   },
   {
     q: 'Na końcu joba chcesz zapisać wynik w jednym pliku i dodajesz <code>coalesce(1)</code>. Job zwalnia kilkukrotnie. Co jest najbardziej prawdopodobną przyczyną?',
@@ -489,17 +494,17 @@ export const quiz: QuizItem[] = [
     why: '<code>coalesce</code> nie tworzy granicy stage\'a, więc wcześniejsze kroki liczą się w tym samym stage\'u, a ten ma jeden task. <code>repartition(1)</code> dodałby shuffle, ale zostawił wcześniejszą pracę równoległą. W labie: 1 task kontra 3 i 1.'
   },
   {
-    q: 'Stage po shuffle\'u ma 200 tasków. Większość trwa kilka milisekund i czyta zero rekordów. Co to mówi?',
+    q: 'Stage po shuffle\'u ma 200 tasków. Większość trwa kilka milisekund i czyta zero rekordów. Co z tego wynika?',
     setup: 'Założenia: Apache Spark, AQE wyłączone, <code>spark.sql.shuffle.partitions</code> bez zmian.',
-    options: ['Partycji jest za dużo jak na tę ilość danych', 'Dane są skośne i trzeba je posolić', 'Brakuje executorów'],
+    options: ['Partycji jest więcej, niż potrzeba dla tej ilości danych', 'Dane na pewno nie są skośne', 'Brakuje executorów'],
     correct: 0,
-    why: 'Puste taski to partycje, do których hash niczego nie wysłał: 200 to wartość domyślna, niezależna od rozmiaru danych. Pomaga AQE, które skleja małe partycje, albo mniejsza liczba partycji. Skew wyglądałby odwrotnie: jeden task dużo większy od reszty.'
+    why: 'Puste taski to partycje, do których hash niczego nie wysłał: 200 to wartość domyślna, niezależna od rozmiaru danych. Pomaga AQE, które skleja małe partycje, albo mniejsza liczba partycji. O skew puste taski nie mówią nic: puste i przeładowane partycje mogą wystąpić razem. Skew ocenia się po rozkładzie rozmiarów niepustych partycji.'
   },
   {
     q: 'Klaster ma 16 rdzeni, a po shuffle\'u jest 400 partycji. Ile tasków tego stage\'a działa jednocześnie?',
     setup: 'Założenia: jeden rdzeń liczy jeden task naraz, wszystkie rdzenie są wolne.',
     options: ['400', '16', '25'],
     correct: 1,
-    why: 'Szesnaście. Partycji jest 400, więc tasków też 400, ale naraz liczy się najwyżej tyle, ile jest wolnych rdzeni. Pozostałe czekają w kolejce. Liczba partycji ustala rozmiar i liczbę tasków, a liczba rdzeni równoległość.'
+    why: 'Szesnaście. Partycji jest 400, więc tasków też 400, ale naraz liczy się najwyżej tyle, ile jest wolnych rdzeni. Pozostałe czekają w kolejce: przy równych taskach to 25 tur. Liczba partycji ustala rozmiar i liczbę tasków, a liczba rdzeni równoległość.'
   }
 ];
