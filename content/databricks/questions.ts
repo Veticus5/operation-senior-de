@@ -49,11 +49,11 @@ export const databricksQuestions: Question[] = [
       en: 'What is Unity Catalog? Managed versus external tables?'
     },
     answer: {
-      pl: 'Unity Catalog to warstwa governance wspólna dla wielu workspace\'ów. Daje trójpoziomowy namespace, czyli catalog, schema, table, oraz centralne uprawnienia, lineage i audyt. Dostęp nadaję SQL-owym GRANT-em, a uprawnienia dziedziczą się w dół. W tabeli managed Unity Catalog zarządza metadanymi i plikami: po DROP dane są oznaczane do usunięcia, a przez okres odzyskiwania, domyślnie 7 dni, działa jeszcze UNDROP. W tabeli external pilnuje tylko metadanych i dostępu, a pliki po DROP zostają. Domyślnie wybieram managed, a external wtedy, gdy inne systemy muszą sięgać do plików bezpośrednio.',
-      en: 'Unity Catalog is the governance layer shared across workspaces. It gives a three-level namespace, catalog, schema, table, and central permissions, lineage and auditing. I grant access with SQL GRANT statements, and privileges are inherited downwards. For a managed table Unity Catalog manages both metadata and files: after a DROP the data is marked for deletion, and UNDROP still works during the recovery window, seven days by default. For an external table it manages only metadata and access, and the files stay after a DROP. I default to managed tables and use external ones when other systems need direct access to the files.'
+      pl: 'Unity Catalog to warstwa governance wspólna dla workspace\'ów podpiętych do tego samego metastore. Daje trójpoziomowy namespace, czyli catalog, schema, table, oraz centralne uprawnienia, lineage i audyt. Dostęp nadaję SQL-owym GRANT-em, a uprawnienia dziedziczą się w dół. W tabeli managed Unity Catalog zarządza metadanymi i plikami: po DROP dane są oznaczane do usunięcia, a przez okres odzyskiwania, domyślnie 7 dni, działa jeszcze UNDROP. W tabeli external pilnuje tylko metadanych i dostępu, a pliki po DROP zostają. Domyślnie wybieram managed, a external wtedy, gdy inne systemy muszą sięgać do plików bezpośrednio.',
+      en: 'Unity Catalog is the governance layer shared by the workspaces attached to the same metastore. It gives a three-level namespace, catalog, schema, table, and central permissions, lineage and auditing. I grant access with SQL GRANT statements, and privileges are inherited downwards. For a managed table Unity Catalog manages both metadata and files: after a DROP the data is marked for deletion, and UNDROP still works during the recovery window, seven days by default. For an external table it manages only metadata and access, and the files stay after a DROP. I default to managed tables and use external ones when other systems need direct access to the files.'
     },
     explain: [
-      'Bez wspólnego katalogu każdy workspace ma własną listę tabel i własne uprawnienia. Unity Catalog to jedno miejsce ponad workspace\'ami: katalogi, w nich schematy, w nich tabele, czyli adres <code>catalog.schema.table</code>. Do tego uprawnienia, lineage i audyt w jednym miejscu.',
+      'Bez wspólnego katalogu każdy workspace ma własną listę tabel i własne uprawnienia. Unity Catalog to jedno miejsce wspólne dla workspace\'ów podpiętych do tego samego metastore: katalogi, w nich schematy, w nich tabele, czyli adres <code>catalog.schema.table</code>. Do tego uprawnienia, lineage i audyt w jednym miejscu.',
       'Uprawnienia dziedziczą się w dół: GRANT SELECT na schemacie daje dostęp do jego tabel. Żeby przeczytać tabelę, potrzebujesz USE CATALOG, USE SCHEMA i SELECT. W Snowflake odpowiada to USAGE na bazie i schemacie plus SELECT na tabeli. Różnica w nazwach poziomów: catalog w Unity Catalog to mniej więcej database w Snowflake.',
       'Managed kontra external to pytanie, kto odpowiada za pliki. Managed: Unity Catalog wybiera lokalizację i sprząta po DROP. External: Ty wskazujesz ścieżkę, a DROP usuwa tylko wpis w katalogu, pliki zostają. Część automatyki, np. predictive optimization, działa tylko na tabelach managed.'
     ],
@@ -107,6 +107,79 @@ export const databricksQuestions: Question[] = [
       'Twierdzenie, że bez watermarku stan zawsze rośnie bez końca. To zależy od operatora i trybu wyjścia.',
       'Mówienie, że spóźnione dane „są odrzucane". Dokumentacja gwarantuje tylko przyjęcie danych w progu.',
       'Przedstawianie mikro-batcha w hurtowni jako doświadczenia ze streamingiem na Kafce.'
+    ]
+  },
+  {
+    id: 'databricks-beyond-spark',
+    topicId: 'databricks.platform',
+    area: 'databricks',
+    priority: 'P0',
+    title: 'Databricks ponad Sparka',
+    question: {
+      pl: 'Co Databricks daje ponad samego Apache Sparka?',
+      en: 'What does Databricks give you beyond Apache Spark itself?'
+    },
+    answer: {
+      pl: 'Spark to silnik wykonania, a Databricks to platforma dookoła niego. Wymieniłbym pięć rzeczy. Po pierwsze Delta Lake jako domyślny format tabel, który daje plikom w object storage transakcje, wersje i MERGE. Po drugie zarządzany compute: serverless albo klasyczne klastry dla jobów i notebooków oraz SQL warehouses dla BI, z silnikiem Photon. Po trzecie Unity Catalog: jedno miejsce na katalogi, uprawnienia, lineage i audyt dla workspace\'ów podpiętych do tego samego metastore. Po czwarte Lakeflow, czyli pobieranie danych, deklaratywne pipeline\'y i orkiestracja jobów. Po piąte sposób wdrażania: bundles, Git folders i CI/CD. W porównaniu z własnym Sparkiem dostaję więc semantykę tabel, governance i operacje jako jeden produkt. W porównaniu z hurtownią taką jak Snowflake dane zostają w otwartym formacie w moim magazynie, a ja mam więcej kontroli i więcej odpowiedzialności.',
+      en: 'Spark is the execution engine; Databricks is the platform around it. I would name five things. First, Delta Lake as the default table format, which gives files in object storage transactions, versions and MERGE. Second, managed compute: serverless or classic clusters for jobs and notebooks, and SQL warehouses for BI, with the Photon engine. Third, Unity Catalog: one place for catalogs, permissions, lineage and auditing for the workspaces attached to the same metastore. Fourth, Lakeflow for ingestion, declarative pipelines and job orchestration. Fifth, a deployment story: bundles, Git folders and CI/CD. So compared to running Spark myself, I get table semantics, governance and operations as one product. Compared to a warehouse like Snowflake, the data stays in an open format in my own storage, and I keep more control and more responsibility.'
+    },
+    senior: {
+      pl: 'Architektonicznie rozdzieliłbym control plane, którym Databricks zarządza na swoim koncie, od compute plane: serverless działa na koncie Databricks, klasyczny na moim koncie chmurowym. W klasycznym workspace pliki tabel leżą w moim object storage niezależnie od tego wyboru. Szczegóły zależą od chmury, więc sprawdziłbym je dla tej, której używamy. To zwykle pierwsze pytanie zespołu bezpieczeństwa.',
+      en: 'Architecturally I would separate the control plane, which Databricks runs in its own account, from the compute plane: serverless runs in the Databricks account, classic runs in my cloud account. In a classic workspace the table files sit in my object storage regardless of that choice. Details differ by cloud, so I would check them for the one we use. That is usually the first question a security team asks.'
+    },
+    explain: [
+      'Sam Spark odpowiada na pytanie „jak policzyć zapytanie na wielu maszynach”. Nie odpowiada na pytania, które w hurtowni rozwiązuje usługa: gdzie trwale leżą tabele i co gwarantuje ich spójność, kto może je czytać, co uruchamia job w nocy i ponawia go po błędzie, jak kod trafia z repozytorium na produkcję.',
+      'Databricks składa te odpowiedzi w jedną platformę. Tabele to pliki w otwartym formacie Delta Lake w object storage, z logiem transakcyjnym. Compute to Spark i Photon podawane na kilka sposobów: SQL warehouse do SQL i BI, compute jobów i notebooków do kodu, pipeline\'y do przetwarzania deklaratywnego. Unity Catalog trzyma nazwy obiektów i uprawnienia w jednym miejscu dla workspace\'ów podpiętych do tego samego metastore.',
+      'Dokumentacja nazywa ten model lakehouse: system zarządzania danymi, który łączy zalety data lake i hurtowni. Praktyczny skutek dla kogoś, kto zna Snowflake: SQL warehouse zachowuje się jak virtual warehouse, ale pod spodem pliki są Twoje. Możesz je czytać innym silnikiem, ale też odpowiadasz za układ danych i retencję, chyba że oddasz to platformie przez tabele managed.',
+      'Na rozmowie warto unikać dwóch skrajności: „Databricks to hostowany Spark” (pomija governance, format tabel i orkiestrację) oraz „Databricks to to samo co Snowflake” (pomija to, że storage jest otwarty, a compute to nie tylko SQL).'
+    ],
+    keywords: ['lakehouse', 'Delta Lake', 'Unity Catalog', 'SQL warehouse', 'serverless', 'Lakeflow', 'Photon', 'control plane'],
+    followUps: [
+      { q: 'What is the difference between the control plane and the compute plane?', a: 'The control plane is the set of services Databricks runs in its own account: the web application, the job scheduler, Unity Catalog. The compute plane is where data is processed. Serverless compute runs in the Databricks account, classic compute runs in my cloud account.', pl: 'Control plane na koncie Databricks. Compute: serverless u Databricks, classic na Twoim koncie.' },
+      { q: 'When would you use a SQL warehouse instead of a cluster?', a: 'For SQL workloads: BI dashboards, ad hoc queries, dbt. It starts fast when serverless and scales for concurrency. For Python jobs or notebooks I need jobs or notebook compute, because a SQL warehouse only runs SQL.', pl: 'SQL warehouse tylko do SQL. Kod w Pythonie wymaga compute jobów albo notebooków.' },
+      { q: 'What does serverless change for you as an engineer?', a: 'I stop choosing instance types and runtime versions, and startup is fast. The trade-off is less control: no Spark UI, only Spark Connect APIs and very few Spark settings I can change.', pl: 'Mniej konfiguracji, mniej kontroli. Dane leżą tam, gdzie leżały.' },
+      { q: 'Is the data locked into Databricks?', a: 'The tables are Parquet files with a Delta log in object storage, which is an open format. Whether another engine can read a given table depends on the table features it uses, the catalog integration and permissions, so I would check that instead of assuming it. Access should go through Unity Catalog, not directly to the bucket.', pl: 'Format jest otwarty, ale odczyt innym silnikiem zależy od funkcji tabeli, katalogu i uprawnień.' }
+    ],
+    mistakes: [
+      'Sprowadzanie Databricks do „notebooków ze Sparkiem”.',
+      'Twierdzenie, że serverless oznacza przechowywanie danych przez Databricks. Serverless dotyczy compute.',
+      'Mylenie SQL warehouse z klastrem ogólnego przeznaczenia.',
+      'Wymienianie produktów bez powiedzenia, jaki problem każdy rozwiązuje.'
+    ]
+  },
+  {
+    id: 'databricks-snowflake-fabric-choice',
+    topicId: 'databricks.platform-choice',
+    area: 'databricks',
+    priority: 'P1',
+    title: 'Snowflake, Databricks czy Fabric',
+    question: {
+      pl: 'Kiedy wybrałbyś Snowflake, kiedy Databricks, a kiedy Microsoft Fabric?',
+      en: 'When would you choose Snowflake, Databricks or Microsoft Fabric?'
+    },
+    answer: {
+      pl: 'Zaczynam od obciążenia i zespołu, a nie od produktu. Snowflake pasuje najlepiej, gdy praca to głównie SQL na danych strukturalnych i chcę hurtowni, w której prawie nie ma czego utrzymywać. Databricks pasuje, gdy potrzebuję inżynierii w kodzie, streamingu albo uczenia maszynowego na tych samych danych i chcę mieć dane w otwartym formacie we własnym magazynie, godząc się na więcej decyzji o compute i układzie tabel. Fabric pasuje organizacji zbudowanej wokół Microsoftu i Power BI, która chce jednego SaaS od pobrania danych do raportu. W praktyce te platformy się nakładają i wszystkie trzy obsługują w jakimś zakresie otwarte formaty tabel, więc połączenie jest możliwe: na przykład Databricks do inżynierii, a hurtownia albo Power BI do serwowania. Drugą platformę dokładam jednak tylko wtedy, gdy uzasadnia to potrzeba biznesowa. Przed rekomendacją sprawdziłbym też istniejące umowy, umiejętności zespołu i koszty.',
+      en: 'I start from the workload and the team, not from the product. Snowflake fits best when the work is mostly SQL on structured data and I want a warehouse with very little to operate. Databricks fits when I need code-first engineering, streaming or machine learning on the same data, and I want the data in an open format in my own storage, accepting more decisions about compute and table layout. Fabric fits an organization built around Microsoft and Power BI that wants one SaaS from ingestion to reports. In practice these platforms overlap, and all three support open table formats to some degree, so combining them is possible. But I add a second platform only for a clear business need. Before recommending anything I would also check existing contracts, team skills and cost.'
+    },
+    explain: [
+      'To pytanie sprawdza sposób myślenia, a nie znajomość cenników. Wszystkie trzy platformy rozdzielają storage od compute i wszystkie obsłużą typowy pipeline analityczny. Różnią się punktem wyjścia i tym, ile oddajesz usłudze.',
+      'Snowflake zaczyna od hurtowni: dane domyślnie leżą w magazynie zarządzanym przez usługę, a Ty widzisz SQL. Databricks zaczyna od plików w otwartym formacie i silnika ogólnego przeznaczenia, do którego dołożono SQL warehouses i governance. Fabric zaczyna od Power BI i jednego magazynu OneLake, wokół którego stoją silniki: Spark, Warehouse z T-SQL i narzędzia do integracji.',
+      'Dobra odpowiedź przechodzi przez kilka pytań. Jakie obciążenia: sam SQL, kod, streaming, ML? Kto będzie tym pracował: analitycy, inżynierowie, obie grupy? Co firma już ma i za co płaci? Ile kontroli potrzeba nad compute i formatem, a ile obsługi zespół udźwignie? Dopiero z tego wynika nazwa.',
+      'Wybór nie musi być ostateczny. Snowflake dokumentuje tabele Apache Iceberg i odczyt plików Delta, Databricks potrafi wystawić tabelę Delta klientom Iceberg, a OneLake przechowuje tabele w Delta albo Iceberg. Dane można trzymać raz i czytać dwoma silnikami. Czy drugi silnik przeczyta konkretną tabelę, zależy od funkcji tabeli, integracji katalogów i uprawnień. Ceną jest złożoność: dwa katalogi i dwa modele uprawnień.'
+    ],
+    keywords: ['workload', 'open table format', 'Iceberg', 'OneLake', 'Direct Lake', 'serverless', 'total cost'],
+    followUps: [
+      { q: 'A company already runs Snowflake and wants to add machine learning. Do they have to migrate?', a: 'No, and I would not add a second platform by default either. First I would ask what the team really needs and whether the Python and ML tools Snowflake already has cover it. If there is a real need for Spark, I would add a second engine and share data through an open table format instead of moving a working warehouse. The cost is two permission models and two bills.', pl: 'Nie migrować. Najpierw opcje ML w Snowflake, drugi silnik tylko przy realnej potrzebie.' },
+      { q: 'What is the main architectural difference between Snowflake and Databricks?', a: 'Who owns the storage layer. In Snowflake the service manages the files and I only see SQL. In Databricks tables are open-format files in object storage, so other engines can read them if they support the table features and have access, and layout and retention become my decisions unless I use managed tables.', pl: 'Kto zarządza plikami: usługa czy Ty.' },
+      { q: 'How do Fabric and Databricks fit together?', a: 'Both store tables as Delta in object storage, so they connect at the data level. Fabric can expose Unity Catalog tables through shortcuts without copying, and Power BI can read Delta tables directly with Direct Lake.', pl: 'Punkt styku to tabela Delta. Częściej się uzupełniają, niż wykluczają.' },
+      { q: 'What is the difference between a Fabric Lakehouse and a Fabric Warehouse?', a: 'Both keep data as Delta in OneLake. A Lakehouse is written with Spark and exposes a read-only SQL endpoint. A Warehouse is full T-SQL with writes and multi-table transactions.', pl: 'Te same dane i format, inny silnik zapisu.' }
+    ],
+    mistakes: [
+      'Wskazanie jednej platformy jako „najlepszej” bez pytania o obciążenie i zespół.',
+      'Opisywanie Snowflake jako zamkniętego bez wzmianki o tabelach Iceberg, a Databricks jako „tylko dla Sparka” bez SQL warehouses.',
+      'Traktowanie wyboru jako zero-jedynkowego, gdy otwarte formaty pozwalają łączyć silniki.',
+      'Mylenie Fabric z samym Power BI albo z Azure Databricks.',
+      'Proponowanie drugiej platformy „dla ML” bez sprawdzenia, co potrafi obecna i czy jest potrzeba biznesowa.'
     ]
   }
 ];
