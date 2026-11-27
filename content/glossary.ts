@@ -120,5 +120,41 @@ export const glossary: Record<string, GlossaryEntry> = {
   'join-hint': {
     term: 'Hint (wskazówka joina)',
     def: 'Dopisek w zapytaniu albo w kodzie, którym prosisz Sparka o konkretny sposób łączenia tabel, np. broadcast. Spark go uwzględnia, jeśli ten sposób obsługuje dany typ joina. To prośba, nie gwarancja.'
+  },
+  'object-storage': {
+    term: 'Object storage (S3)',
+    def: 'Usługa chmurowa do przechowywania plików pod nazwami, bez limitu pojemności i tanio. Amazon S3 to jej najpopularniejszy przykład. Platformy danych trzymają tam surowe pliki, zanim trafią do hurtowni.'
+  },
+  snowpipe: {
+    term: 'Snowpipe',
+    def: 'Usługa Snowflake, która ładuje nowe pliki do tabeli krótko po ich pojawieniu się, zwykle w ciągu minut. Działa na zasobach zarządzanych przez Snowflake, bez własnego warehouse\'u.'
+  },
+  variant: {
+    term: 'VARIANT',
+    def: 'Typ kolumny w Snowflake, który przechowuje dane półstrukturalne, np. cały dokument JSON, bez deklarowania z góry listy pól. Pola wyciąga się dopiero w zapytaniu.'
+  },
+  'dbt-test': {
+    term: 'Test dbt',
+    def: 'Reguła sprawdzana po zbudowaniu modelu, np. że kolumna nie ma pustych wartości albo że klucz jest unikalny. Test, który znajdzie wiersze łamiące regułę, kończy się niepowodzeniem.'
+  },
+  'virtual-warehouse': {
+    term: 'Warehouse (Snowflake)',
+    def: 'Zasób obliczeniowy w Snowflake, który wykonuje zapytania. Ma rozmiar, od którego zależy moc i cena za godzinę, i można go wyłączać niezależnie od przechowywanych danych.'
+  },
+  orchestrator: {
+    term: 'Orkiestrator',
+    def: 'Narzędzie, które uruchamia kroki pipeline\'u we właściwej kolejności, ponawia nieudane i pokazuje, co się wykonało. Przykłady to Airflow i Dagster.'
+  },
+  'streams-tasks': {
+    term: 'Streams i Tasks',
+    def: 'Dwa mechanizmy Snowflake. Stream pamięta, które zmiany w tabeli zostały już przetworzone. Task uruchamia instrukcję SQL według harmonogramu albo wtedy, gdy stream ma nowe dane.'
+  },
+  'monte-carlo': {
+    term: 'Monte Carlo',
+    def: 'Komercyjne narzędzie do obserwowalności danych. Śledzi m.in. świeżość tabel, liczbę wierszy i zmiany schematu oraz zależności między tabelami, i alarmuje o odchyleniach od dotychczasowego zachowania.'
+  },
+  'time-travel': {
+    term: 'Time Travel',
+    def: 'Funkcja Snowflake, która pozwala odczytać albo przywrócić tabelę w stanie z przeszłości, w granicach ustawionego okresu retencji. Standardowo to 1 dzień.'
   }
 };
