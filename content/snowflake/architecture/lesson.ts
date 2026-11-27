@@ -45,22 +45,22 @@ export interface Beat {
 
 export const beats: Beat[] = [
   {
-    html: '<h1>Jedno zapytanie trwa 3 sekundy. Prawie takie samo: 9 minut.</h1>\n<p class="lede">Ta sama tabela zamówień, ten sam warehouse, ten sam dzień. Pierwsze zapytanie filtruje po dacie, drugie po kliencie.</p>\n<p>Snowflake używasz od lat, więc wiesz, <i>że</i> tak bywa. Na rozmowie senior ma wyjaśnić, <i>dlaczego</i>. Odpowiedź zaczyna się od pytania, które rzadko zadaje się w codziennej pracy: <b>która część Snowflake wykonuje który kawałek zapytania?</b> Wybierz operację i zobacz.</p>',
+    html: '<h1>Jedno zapytanie trwa 3 sekundy. Prawie takie samo: 9 minut.</h1>\n<p class="lede">Ta sama tabela zamówień, ten sam warehouse, ten sam dzień. Pierwsze zapytanie filtruje po dacie, drugie po kliencie.</p>\n<p>Snowflake używasz od lat, więc wiesz, <i>że</i> tak bywa. Na rozmowie trzeba jeszcze powiedzieć, <i>dlaczego</i>. Zacznij od pytania, którego w codziennej pracy raczej się nie zadaje: <b>która część Snowflake wykonuje który kawałek zapytania?</b> Wybierz operację i zobacz.</p>',
     visual: 'layers',
-    after: '<b>Wniosek.</b> Snowflake to trzy warstwy: <b>cloud services</b> (planuje i pilnuje), <b>compute</b> (liczy) i <b>database storage</b> (przechowuje). Nie każda operacja potrzebuje wszystkich trzech. To, ile pracy spadnie na warehouse, rozstrzyga się wcześniej, w warstwie cloud services, na podstawie metadanych.',
+    after: '<b>Wniosek.</b> Snowflake składa się z trzech warstw. <b>Cloud services</b> planuje zapytanie i pilnuje uprawnień. <b>Compute</b>, czyli warehouse, liczy. <b>Database storage</b> przechowuje dane. Nie każda operacja potrzebuje wszystkich trzech. O tym, ile pracy dostanie warehouse, decyduje wcześniej warstwa cloud services. Robi to na podstawie metadanych, czyli zapisanych informacji o danych.',
     more: {
       title: 'Co dokładnie jest w każdej warstwie',
       html: [
         '<b>Database storage.</b> Po załadowaniu Snowflake przepisuje dane na własny format: skompresowany i kolumnowy. Leżą w <term id="object-storage">object storage</term> dostawcy chmury. Dotyczy to zwykłych tabel Snowflake. Tabele Iceberg trzymają dane w storage zewnętrznym.',
-        '<b>Compute.</b> Virtual warehouse to według dokumentacji niezależny klaster, który nie dzieli zasobów obliczeniowych z innymi warehouse\'ami, więc jeden nie wpływa na wydajność drugiego.',
+        '<b>Compute.</b> Virtual warehouse to według dokumentacji niezależny klaster. Nie dzieli zasobów obliczeniowych z innymi warehouse\'ami, więc jeden nie wpływa na wydajność drugiego.',
         '<b>Cloud services.</b> Dokumentacja wymienia: bezpieczeństwo, uwierzytelnianie i kontrolę dostępu, Horizon Catalog, zarządzanie infrastrukturą, zarządzanie metadanymi, parsowanie i optymalizację zapytań oraz zgodność z regulacjami.',
-        'Dokumentacja nazywa całość hybrydą architektur shared-disk i shared-nothing: jedno centralne repozytorium danych dostępne dla wszystkich węzłów, a zapytania liczone przez klastry, w których każdy węzeł pracuje na swojej części danych.'
+        'Dokumentacja nazywa całość hybrydą dwóch architektur. Z <b>shared-disk</b> pochodzi jedno centralne miejsce na dane, dostępne dla wszystkich węzłów. Z <b>shared-nothing</b> pochodzi sposób liczenia: zapytanie wykonuje klaster, w którym każdy węzeł pracuje na swojej części danych.'
       ]
     },
     next: 'Co z tego wynika w praktyce?'
   },
   {
-    html: '<h2>Storage i compute to dwa osobne zasoby</h2>\n<p>W klasycznej hurtowni <term id="mpp">MPP</term> dane leżą na dyskach węzłów, które liczą. Chcesz więcej mocy: dokładasz węzły i przenosisz dane. Wyłączasz klaster: dane są niedostępne.</p>\n<p>W Snowflake dane leżą raz, w warstwie storage, a warehouse\'ów może być dowolnie wiele. Każdy czyta tę samą kopię. Stąd trzy rzeczy, które w pracy uważasz za oczywiste:</p>\n<ul><li><b>Izolacja obciążeń.</b> ELT, BI i analizy ad hoc na osobnych warehouse\'ach nie odbierają sobie zasobów.</li><li><b>Niezależne skalowanie.</b> Zmiana rozmiaru warehouse\'u nie przenosi żadnych danych.</li><li><b>Płacisz osobno.</b> Wstrzymany warehouse nie zużywa <term id="snowflake-credit">kredytów</term>, a dane dalej są w storage.</li></ul>\n<p>Jest też cena. Warehouse nie ma danych u siebie: musi je pobrać z object storage. Dlatego reszta tej lekcji krąży wokół dwóch pytań. <b>Jak przeczytać mniej?</b> I: <b>jak nie czytać drugi raz tego samego?</b></p>',
+    html: '<h2>Storage i compute to dwa osobne zasoby</h2>\n<p>W klasycznej hurtowni <term id="mpp">MPP</term> dane leżą na dyskach tych samych węzłów, które liczą. Chcesz więcej mocy? Dokładasz węzły i przenosisz dane. Wyłączasz klaster? Dane są niedostępne.</p>\n<p>W Snowflake dane leżą raz, w warstwie storage. Warehouse\'ów może być dowolnie wiele i każdy czyta tę samą kopię. Stąd trzy rzeczy, które w pracy uważasz za oczywiste:</p>\n<ul><li><b>Zespoły nie przeszkadzają sobie nawzajem.</b> ELT, BI i analizy ad hoc na osobnych warehouse\'ach nie odbierają sobie zasobów. To <b>izolacja obciążeń</b> (workload isolation).</li><li><b>Moc zmieniasz bez ruszania danych.</b> Zmiana rozmiaru warehouse\'u niczego nie przenosi.</li><li><b>Płacisz osobno.</b> Wstrzymany warehouse nie zużywa <term id="snowflake-credit">kredytów</term>, a dane dalej są w storage.</li></ul>\n<p>Jest też cena. Warehouse nie ma danych u siebie. Musi je pobrać z <term id="object-storage">object storage</term>. Dlatego reszta lekcji krąży wokół dwóch pytań. <b>Jak przeczytać mniej?</b> I: <b>jak nie czytać drugi raz tego samego?</b></p>',
     more: {
       title: 'Rzeczy, które dzieją się bez Twojego warehouse\'u',
       html: [
@@ -72,9 +72,9 @@ export const beats: Beat[] = [
     next: 'Zobacz, jak Snowflake czyta mniej',
     bridge: {
       from: 'klasyczna baza MPP',
-      known: 'W architekturze shared-nothing każdy węzeł ma własny dysk i własny fragment danych. Moc i pojemność rosną razem, a zmiana rozmiaru klastra oznacza redystrybucję danych.',
-      fresh: 'Dane są w jednym miejscu, a klastry obliczeniowe są wymienne: można je tworzyć, powiększać i wstrzymywać bez dotykania danych. Kilka klastrów czyta te same tabele jednocześnie.',
-      breaks: 'W shared-nothing dane są fizycznie przy procesorze, więc odczyt jest lokalny. W Snowflake lokalny jest tylko cache warehouse\'u, który znika przy wstrzymaniu. Wydajność zależy więc od tego, ile danych trzeba pobrać z object storage.'
+      known: 'W architekturze shared-nothing każdy węzeł ma własny dysk i własny fragment danych. Moc i pojemność rosną razem. Zmiana rozmiaru klastra oznacza przenoszenie danych między węzłami.',
+      fresh: 'Dane są w jednym miejscu, a klastry obliczeniowe można wymieniać. Tworzysz je, powiększasz i wstrzymujesz bez dotykania danych. Kilka klastrów czyta te same tabele jednocześnie.',
+      breaks: 'W shared-nothing dane leżą fizycznie przy procesorze, więc odczyt jest lokalny. W Snowflake lokalny jest tylko cache warehouse\'u, który znika przy wstrzymaniu. Wydajność zależy więc od tego, ile danych trzeba pobrać z object storage.'
     }
   }
 ];
@@ -106,7 +106,7 @@ export const layers = {
       services: 'Sprawdza uprawnienia roli, kompiluje zapytanie i porównuje filtr z zakresami dat w metadanych. Wybiera kilka fragmentów tabeli, które mogą zawierać ten dzień.',
       compute: 'Czyta tylko wskazane fragmenty, i w nich tylko kolumny order_date oraz amount. Sumuje.',
       storage: 'Oddaje kilka plików z tysięcy.',
-      verdict: 'Większość pracy wykonały metadane: warehouse dostał mało do przeczytania. To zapytanie z 3 sekund.'
+      verdict: 'Większość pracy wykonały metadane. Warehouse dostał mało do przeczytania. To zapytanie z 3 sekund.'
     },
     {
       id: 'cust', label: 'Filtr po kliencie',
@@ -114,7 +114,7 @@ export const layers = {
       services: 'Kompiluje zapytanie i porównuje filtr z metadanymi. Zamówienia klienta 4217 są rozsiane po całej historii, więc żadnego fragmentu nie da się wykluczyć.',
       compute: 'Czyta wszystkie fragmenty tabeli (kolumny customer_id i amount), filtruje wiersz po wierszu, sumuje.',
       storage: 'Oddaje wszystkie pliki tabeli.',
-      verdict: 'Ten sam SQL co do kształtu, ale metadane nie pomogły. To zapytanie z 9 minut. Dlaczego tak jest, pokazuje etap Mechanizm.'
+      verdict: 'SQL wygląda prawie tak samo, ale metadane nie pomogły. To zapytanie z 9 minut. Dlaczego tak jest, pokazuje etap Mechanizm.'
     },
     {
       id: 'repeat', label: 'To samo zapytanie drugi raz',
@@ -135,7 +135,7 @@ export const layers = {
     {
       id: 'join', label: 'Duży join z agregacją',
       sql: 'SELECT c.segment, SUM(o.amount)\nFROM orders o JOIN customers c USING (customer_id)\nGROUP BY c.segment',
-      services: 'Kompiluje zapytanie i wybiera plan: kolejność i sposób łączenia. Bez filtra nie ma czego wykluczać.',
+      services: 'Kompiluje zapytanie i wybiera plan: kolejność i sposób łączenia tabel. Nie ma filtra, więc nie ma czego wykluczać.',
       compute: 'Czyta obie tabele, łączy i grupuje w pamięci. Jeśli pamięci zabraknie, zapisuje dane pośrednie na dysk.',
       storage: 'Oddaje wszystkie pliki obu tabel (tylko potrzebne kolumny).',
       verdict: 'Tu pracuje głównie warehouse. O czasie decyduje jego rozmiar i to, czy operacja mieści się w pamięci.'
@@ -163,8 +163,8 @@ const allDays: [number, number] = [1, 24];
 export const prune = {
   question: 'Których mikropartycji nie trzeba otwierać?',
   intro: [
-    'Snowflake tnie każdą tabelę automatycznie na <b>mikropartycje</b>: porcje wierszy zapisane jako jedna całość, w kolejności ładowania. Dokumentacja podaje rozmiar od 50 do 500 MB danych przed kompresją. Tabela na terabajty ma ich setki tysięcy.',
-    'Dla każdej mikropartycji warstwa cloud services pamięta m.in. <b>najmniejszą i największą wartość każdej kolumny</b>. Poniżej osiem mikropartycji tabeli zamówień. Wybierz filtr i ułożenie danych, a potem sprawdź, które z nich na pewno nie zawierają szukanych wierszy.'
+    'Snowflake sam tnie każdą tabelę na <b>mikropartycje</b>. Mikropartycja to porcja wierszy zapisana jako jedna całość, w kolejności ładowania. Dokumentacja podaje rozmiar od 50 do 500 MB danych przed kompresją. Tabela na terabajty ma ich setki tysięcy.',
+    'Dla każdej mikropartycji warstwa cloud services pamięta m.in. <b>najmniejszą i największą wartość każdej kolumny</b>. Poniżej osiem mikropartycji tabeli zamówień. Wybierz filtr i ułożenie danych. Potem sprawdź, w których mikropartycjach szukanych wierszy na pewno nie ma.'
   ],
   assumptions: 'Model uproszczony: 8 mikropartycji zamiast setek tysięcy, zamówienia z 1–24 stycznia 2026, klienci o numerach 1–10 000. Mikropartycję można pominąć, gdy zakres filtra nie ma części wspólnej z jej zakresem min–max.',
   layoutLabel: 'Ułożenie danych',
@@ -189,40 +189,40 @@ export const prune = {
     }
   ] as PruneLayout[],
   filters: [
-    { id: 'day', label: 'Jeden dzień', sql: "WHERE order_date = '2026-01-14'", column: 'date', range: [14, 14], why: 'Filtr po jednej wartości: mikropartycja zostaje tylko wtedy, gdy 14 stycznia mieści się między jej min a max.' },
-    { id: 'range', label: 'Sześć dni', sql: "WHERE order_date BETWEEN '2026-01-10' AND '2026-01-15'", column: 'date', range: [10, 15], why: 'Filtr zakresowy: mikropartycja zostaje, gdy jej zakres dat ma choć jeden wspólny dzień z 10–15 stycznia.' },
+    { id: 'day', label: 'Jeden dzień', sql: "WHERE order_date = '2026-01-14'", column: 'date', range: [14, 14], why: 'Filtr po jednej wartości. Mikropartycja zostaje tylko wtedy, gdy 14 stycznia mieści się między jej min a max.' },
+    { id: 'range', label: 'Sześć dni', sql: "WHERE order_date BETWEEN '2026-01-10' AND '2026-01-15'", column: 'date', range: [10, 15], why: 'Filtr po zakresie. Mikropartycja zostaje, gdy jej zakres dat ma choć jeden wspólny dzień z 10–15 stycznia.' },
     { id: 'cust', label: 'Jeden klient', sql: 'WHERE customer_id = 4217', column: 'cust', range: [4217, 4217], why: 'Liczy się zakres customer_id. Jeśli 4217 mieści się między min a max, mikropartycji nie da się wykluczyć, nawet gdy tego klienta w niej nie ma.' },
-    { id: 'sub', label: 'Data z podzapytania', sql: 'WHERE order_date = (SELECT MAX(order_date) FROM orders)', column: null, range: [0, 0], why: 'Dokumentacja mówi wprost: Snowflake nie przycina mikropartycji po predykacie z podzapytaniem, nawet gdy podzapytanie daje stałą. Wszystkie zostają do przeczytania.' }
+    { id: 'sub', label: 'Data z podzapytania', sql: 'WHERE order_date = (SELECT MAX(order_date) FROM orders)', column: null, range: [0, 0], why: 'Dokumentacja mówi wprost: Snowflake nie pomija mikropartycji na podstawie warunku z podzapytaniem, nawet gdy podzapytanie daje stałą. Wszystkie zostają do przeczytania.' }
   ] as PruneFilter[],
   takeaway: [
-    '<b>Wniosek.</b> To jest <b>partition pruning</b>: pominięcie mikropartycji na podstawie metadanych, zanim warehouse cokolwiek przeczyta. O jego skuteczności nie decyduje sam filtr, tylko to, jak wartości kolumny z filtra są rozłożone po mikropartycjach. Dlatego filtr po dacie trwał 3 sekundy, a filtr po kliencie 9 minut.',
-    'W prawdziwym zapytaniu widać to w Query Profile jako <b>Partitions scanned</b> i <b>Partitions total</b>. Zakres min–max mówi tylko „może tu być", więc przeczytana mikropartycja wcale nie musi zwrócić wierszy.'
+    '<b>Wniosek.</b> Snowflake pomija mikropartycje na podstawie metadanych, zanim warehouse cokolwiek przeczyta. To <b>partition pruning</b>. Sam filtr nie wystarczy. Liczy się to, jak wartości kolumny z filtra są rozłożone po mikropartycjach. Dlatego filtr po dacie trwał 3 sekundy, a filtr po kliencie 9 minut.',
+    'W prawdziwym zapytaniu widać to w Query Profile jako <b>Partitions scanned</b> i <b>Partitions total</b>. Zakres min–max mówi tylko „tu może coś być". Przeczytana mikropartycja wcale nie musi zwrócić wierszy.'
   ],
   notesTitle: 'Co tu jest uproszczeniem',
   notes: [
     'To animacja w JavaScripcie, a nie Snowflake. Reguła „zakresy się przecinają albo nie" jest uproszczonym modelem pruningu po min–max.',
-    'Snowflake przechowuje więcej metadanych niż min i max: dokumentacja wymienia też liczbę wartości unikalnych i „dodatkowe własności" używane do optymalizacji. Lista jest podana jako niepełna.',
-    'Nie każdy predykat nadaje się do pruningu. Dokumentacja mówi ogólnie, że nie wszystkie wyrażenia można do niego użyć, a wprost wymienia podzapytania. Jeśli filtr nie przycina, sprawdź to w Query Profile, zamiast zgadywać.',
-    'Wzorzec z dokumentacji: filtr wybierający 10% wartości powinien w idealnym przypadku skanować około 10% mikropartycji. To cel, nie gwarancja.'
+    'Snowflake przechowuje więcej metadanych niż min i max. Dokumentacja wymienia też liczbę różnych wartości i „dodatkowe własności" używane do optymalizacji. Lista jest podana jako niepełna.',
+    'Nie każdy warunek w WHERE (predicate) pozwala pomijać mikropartycje. Dokumentacja mówi ogólnie, że nie wszystkie wyrażenia się do tego nadają, a wprost wymienia podzapytania. Jeśli filtr nic nie wycina, sprawdź to w Query Profile, zamiast zgadywać.',
+    'Wzorzec z dokumentacji: filtr, który wybiera 10% wartości, powinien w idealnym przypadku skanować około 10% mikropartycji. To cel, nie gwarancja.'
   ],
   columnarTitle: 'Kolumnowy zapis i kompresja: druga oszczędność',
   columnar: [
-    'W mikropartycji każda kolumna jest zapisana osobno. Zapytanie, które używa dwóch kolumn z pięćdziesięciu, czyta z przeskanowanych mikropartycji tylko te dwie. Pruning ogranicza więc liczbę mikropartycji, a zapis kolumnowy ogranicza to, co czyta się w każdej z nich.',
-    'Kolumny są też osobno kompresowane. Snowflake sam dobiera algorytm dla każdej kolumny w każdej mikropartycji. Wartości jednej kolumny są do siebie podobne, więc kompresują się dobrze.',
-    'Skutek uboczny: <code>SELECT *</code> na szerokiej tabeli czyta wszystkie kolumny, nawet jeśli potrzebujesz trzech. Koszt storage liczy się od danych skompresowanych.'
+    'W mikropartycji każda kolumna jest zapisana osobno. Zapytanie, które używa dwóch kolumn z pięćdziesięciu, czyta z przeskanowanych mikropartycji tylko te dwie. Oszczędności są więc dwie. Pruning zmniejsza liczbę czytanych mikropartycji. Zapis kolumnowy zmniejsza to, co czyta się w każdej z nich.',
+    'Każda kolumna jest też kompresowana osobno. Snowflake sam dobiera algorytm dla każdej kolumny w każdej mikropartycji. Wartości jednej kolumny są do siebie podobne, więc kompresują się dobrze.',
+    'Skutek uboczny: <code>SELECT *</code> na szerokiej tabeli czyta wszystkie kolumny, nawet jeśli potrzebujesz trzech. Koszt storage liczy się od danych po kompresji.'
   ],
   dmlTitle: 'Co się dzieje przy UPDATE i DELETE',
   dml: [
-    'Snowflake nie poprawia mikropartycji w miejscu. Zmiana wiersza zapisuje nową mikropartycję z nową wersją danych, a stara przestaje należeć do bieżącej wersji tabeli. To wiedza ogólna o Snowflake: dokumentacja opisuje to wprost przy reclusteringu (oryginalne mikropartycje są oznaczane jako usunięte, ale zachowane na potrzeby Time Travel i Fail-safe).',
-    'Dlatego częste zmiany w dużej tabeli mają dwa skutki: rośnie storage historyczny i psuje się naturalne uporządkowanie, na którym opierał się pruning. Ułożenie „Po backfillach i poprawkach" w symulacji pokazuje właśnie to.',
+    'Snowflake nie poprawia mikropartycji w miejscu. Zmiana wiersza zapisuje nową mikropartycję z nową wersją danych. Stara przestaje należeć do bieżącej wersji tabeli. To wiedza ogólna o Snowflake. Dokumentacja opisuje to wprost przy reclusteringu: oryginalne mikropartycje są oznaczane jako usunięte, ale zostają na potrzeby Time Travel i Fail-safe.',
+    'Dlatego częste zmiany w dużej tabeli mają dwa skutki. Rośnie storage ze starymi wersjami danych. Psuje się też naturalne uporządkowanie, dzięki któremu działał pruning. Ułożenie „Po backfillach i poprawkach" w symulacji pokazuje właśnie to.',
     'Z tego samego mechanizmu wynikają Time Travel i zero-copy cloning, do których lekcja dojdzie w etapie Koszt i produkcja.'
   ],
   bridgeTitle: 'Analogia: row groups w Parquet',
   bridge: {
     from: 'Spark i Parquet',
-    known: 'Plik Parquet dzieli wiersze na row groups i może przechowywać min i max każdej kolumny dla każdej grupy. Czytnik pomija grupy, których statystyki wykluczają filtr.',
-    fresh: 'Mikropartycja pełni podobną rolę: porcja wierszy ze statystykami kolumn, którą można pominąć bez czytania. Zasada „posortowane dane przycinają się dobrze, rozrzucone wcale" jest ta sama.',
-    breaks: 'W Sparku statystyki są w stopkach plików, a o formacie, rozmiarze plików i partycjonowaniu decydujesz sam. W Snowflake metadane są w warstwie cloud services i służą do pruningu już przy kompilacji, a mikropartycji nie definiujesz ani nie widzisz w zapytaniu.'
+    known: 'Plik Parquet dzieli wiersze na row groups i może przechowywać min i max każdej kolumny dla każdej grupy. Czytnik pomija grupy, w których według statystyk szukanych wierszy nie ma.',
+    fresh: 'Mikropartycja pełni podobną rolę. To porcja wierszy ze statystykami kolumn, którą można pominąć bez czytania. Zasada też jest ta sama: posortowane dane da się dobrze pomijać, rozrzuconych wcale.',
+    breaks: 'W Sparku statystyki są w stopkach plików, a o formacie, rozmiarze plików i partycjonowaniu decydujesz sam. W Snowflake metadane są w warstwie cloud services i służą do pruningu już przy kompilacji zapytania. Mikropartycji nie definiujesz i nie widzisz ich w zapytaniu.'
   } as Bridge
 };
 
@@ -230,9 +230,9 @@ export const prune = {
 export const clustering = {
   title: 'Clustering: gdy naturalne ułożenie nie wystarcza',
   intro: [
-    'W symulacji ułożenie „Klastrowane po customer_id" naprawiło filtr po kliencie. Tak działa <b>clustering key</b>: deklarujesz kolumny, po których Snowflake ma utrzymywać uporządkowanie, a usługa <b>Automatic Clustering</b> w tle przepisuje mikropartycje, żeby ich zakresy przestały się nakładać.',
-    'Stopień nakładania opisuje <b>clustering depth</b>: średnia głębokość nakładających się mikropartycji dla wskazanych kolumn. Im mniejsza, tym lepiej. W symulacji po backfillach filtr na 14 stycznia trafiał w trzy mikropartycje zamiast w jedną: to właśnie większa głębokość.',
-    'Usługa kosztuje, więc pytanie brzmi nie „czy to pomaga", tylko „czy tu się opłaca". Trzy sytuacje: zdecyduj przed przeczytaniem uzasadnienia.'
+    'W symulacji ułożenie „Klastrowane po customer_id" naprawiło filtr po kliencie. Tak działa <b>clustering key</b>. Wskazujesz kolumny, po których Snowflake ma utrzymywać dane w porządku. Usługa <b>Automatic Clustering</b> przepisuje potem w tle mikropartycje tak, żeby ich zakresy przestały się nakładać.',
+    'To, jak mocno zakresy się nakładają, opisuje <b>clustering depth</b>: średnia głębokość nakładających się mikropartycji dla wskazanych kolumn. Im mniejsza, tym lepiej. W symulacji po backfillach filtr na 14 stycznia trafiał w trzy mikropartycje zamiast w jedną. To właśnie większa głębokość.',
+    'Usługa kosztuje. Pytanie nie brzmi więc „czy to pomaga", tylko „czy tu się opłaca". Poniżej trzy sytuacje. Zdecyduj, zanim przeczytasz uzasadnienie.'
   ],
   ask: 'Clustering key na tej tabeli:',
   cases: [
@@ -240,45 +240,45 @@ export const clustering = {
       setup: 'Tabela zdarzeń, 4 TB, dopisywana raz na dobę, bez zmian wstecz. Prawie wszystkie zapytania filtrują po tenant_id i zakresie dat. Query Profile pokazuje, że zapytania o jednego tenanta skanują ponad 90% mikropartycji.',
       options: ['Opłaca się rozważyć', 'To strata kredytów'],
       correct: 0,
-      why: 'Spełnione są kryteria z dokumentacji: tabela ma bardzo dużo mikropartycji (zwykle oznacza to wiele terabajtów), większość zapytań filtruje selektywnie po tych samych kolumnach, a tabela jest często czytana i rzadko zmieniana. Klucz po tenant_id i dacie powinien ograniczyć skan do mikropartycji jednego tenanta.',
+      why: 'Spełnione są kryteria z dokumentacji. Tabela ma bardzo dużo mikropartycji (zwykle oznacza to wiele terabajtów). Większość zapytań filtruje po tych samych kolumnach i wybiera mały ułamek wierszy. Tabela jest często czytana i rzadko zmieniana. Klucz po tenant_id i dacie powinien ograniczyć skan do mikropartycji jednego tenanta.',
       scope: 'To kandydat, nie pewnik. Po włączeniu porównaj Partitions scanned i czas zapytań oraz koszt usługi dla tej tabeli. Dokumentacja mówi, że najlepszym wskaźnikiem jest wydajność zapytań, a nie sama clustering depth.'
     },
     {
       setup: 'Tabela słownikowa produktów, 300 MB, aktualizowana kilka razy dziennie. Zapytania łączą ją z tabelą faktów po product_id.',
       options: ['Opłaca się rozważyć', 'To strata kredytów'],
       correct: 1,
-      why: 'Przy 300 MB tabela ma kilka mikropartycji, więc nie ma czego przycinać: przeczytanie całości jest tanie. Dokumentacja mówi, że clustering nie jest przeznaczony dla wszystkich tabel ze względu na koszty i wskazuje tabele z dużą liczbą mikropartycji.',
-      scope: 'Rozmiar jest tu rozstrzygający. Gdyby ta tabela miała terabajty, pytanie wróciłoby do tego, jak często jest zmieniana.'
+      why: 'Przy 300 MB tabela ma kilka mikropartycji, więc nie ma czego pomijać. Przeczytanie całości jest tanie. Dokumentacja mówi, że clustering nie jest przeznaczony dla wszystkich tabel ze względu na koszty, i wskazuje tabele z dużą liczbą mikropartycji.',
+      scope: 'Tu rozstrzyga rozmiar. Gdyby ta tabela miała terabajty, pytanie wróciłoby do tego, jak często jest zmieniana.'
     },
     {
       setup: 'Tabela stanów zamówień, 2 TB. Proces co 5 minut robi MERGE, który zmienia wiersze rozsiane po całej tabeli. Ktoś proponuje clustering key po order_id, bo „po nim się szuka".',
       options: ['Opłaca się rozważyć', 'To strata kredytów'],
       correct: 1,
-      why: 'Dwa problemy naraz. Tabela zmienia się bez przerwy, więc usługa stale porządkuje dane, a przepisane mikropartycje zostają w Time Travel i Fail-safe: dokumentacja mówi, że clustering jest najbardziej opłacalny dla tabel często czytanych i rzadko zmienianych. Do tego order_id ma bardzo wysoką kardynalność, a taka kolumna według dokumentacji zwykle nie jest dobrym kluczem wprost.',
-      scope: 'Dla wyszukiwania pojedynczych wierszy w dużej tabeli dokumentacja opisuje osobną usługę, search optimization (edycja Enterprise, własny koszt storage i compute). To inny mechanizm niż clustering i też wymaga rachunku kosztów.'
+      why: 'Dwa problemy naraz. Tabela zmienia się bez przerwy, więc usługa stale porządkuje dane, a przepisane mikropartycje zostają w Time Travel i Fail-safe. Dokumentacja mówi, że clustering opłaca się najbardziej na tabelach często czytanych i rzadko zmienianych. Do tego order_id ma bardzo wysoką kardynalność (cardinality), czyli bardzo wiele różnych wartości. Taka kolumna według dokumentacji zwykle nie jest dobrym kluczem wprost.',
+      scope: 'Do wyszukiwania pojedynczych wierszy w dużej tabeli dokumentacja opisuje osobną usługę: search optimization (edycja Enterprise, własny koszt storage i compute). To inny mechanizm niż clustering i też trzeba policzyć, czy się opłaca.'
     }
   ] as Scenario[],
-  takeaway: '<b>Wniosek.</b> Clustering to zamiana: płacisz za utrzymywanie porządku w tle, żeby zapytania czytały mniej. Opłaca się na dużej tabeli, czytanej często i selektywnie po tych samych kolumnach, zmienianej rzadko. Na małej albo ciągle przepisywanej tabeli kupujesz porządek, z którego nikt nie korzysta.',
+  takeaway: '<b>Wniosek.</b> Clustering to wymiana. Płacisz za utrzymywanie porządku w tle, żeby zapytania czytały mniej. Opłaca się na dużej tabeli, która jest często czytana i rzadko zmieniana, a zapytania filtrują ją po tych samych kolumnach i wybierają mały ułamek wierszy. Na małej albo ciągle przepisywanej tabeli kupujesz porządek, z którego nikt nie korzysta.',
   keyTitle: 'Jak wybrać klucz i jak sprawdzić stan',
   key: [
-    'Dokumentacja zaleca dla większości tabel najwyżej 3–4 kolumny lub wyrażenia w kluczu, ułożone od najniższej do najwyższej kardynalności.',
-    'Kolumna o bardzo niskiej kardynalności (np. flaga) daje minimalny pruning. Kolumna o bardzo wysokiej (np. znacznik czasu) zwykle nie nadaje się wprost: dokumentacja proponuje wyrażenie, np. <code>to_date(c_timestamp)</code>.',
-    'Stan uporządkowania pokazuje <code>SELECT SYSTEM$CLUSTERING_INFORMATION(\'orders\', \'(order_date)\')</code>: zwraca m.in. liczbę mikropartycji, średnią liczbę nakładań i średnią głębokość.',
-    'Clustering depth nie jest miarą absolutną. Dokumentacja mówi, że nie jest precyzyjnym wskaźnikiem tego, czy tabela jest dobrze sklastrowana, i że najlepiej ocenia to wydajność zapytań.'
+    'Dokumentacja zaleca dla większości tabel najwyżej 3–4 kolumny lub wyrażenia w kluczu. Kolejność: od najniższej do najwyższej kardynalności, czyli od kolumny z najmniejszą liczbą różnych wartości.',
+    'Kolumna o bardzo niskiej kardynalności (np. flaga) daje minimalny pruning. Kolumna o bardzo wysokiej (np. znacznik czasu) zwykle nie nadaje się wprost. Dokumentacja proponuje wtedy wyrażenie, np. <code>to_date(c_timestamp)</code>.',
+    'Stan uporządkowania pokazuje <code>SELECT SYSTEM$CLUSTERING_INFORMATION(\'orders\', \'(order_date)\')</code>. Zwraca m.in. liczbę mikropartycji, średnią liczbę nakładań i średnią głębokość.',
+    'Clustering depth nie jest miarą absolutną. Dokumentacja mówi, że nie pokazuje precyzyjnie, czy tabela jest dobrze sklastrowana. Najlepiej ocenia to wydajność zapytań.'
   ],
   costTitle: 'Ile kosztuje Automatic Clustering',
   cost: [
-    'Usługa działa w tle i nie używa Twojego warehouse\'u. Nie blokuje instrukcji DML. Można ją wstrzymać i wznowić: <code>ALTER TABLE t SUSPEND RECLUSTER</code> i <code>RESUME RECLUSTER</code>.',
-    'Reclustering zużywa kredyty, a oryginalne mikropartycje są oznaczane jako usunięte, ale zachowane na potrzeby Time Travel i Fail-safe, co według dokumentacji zwykle podnosi koszt storage.',
-    'Model rozliczania zależy od wersji usługi. Dokumentacja opisuje dwie: Clustering Classic, rozliczany za compute serverless, oraz Optima Clustering, rozliczany od ilości załadowanych danych. Według niej tabele klastrowane od 1 września 2026 używają Optima, a wcześniejsze zostają na Classic. Przed decyzją sprawdź, która wersja dotyczy Twojej tabeli.',
-    'Tańsza alternatywa dla tabel głównie dopisywanych: sortowanie przy ładowaniu (<code>ORDER BY</code> w instrukcji ładującej). Daje dobre ułożenie na starcie, ale nikt go nie utrzyma po późniejszych zmianach. To praktyka, a nie cytat z dokumentacji.'
+    'Usługa działa w tle i nie używa Twojego warehouse\'u. Nie blokuje instrukcji zmieniających dane (DML). Można ją wstrzymać i wznowić: <code>ALTER TABLE t SUSPEND RECLUSTER</code> i <code>RESUME RECLUSTER</code>.',
+    'Reclustering zużywa kredyty. Oryginalne mikropartycje są oznaczane jako usunięte, ale zostają na potrzeby Time Travel i Fail-safe. Według dokumentacji zwykle podnosi to koszt storage.',
+    'Sposób rozliczania zależy od wersji usługi. Dokumentacja opisuje dwie. Clustering Classic jest rozliczany za compute serverless. Optima Clustering jest rozliczany od ilości załadowanych danych. Według dokumentacji tabele klastrowane od 1 września 2026 używają Optima, a wcześniejsze zostają na Classic. Przed decyzją sprawdź, która wersja dotyczy Twojej tabeli.',
+    'Tańsza alternatywa dla tabel, do których głównie się dopisuje: sortowanie przy ładowaniu (<code>ORDER BY</code> w instrukcji ładującej). Daje dobre ułożenie na starcie, ale po późniejszych zmianach nikt go nie utrzyma. To praktyka, a nie cytat z dokumentacji.'
   ],
   bridgeTitle: 'Analogia: indeks w klasycznej bazie',
   bridge: {
     from: 'klasyczna baza danych',
-    known: 'Indeks to osobna struktura, która prowadzi do konkretnych wierszy. Tworzysz go dla kolumn z warunków wyszukiwania i płacisz wolniejszym zapisem oraz dodatkowym miejscem.',
+    known: 'Indeks to osobna struktura, która prowadzi do konkretnych wierszy. Tworzysz go dla kolumn, po których szukasz. Płacisz wolniejszym zapisem i dodatkowym miejscem.',
     fresh: 'Clustering key też przyspiesza filtry po wybranych kolumnach i też kosztuje przy zapisie. Decyzję podejmujesz podobnie: patrzysz, po czym zapytania naprawdę filtrują.',
-    breaks: 'Clustering nie tworzy struktury wskazującej wiersze. Zmienia fizyczne ułożenie danych, żeby całe mikropartycje dało się pominąć. Tabela ma jeden klucz, a nie wiele indeksów, i nie pomoże w wyszukiwaniu pojedynczego wiersza po dowolnej kolumnie.'
+    breaks: 'Clustering nie tworzy struktury, która wskazuje wiersze. Zmienia fizyczne ułożenie danych, żeby całe mikropartycje dało się pominąć. Tabela ma jeden klucz, a nie wiele indeksów. Clustering nie pomoże też znaleźć pojedynczego wiersza po dowolnej kolumnie.'
   } as Bridge
 };
 
@@ -310,28 +310,28 @@ export const cache = {
     cold: { source: 'Object storage', text: 'Warehouse startuje (rozliczenie: minimum 60 sekund) i nie ma nic w lokalnym cache. Pobiera mikropartycje z warstwy storage, liczy wynik i zostawia pobrane dane na lokalnym dysku.' },
     remote: { source: 'Object storage', text: 'Warehouse działa, ale tych danych nie ma jeszcze w lokalnym cache. Pobiera je z warstwy storage i zostawia na lokalnym dysku.' },
     localHit: { source: 'Cache warehouse\'u', text: 'Zapytanie trzeba wykonać, ale potrzebne dane tabeli leżą już na lokalnym dysku warehouse\'u. W Query Profile widać to jako „Percentage scanned from cache".' },
-    variantNote: 'Tekst różni się wielkością liter, więc result cache nie pasuje: dokumentacja wymienia wielkość liter i aliasy tabel jako różnice, które blokują ponowne użycie.',
-    insert: { source: 'Zmiana danych', text: 'Dane tabeli się zmieniły, więc zapisany wynik A jest nieaktualny. Lokalny cache zostaje: stare mikropartycje nadal są na dysku, a nowej tam jeszcze nie ma.' },
+    variantNote: 'Tekst różni się wielkością liter, więc result cache nie pasuje. Dokumentacja wymienia wielkość liter i aliasy tabel jako różnice, które blokują ponowne użycie.',
+    insert: { source: 'Zmiana danych', text: 'Dane tabeli się zmieniły, więc zapisany wynik A jest nieaktualny. Lokalny cache zostaje. Stare mikropartycje nadal są na dysku, a nowej tam jeszcze nie ma.' },
     insertCold: { source: 'Zmiana danych', text: 'Warehouse startuje, żeby wykonać INSERT (minimum 60 sekund). Zapisany wynik A jest nieaktualny, bo dane tabeli się zmieniły.' },
     suspend: { source: 'Wstrzymanie', text: 'Warehouse przestaje zużywać kredyty. Jego lokalny cache zostaje usunięty. Result cache zostaje, bo nie należy do warehouse\'u.' },
     suspendIdle: { source: 'Wstrzymanie', text: 'Warehouse już jest wstrzymany.' }
   },
   takeaway: [
-    '<b>Wniosek.</b> <b>Result cache</b> należy do warstwy cloud services i przechowuje gotowe wyniki: działa tylko dla identycznego zapytania na niezmienionych danych. <b>Cache warehouse\'u</b> należy do warstwy compute i przechowuje dane tabel: pomaga także innym zapytaniom, ale znika przy wstrzymaniu.',
-    'Dlatego auto-suspend to kompromis, a nie ustawienie „im krócej, tym lepiej": krótki czas oszczędza kredyty za bezczynność, ale każdy start to zimny cache i co najmniej 60 sekund rozliczenia.'
+    '<b>Wniosek.</b> <b>Result cache</b> należy do warstwy cloud services i przechowuje gotowe wyniki. Działa tylko dla identycznego zapytania na niezmienionych danych. <b>Cache warehouse\'u</b> należy do warstwy compute i przechowuje dane tabel. Pomaga także innym zapytaniom, ale znika przy wstrzymaniu.',
+    'Dlatego auto-suspend to kompromis, a nie ustawienie „im krócej, tym lepiej". Krótki czas oszczędza kredyty za bezczynność. Ale każdy start to zimny, czyli pusty cache i co najmniej 60 sekund rozliczenia.'
   ],
   rulesTitle: 'Dokładne warunki result cache',
   rules: [
     'Wynik jest przechowywany 24 godziny. Każde ponowne użycie odnawia ten okres, najwyżej do 31 dni od pierwszego wykonania.',
     'Nowe zapytanie musi dokładnie odpowiadać poprzedniemu. Dane tabel nie mogły się zmienić, a mikropartycje też nie, np. przez reclustering.',
-    'Zapytanie nie może zawierać funkcji, których wyniku nie da się ponownie użyć: dokumentacja wymienia <code>UUID_STRING</code>, <code>RANDOM</code> i <code>RANDSTR</code>. Odpadają też funkcje zewnętrzne i zapytania do tabel hybrydowych.',
+    'Zapytanie nie może zawierać funkcji, których wyniku nie da się ponownie użyć. Dokumentacja wymienia <code>UUID_STRING</code>, <code>RANDOM</code> i <code>RANDSTR</code>. Odpadają też funkcje zewnętrzne i zapytania do tabel hybrydowych.',
     'Rola musi mieć uprawnienia do wszystkich użytych tabel. Warunek dotyczy roli, a nie tego, czy to ten sam użytkownik.',
-    'Spełnienie wszystkich warunków nie gwarantuje ponownego użycia wyniku: tak mówi dokumentacja. Mechanizm wyłącza się parametrem sesji <code>USE_CACHED_RESULT = FALSE</code>, co jest potrzebne przy mierzeniu wydajności.'
+    'Spełnienie wszystkich warunków nie gwarantuje ponownego użycia wyniku. Tak mówi dokumentacja. Mechanizm wyłącza się parametrem sesji <code>USE_CACHED_RESULT = FALSE</code>. Przydaje się to przy mierzeniu wydajności.'
   ],
   suspendTitle: 'Jak ustawić auto-suspend',
   suspend: [
     'Auto-suspend i auto-resume są domyślnie włączone. Dokumentacja zaleca niską wartość auto-suspend, np. 5 albo 10 minut lub mniej, dopasowaną do przerw w obciążeniu.',
-    'Powód dopasowania: każde wznowienie nalicza minimum 60 sekund. Warehouse, który zatrzymuje się i wznawia co chwilę, płaci to minimum za każdym razem i ciągle pracuje na zimnym cache.',
+    'Dlaczego dopasowaną: każde wznowienie nalicza minimum 60 sekund. Warehouse, który zatrzymuje się i wznawia co chwilę, płaci to minimum za każdym razem i ciągle pracuje na zimnym cache.',
     'Cache jest tym większy, im większy warehouse. Przy zmniejszeniu rozmiaru znika cache zasobów, które zostały usunięte.',
     'Reguła robocza (praktyka, nie cytat): warehouse do zadań wsadowych może zatrzymywać się szybko, bo między przebiegami i tak nie ma ruchu. Warehouse pod dashboardy powinien przetrwać typową przerwę między kliknięciami.'
   ]
@@ -355,8 +355,8 @@ export interface ProfileCase {
 export const profiles = {
   title: 'Query Profile: gdzie zniknął czas?',
   intro: [
-    'Zapytanie trwa za długo. Zanim zmienisz rozmiar warehouse\'u, ustal, co naprawdę się wydarzyło. <b>Query Profile</b> pokazuje wykonane zapytanie jako drzewo operatorów, np. TableScan (odczyt tabeli), Join, Aggregate (grupowanie) i Sort, z czasem i statystykami każdego z nich. Czyta się je od dołu, od odczytu tabel, w górę do wyniku.',
-    'Poniżej cztery zapytania z tym samym objawem. W każdym spójrz na wyróżnione statystyki i wybierz pierwszy krok.'
+    'Zapytanie trwa za długo. Zanim zmienisz rozmiar warehouse\'u, ustal, co naprawdę się wydarzyło. <b>Query Profile</b> pokazuje wykonane zapytanie jako drzewo operatorów, czyli kroków wykonania. Przykłady: TableScan (odczyt tabeli), Join, Aggregate (grupowanie) i Sort. Każdy ma swój czas i statystyki. Drzewo czyta się od dołu, od odczytu tabel, w górę do wyniku.',
+    'Poniżej cztery zapytania z tym samym objawem. W każdym spójrz na wyróżnione statystyki i wybierz pierwszy krok. Jedno pojęcie na start: gdy operacja nie mieści się w pamięci, warehouse zapisuje dane pośrednie na dysk. To <b>spilling</b>.'
   ],
   assumptions: 'Ilustracja: wartości są wymyślone. Nazwy statystyk i operatorów są takie, jak w dokumentacji Query Profile.',
   ask: 'Twój pierwszy krok:',
@@ -372,8 +372,8 @@ export const profiles = {
       ],
       options: ['Zwiększam warehouse o dwa rozmiary', 'Sprawdzam filtr i ułożenie danych względem kolumny z filtra', 'Dodaję LIMIT do zapytania'],
       correct: 1,
-      why: 'Zapytanie przeczytało prawie wszystkie mikropartycje, choć szuka jednego klienta: pruning nie zadziałał. Dokumentacja opisuje to jako „inefficient pruning" i każe porównać Partitions scanned z Partitions total. Większy warehouse przeczyta całą tabelę szybciej, ale nadal całą.',
-      scope: 'Dalszy ruch zależy od przyczyny: predykat, którego nie da się użyć do pruningu, da się przepisać. Brak uporządkowania po kolumnie z filtra to pytanie o clustering key i jego koszt.'
+      why: 'Zapytanie szuka jednego klienta, a przeczytało prawie wszystkie mikropartycje. Pruning nie zadziałał. Dokumentacja nazywa to „inefficient pruning" i każe porównać Partitions scanned z Partitions total. Większy warehouse przeczyta całą tabelę szybciej, ale nadal całą.',
+      scope: 'Dalszy ruch zależy od przyczyny. Warunek, który nie pozwala na pruning, da się przepisać. Jeśli dane nie są uporządkowane po kolumnie z filtra, to pytanie o clustering key i jego koszt.'
     },
     {
       id: 'join', label: 'Zapytanie 2',
@@ -386,8 +386,8 @@ export const profiles = {
       ],
       options: ['Zwiększam warehouse, bo jest spilling', 'Sprawdzam warunek joina i duplikaty klucza', 'Dodaję clustering key po kluczu joina'],
       correct: 1,
-      why: 'Join oddaje 80 razy więcej wierszy, niż dostał z większej strony. Dokumentacja nazywa to „exploding join": operator produkuje wielokrotnie więcej krotek, niż konsumuje. Spilling jest tu skutkiem, a nie przyczyną. Najczęściej klucz, który miał być unikalny, przestał taki być albo w warunku brakuje kolumny.',
-      scope: 'Jeśli mnożenie wierszy jest zamierzone, wracasz do spillingu jako osobnego problemu: mniejsze porcje danych albo większy warehouse.'
+      why: 'Join oddaje 80 razy więcej wierszy, niż dostał z większej strony. Dokumentacja nazywa to „exploding join": operator oddaje wielokrotnie więcej wierszy, niż dostaje. Spilling jest tu skutkiem, a nie przyczyną. Najczęściej klucz, który miał być unikalny, przestał taki być albo w warunku brakuje kolumny.',
+      scope: 'Jeśli mnożenie wierszy jest zamierzone, spilling zostaje jako osobny problem: mniejsze porcje danych albo większy warehouse.'
     },
     {
       id: 'spill', label: 'Zapytanie 3',
@@ -400,8 +400,8 @@ export const profiles = {
       ],
       options: ['Szukam błędu w joinie', 'Testuję większy warehouse albo dzielę pracę na mniejsze porcje', 'Włączam result cache'],
       correct: 1,
-      why: 'Skan jest uzasadniony, a agregacja nie mnoży wierszy. Problemem jest pamięć: operacja nie zmieściła się w niej ani na lokalnym dysku, więc część danych pośrednich trafiła do zdalnego storage. Dokumentacja podaje dwie naprawy: większy warehouse albo przetwarzanie danych w mniejszych porcjach.',
-      scope: 'To jedyny z czterech przypadków, w którym zmiana rozmiaru jest pierwszym krokiem. Warto ją zmierzyć: jeśli zdalny spilling zniknie, czas może spaść bardziej niż dwukrotnie.'
+      why: 'Pełny skan jest tu uzasadniony, a agregacja nie mnoży wierszy. Problemem jest pamięć. Operacja nie zmieściła się w niej ani na lokalnym dysku, więc część danych pośrednich trafiła do zdalnego storage. Dokumentacja podaje dwie naprawy: większy warehouse albo przetwarzanie danych w mniejszych porcjach.',
+      scope: 'To jedyny z czterech przypadków, w którym zmiana rozmiaru jest pierwszym krokiem. Warto ją zmierzyć. Jeśli zdalny spilling zniknie, czas może spaść bardziej niż dwukrotnie.'
     },
     {
       id: 'queue', label: 'Zapytanie 4',
@@ -414,21 +414,21 @@ export const profiles = {
       ],
       options: ['Przepisuję zapytanie', 'Zwiększam rozmiar warehouse\'u', 'Sprawdzam obciążenie warehouse\'u: kolejka to problem współbieżności'],
       correct: 2,
-      why: 'Zapytanie samo w sobie jest szybkie. Czekało, bo warehouse nie miał wolnych zasobów: Snowflake kolejkuje wtedy zapytania do czasu ich zwolnienia. Naprawy z dokumentacji to dodatkowe warehouse\'y i rozdzielenie zapytań albo multi-cluster warehouse. O zmianie rozmiaru dokumentacja mówi, że nie jest przeznaczona do problemów ze współbieżnością.',
-      scope: 'Czas w kolejce nie jest statystyką operatora w profilu: widać go w historii zapytań i w obciążeniu warehouse\'u (queued load). Warto też sprawdzić, co o 9:00 zajmuje warehouse. Jedno ciężkie zapytanie ELT na warehouse\'ie BI to problem izolacji, nie skali.'
+      why: 'Samo zapytanie jest szybkie. Czekało, bo warehouse nie miał wolnych zasobów. Snowflake ustawia wtedy zapytania w kolejce, aż zasoby się zwolnią. Naprawy z dokumentacji: dodatkowe warehouse\'y i rozdzielenie zapytań albo multi-cluster warehouse. O zmianie rozmiaru dokumentacja mówi, że nie jest przeznaczona do problemów ze współbieżnością (concurrency), czyli z wieloma zapytaniami naraz.',
+      scope: 'Czas w kolejce nie jest statystyką operatora w profilu. Widać go w historii zapytań i w obciążeniu warehouse\'u (queued load). Warto też sprawdzić, co o 9:00 zajmuje warehouse. Jedno ciężkie zapytanie ELT na warehouse\'ie BI to problem izolacji, nie skali.'
     }
   ] as ProfileCase[],
-  takeaway: '<b>Wniosek.</b> Cztery różne przyczyny, ten sam objaw. Kolejność pytań: czy zapytanie czekało, ile przeczytało, czy któryś operator mnoży wiersze, czy operacja zmieściła się w pamięci. Dopiero odpowiedź wskazuje naprawę, a większy warehouse jest właściwą odpowiedzią tylko na jedną z nich.',
+  takeaway: '<b>Wniosek.</b> Cztery różne przyczyny, ten sam objaw. Pytaj po kolei. Czy zapytanie czekało? Ile przeczytało? Czy któryś operator mnoży wiersze? Czy operacja zmieściła się w pamięci? Dopiero odpowiedź wskazuje naprawę. Większy warehouse jest właściwą odpowiedzią tylko na jedną z tych przyczyn.',
   listTitle: 'Cztery problemy, które wymienia dokumentacja',
   list: [
-    '<b>Eksplodujący join.</b> Operator Join produkuje znacznie więcej krotek, niż konsumuje, często o rzędy wielkości.',
+    '<b>Eksplodujący join.</b> Operator Join oddaje znacznie więcej wierszy, niż dostaje, często o rzędy wielkości.',
     '<b>UNION bez ALL.</b> W profilu widać operator UnionAll z dodatkowym Aggregate nad nim, który usuwa duplikaty. Jeśli duplikatów nie ma albo nie przeszkadzają, <code>UNION ALL</code> oszczędza tę pracę.',
     '<b>Zapytanie za duże na pamięć.</b> Widoczne jako spilling: najpierw na lokalny dysk, a gdy go zabraknie, do zdalnego storage.',
-    '<b>Nieskuteczny pruning.</b> Partitions scanned jest bliskie Partitions total w operatorze TableScan. Dokumentacja dodaje, że pruning pomaga tylko wtedy, gdy filtr rzeczywiście odrzuca znaczną część danych.'
+    '<b>Nieskuteczny pruning.</b> W operatorze TableScan Partitions scanned jest bliskie Partitions total. Dokumentacja dodaje, że pruning pomaga tylko wtedy, gdy filtr rzeczywiście odrzuca znaczną część danych.'
   ],
   timeTitle: 'Na co dzieli się czas w profilu',
   time: [
-    '<b>Processing</b>: czas pracy procesora nad danymi. <b>Local Disk IO</b>: czas blokady na lokalnym dysku. <b>Remote Disk IO</b>: czas blokady na zdalnym dysku. <b>Network Communication</b>: oczekiwanie na transfer danych po sieci. <b>Synchronization</b>: koordynacja między procesami. <b>Initialization</b>: przygotowanie przetwarzania zapytania.',
+    '<b>Processing</b>: procesor pracuje nad danymi. <b>Local Disk IO</b>: przetwarzanie czeka na lokalny dysk. <b>Remote Disk IO</b>: przetwarzanie czeka na zdalny dysk. <b>Network Communication</b>: czekanie na przesłanie danych po sieci. <b>Synchronization</b>: koordynacja między procesami. <b>Initialization</b>: przygotowanie do przetwarzania zapytania.',
     'Dużo Remote Disk IO oznacza czytanie z object storage (zimny cache albo ogromny skan) albo zdalny spilling. Statystyka „Percentage scanned from cache" mówi, ile skanu obsłużył lokalny cache warehouse\'u.'
   ],
   codeTitle: 'Zapytania, które systematycznie zrzucają dane na dysk',
@@ -441,7 +441,7 @@ export const profiles = {
     {
       code: '       bytes_spilled_to_local_storage, bytes_spilled_to_remote_storage',
       label: 'Dwa poziomy spillingu',
-      text: 'Te same wielkości, które profil pokazuje dla operatora, tutaj zsumowane dla całego zapytania. Zdalny spilling jest sygnałem ważniejszym niż lokalny.'
+      text: 'Te same wielkości, które profil pokazuje dla operatora, tutaj zsumowane dla całego zapytania. Zdalny spilling jest ważniejszym sygnałem niż lokalny.'
     },
     {
       code: 'FROM snowflake.account_usage.query_history',
@@ -456,7 +456,7 @@ export const profiles = {
     {
       code: 'ORDER BY bytes_spilled_to_remote_storage DESC LIMIT 20;',
       label: 'Najwięksi winowajcy',
-      text: 'Dwadzieścia zapytań, od których warto zacząć. Dla każdego pytanie brzmi tak samo jak w scenariuszach: czy operacja musi być tak duża, czy da się ograniczyć dane wcześniej.'
+      text: 'Dwadzieścia zapytań, od których warto zacząć. Przy każdym pytasz o to samo co w scenariuszach: czy operacja musi być tak duża, czy da się wcześniej ograniczyć dane.'
     }
   ] as ExplainedLine[]
 };
@@ -481,7 +481,7 @@ export interface ScaleWorkload { id: string; label: string; setup: string; outco
  */
 export const scale = {
   title: 'Większy warehouse czy więcej klastrów?',
-  intro: 'Są dwa sposoby dołożenia mocy i pasują do dwóch różnych problemów. <b>Scale up</b> to większy rozmiar warehouse\'u. <b>Scale out</b> to więcej klastrów tego samego rozmiaru w jednym warehouse\'ie, czyli multi-cluster warehouse. Wybierz obciążenie, a potem reakcję.',
+  intro: 'Moc można dołożyć na dwa sposoby i każdy pasuje do innego problemu. <b>Scale up</b> to większy rozmiar warehouse\'u. <b>Scale out</b> to więcej klastrów tego samego rozmiaru w jednym warehouse\'ie, czyli multi-cluster warehouse. Wybierz obciążenie, a potem reakcję.',
   assumptions: 'Model uproszczony i ilustracyjny: czasy są wymyślone, kredyty to stawka godzinowa × liczba działających klastrów × czas. Pominięte jest minimum 60 sekund. Jeden klaster wykonuje w modelu 8 zapytań naraz (domyślna wartość MAX_CONCURRENCY_LEVEL, która w rzeczywistości nie jest sztywnym limitem).',
   workloadLabel: 'Obciążenie',
   actionLabel: 'Reakcja',
@@ -512,12 +512,12 @@ export const scale = {
     }
   ] as ScaleWorkload[],
   takeaway: [
-    '<b>Wniosek.</b> Scale up pomaga pojedynczemu dużemu zapytaniu: więcej pamięci i procesora. Scale out pomaga wielu zapytaniom naraz: likwiduje kolejkę. Zamienione miejscami nie robią nic albo tylko podnoszą rachunek.',
-    'Rozliczenie jest sekundowe, więc liczy się stawka razy czas. Dwa razy większy warehouse, który kończy w połowę czasu, kosztuje tyle samo. Dlatego „większy = droższy" nie jest prawdą samo w sobie: trzeba to zmierzyć na swoim obciążeniu.'
+    '<b>Wniosek.</b> Scale up pomaga jednemu dużemu zapytaniu, bo daje mu więcej pamięci i procesora. Scale out pomaga, gdy zapytań jest wiele naraz, bo likwiduje kolejkę. Użyte na odwrót nie robią nic albo tylko podnoszą rachunek.',
+    'Rozliczenie jest sekundowe, więc liczy się stawka razy czas. Dwa razy większy warehouse, który kończy w połowę czasu, kosztuje tyle samo. Dlatego „większy = droższy" nie zawsze jest prawdą. Trzeba to zmierzyć na swoim obciążeniu.'
   ],
   notesTitle: 'Co tu jest uproszczeniem',
   notes: [
-    'Czasy są wymyślone. Dokumentacja mówi, że zapytania skalują się liniowo z rozmiarem warehouse\'u „w większości", zwłaszcza duże i złożone, oraz że większy warehouse niekoniecznie przyspieszy małe, proste zapytania.',
+    'Czasy są wymyślone. Dokumentacja mówi, że zapytania skalują się liniowo z rozmiarem warehouse\'u „w większości", zwłaszcza duże i złożone. Mówi też, że większy warehouse niekoniecznie przyspieszy małe, proste zapytania.',
     'MAX_CONCURRENCY_LEVEL ma wartość domyślną 8, ale dokumentacja zastrzega, że są wyjątki: małe instrukcje liczą się jako ułamek. Prawdziwy warehouse nie tnie pracy na równe ósemki.',
     'Start dodatkowego klastra nie jest natychmiastowy i każdy start to minimum 60 sekund rozliczenia. Przy tak krótkim szczycie jak w modelu rachunek byłby wyższy.',
     'Efekt „szybciej i taniej” w pierwszym scenariuszu zależy od tego, czy większy rozmiar usuwa zdalny spilling. To trzeba sprawdzić w Query Profile po zmianie.'
@@ -540,7 +540,7 @@ export const scale = {
   ],
   qasTitle: 'Query Acceleration Service',
   qas: [
-    'Trzecia opcja dla pojedynczych zapytań z ogromnym skanem: usługa przenosi część pracy kwalifikującego się zapytania na współdzielone zasoby serverless. Dokumentacja wymienia duże skany z agregacją albo selektywnym filtrem oraz duże skany wstawiające wiele wierszy.',
+    'Trzecia opcja, dla pojedynczych zapytań z ogromnym skanem. Usługa przenosi część pracy zapytania, które się do tego kwalifikuje, na współdzielone zasoby serverless. Dokumentacja wymienia duże skany z agregacją albo z filtrem wybierającym mały ułamek wierszy oraz duże skany wstawiające wiele wierszy.',
     'Wymaga edycji Enterprise. Zużywa osobno rozliczane kredyty serverless, tylko gdy jest używana. Limit ustawia się mnożnikiem rozmiaru warehouse\'u (scale factor, domyślnie 8).',
     'To koszt serverless, więc resource monitor go nie zatrzyma. Patrz część o kosztach.'
   ]
@@ -551,42 +551,42 @@ export const caseStudy = {
   title: 'Studium przypadku: zaległość 96 godzin',
   intro: [
     'Pipeline przetwarzał dane w porcjach godzinowych i zatrzymał się na cztery doby. Do nadrobienia było <b>96 godzin danych</b>. Pierwsza wersja nadrabiania trwała <b>128 minut</b>. Po testach obciążeniowych i zmianie konfiguracji warehouse\'u: <b>30 minut</b>.',
-    'To liczby z prawdziwego projektu. Ta lekcja celowo nie podaje, jaki rozmiar ustawiono ani ile to kosztowało: bez Twoich danych byłyby to zmyślone szczegóły. Ważniejsze jest, <b>jak dojść do takiego wyniku metodycznie</b>, bo o to zapyta rekruter.'
+    'To liczby z prawdziwego projektu. Lekcja celowo nie podaje, jaki rozmiar ustawiono ani ile to kosztowało. Bez Twoich danych byłyby to zmyślone szczegóły. Ważniejsze jest, <b>jak dojść do takiego wyniku krok po kroku</b>, bo o to zapyta rekruter.'
   ],
   badge: 'Trzy liczby z projektu · metoda poniżej jest ogólna',
   steps: [
     {
       title: '1. Zdefiniuj cel i pomiar',
-      text: 'Co ma być szybsze i po co: czas nadrobienia całej zaległości, a nie jednego zapytania. Ustal, jak mierzysz (łączny czas od startu do końca, kredyty zużyte w tym oknie) i co jest ograniczeniem: termin, budżet, wpływ na innych użytkowników.',
+      text: 'Co ma być szybsze i po co? Tu: czas nadrobienia całej zaległości, a nie jednego zapytania. Ustal, jak mierzysz (łączny czas od startu do końca, kredyty zużyte w tym oknie). Ustal też, co Cię ogranicza: termin, budżet, wpływ na innych użytkowników.',
       more: 'Bez celu nie wiadomo, kiedy przestać. „Szybciej" kosztuje, więc potrzebny jest próg typu „zaległość ma zniknąć przed porannym oknem raportów".'
     },
     {
       title: '2. Zbuduj powtarzalny test',
-      text: 'Reprezentatywna porcja zaległości, którą da się uruchamiać wielokrotnie w tych samych warunkach: sklonowane tabele zamiast produkcyjnych, wyłączony result cache, zapisany rozmiar warehouse\'u i stan cache (zimny albo rozgrzany).',
+      text: 'Weź reprezentatywną porcję zaległości, którą da się uruchamiać wiele razy w tych samych warunkach. To znaczy: sklonowane tabele zamiast produkcyjnych, wyłączony result cache, zapisany rozmiar warehouse\'u i stan cache (zimny albo rozgrzany).',
       more: 'Zero-copy clone daje tu kopię danych wejściowych bez kosztu storage na starcie. Result cache trzeba wyłączyć (USE_CACHED_RESULT = FALSE), bo inaczej drugi przebieg testu niczego nie mierzy.'
     },
     {
       title: '3. Znajdź, gdzie jest czas',
-      text: 'Zanim cokolwiek zmienisz: rozbij 128 minut. Ile to kolejka, ile wykonanie? Które zapytania dominują? W ich Query Profile: skan (pruning), join (mnożenie wierszy), spilling lokalny i zdalny.',
-      more: 'Nadrabianie zaległości różni się od zwykłego przebiegu skalą: 96 porcji naraz zamiast jednej. Operacja, która przy jednej godzinie mieści się w pamięci, przy 96 może zacząć zrzucać dane na dysk. To typowy powód, dla którego zaległość nadrabia się nieproporcjonalnie długo.'
+      text: 'Zanim cokolwiek zmienisz, rozbij 128 minut na części. Ile to kolejka, a ile wykonanie? Które zapytania zajmują najwięcej czasu? W ich Query Profile sprawdź skan (pruning), join (mnożenie wierszy) oraz spilling lokalny i zdalny.',
+      more: 'Nadrabianie zaległości różni się od zwykłego przebiegu skalą: 96 porcji naraz zamiast jednej. Operacja, która przy jednej godzinie mieści się w pamięci, przy 96 może zacząć zrzucać dane na dysk. To typowy powód, dla którego zaległość nadrabia się dużo dłużej, niż wynikałoby z samej ilości danych.'
     },
     {
       title: '4. Postaw hipotezę i zmieniaj jedną rzecz',
-      text: 'Każdy objaw ma inną dźwignię. Spilling: większy warehouse albo mniejsze porcje. Kolejka: więcej klastrów albo osobny warehouse. Pełny skan: filtr i ułożenie danych. Zmieniasz jedną rzecz, powtarzasz test, zapisujesz czas i kredyty.',
-      more: 'Dwie zmiany naraz dają wynik, którego nie da się przypisać żadnej z nich. Warto też testować w obie strony: jeśli większy rozmiar pomógł, czy jeszcze większy nadal pomaga, czy zysk już się wypłaszczył.'
+      text: 'Każdy objaw naprawia się czym innym. Spilling: większy warehouse albo mniejsze porcje. Kolejka: więcej klastrów albo osobny warehouse. Pełny skan: filtr i ułożenie danych. Zmieniasz jedną rzecz, powtarzasz test, zapisujesz czas i kredyty.',
+      more: 'Po dwóch zmianach naraz nie wiesz, która z nich dała wynik. Warto też testować w obie strony. Jeśli większy rozmiar pomógł, sprawdź, czy jeszcze większy nadal pomaga, czy zysk już się wypłaszczył.'
     },
     {
       title: '5. Policz kompromis',
-      text: 'Dla każdego wariantu: czas i koszt (stawka × czas × liczba klastrów). Większy warehouse, który kończy proporcjonalnie szybciej, kosztuje podobnie. Wybierasz wariant, który spełnia cel z kroku 1 przy akceptowalnym koszcie, a nie najszybszy możliwy.',
-      more: 'Dla nadrabiania zaległości sensowny bywa osobny, większy warehouse używany tylko do tego: nie zabiera zasobów bieżącej pracy i nie zmienia kosztu codziennych przebiegów.'
+      text: 'Dla każdego wariantu policz czas i koszt (stawka × czas × liczba klastrów). Większy warehouse, który kończy proporcjonalnie szybciej, kosztuje podobnie. Wybierasz wariant, który spełnia cel z kroku 1 przy akceptowalnym koszcie, a nie najszybszy możliwy.',
+      more: 'Do nadrabiania zaległości sensowny bywa osobny, większy warehouse używany tylko do tego. Nie zabiera zasobów bieżącej pracy i nie zmienia kosztu codziennych przebiegów.'
     },
     {
       title: '6. Zabezpiecz wynik',
-      text: 'Wynik testu to nie koniec. Zapisz konfigurację i uzasadnienie, dodaj limit czasu zapytań i monitor kosztu na warehouse\'ie do nadrabiania, a w pipeline alert na rosnącą zaległość, żeby następnym razem było 6 godzin, a nie 96.',
+      text: 'Wynik testu to nie koniec. Zapisz konfigurację i uzasadnienie. Dodaj limit czasu zapytań i monitor kosztu na warehouse\'ie do nadrabiania. W pipeline dodaj alert na rosnącą zaległość, żeby następnym razem było 6 godzin, a nie 96.',
       more: 'Senior różni się tu od osoby, która „podkręciła warehouse": umie powiedzieć, co zmierzył, dlaczego to zadziałało, ile kosztowało i co zrobił, żeby problem nie wrócił.'
     }
   ],
-  takeaway: '<b>Wniosek.</b> Z 128 do 30 minut nie dochodzi się zgadywaniem rozmiaru. Kolejność: cel, powtarzalny test, rozbicie czasu, jedna zmiana naraz, rachunek kosztu, zabezpieczenie. Tę sekwencję warto umieć opowiedzieć własnymi słowami i uzupełnić własnymi liczbami.'
+  takeaway: '<b>Wniosek.</b> Z 128 do 30 minut nie dochodzi się zgadywaniem rozmiaru. Kolejność: cel, powtarzalny test, rozbicie czasu, jedna zmiana naraz, rachunek kosztu, zabezpieczenie. Naucz się opowiadać tę kolejność własnymi słowami i uzupełnij ją własnymi liczbami.'
 };
 
 export interface CoverageItem { id: string; label: string; monitor: boolean; budget: boolean; why: string }
@@ -594,23 +594,23 @@ export interface CoverageItem { id: string; label: string; monitor: boolean; bud
 export const cost = {
   title: 'Z czego składa się rachunek',
   intro: [
-    'Koszt Snowflake to według dokumentacji suma trzech rzeczy: compute, storage i transfer danych. Compute liczy się w kredytach i ma kilka źródeł, którymi zarządza się zupełnie inaczej.',
-    '<b>Virtual warehouse\'y</b>: zarządzasz nimi sam. Zużywają kredyty, gdy działają, niezależnie od tego, czy coś liczą. Rozliczenie co do sekundy, minimum 60 sekund przy każdym starcie. <b>Serverless</b>: zasoby, którymi zarządza Snowflake, z osobną pozycją dla każdej funkcji. <b>Cloud services</b>: doliczane tylko powyżej 10% dziennego zużycia warehouse\'ów.',
-    'Są dwa narzędzia do pilnowania wydatków i mają różny zasięg. Wybierz źródło kosztu i sprawdź, które z nich je zobaczy.'
+    'Koszt Snowflake to według dokumentacji suma trzech rzeczy: compute, storage i transfer danych. Compute liczy się w kredytach. Ma kilka źródeł i każdym zarządza się inaczej.',
+    '<b>Virtual warehouse\'y.</b> Zarządzasz nimi sam. Zużywają kredyty, gdy działają, niezależnie od tego, czy coś liczą. Rozliczenie jest co do sekundy, z minimum 60 sekund przy każdym starcie. <b>Serverless.</b> Zasoby, którymi zarządza Snowflake, z osobną pozycją dla każdej funkcji. <b>Cloud services.</b> Doliczane tylko powyżej 10% dziennego zużycia warehouse\'ów.',
+    'Wydatków pilnują dwa narzędzia i każde widzi co innego. Wybierz źródło kosztu i sprawdź, które z nich je zobaczy.'
   ],
   coverageLabel: 'Źródło kosztu',
   assumptions: 'Zasięg obu narzędzi według dokumentacji Snowflake (resource monitors, budgets). Przykłady źródeł kosztu są wymyślone.',
   columns: { monitor: 'Resource monitor', budget: 'Budżet' },
   defaultItem: 'runaway',
   items: [
-    { id: 'runaway', label: 'Zapytanie, które działa całą noc', monitor: true, budget: true, why: 'To zużycie warehouse\'u, więc monitor je liczy i po przekroczeniu limitu może wstrzymać warehouse: po zakończeniu bieżących zapytań albo natychmiast, anulując je. Budżet też to widzi, ale domyślnie tylko powiadamia, i to z opóźnieniem.' },
+    { id: 'runaway', label: 'Zapytanie, które działa całą noc', monitor: true, budget: true, why: 'To zużycie warehouse\'u, więc monitor je liczy. Po przekroczeniu limitu może wstrzymać warehouse: po zakończeniu bieżących zapytań albo natychmiast, anulując je. Budżet też to widzi, ale domyślnie tylko powiadamia, i to z opóźnieniem.' },
     { id: 'pipe', label: 'Snowpipe ładujący miliony małych plików', monitor: false, budget: true, why: 'Snowpipe to funkcja serverless. Dokumentacja mówi wprost, że resource monitor nie śledzi wydatków na funkcje serverless i że do tego służy budżet.' },
-    { id: 'recluster', label: 'Automatic clustering na ciągle zmienianej tabeli', monitor: false, budget: true, why: 'Usługa działa w tle poza Twoimi warehouse\'ami. Monitor jej nie widzi, nawet ustawiony na poziomie konta: dokumentacja zaznacza, że monitor konta nie kontroluje zasobów serverless.' },
+    { id: 'recluster', label: 'Automatic clustering na ciągle zmienianej tabeli', monitor: false, budget: true, why: 'Usługa działa w tle, poza Twoimi warehouse\'ami. Monitor jej nie widzi, nawet ustawiony na poziomie konta. Dokumentacja zaznacza, że monitor konta nie kontroluje zasobów serverless.' },
     { id: 'task', label: 'Zadanie serverless uruchamiane co minutę', monitor: false, budget: true, why: 'Zadanie serverless używa compute zarządzanego przez Snowflake. To samo zadanie na własnym warehouse\'ie byłoby widoczne dla monitora tego warehouse\'u.' },
-    { id: 'storage', label: 'Time Travel i Fail-safe na przepisywanej tabeli', monitor: false, budget: false, why: 'To koszt storage, a oba narzędzia dotyczą compute: monitor liczy kredyty warehouse\'ów, budżet jest zdefiniowany jako limit kosztów compute. Storage sprawdzasz w widokach użycia tabel. To wniosek z zakresu obu narzędzi, a nie cytat.' },
+    { id: 'storage', label: 'Time Travel i Fail-safe na przepisywanej tabeli', monitor: false, budget: false, why: 'To koszt storage, a oba narzędzia dotyczą compute. Monitor liczy kredyty warehouse\'ów. Budżet jest zdefiniowany jako limit kosztów compute. Storage sprawdzasz w widokach użycia tabel. To wniosek z zakresu obu narzędzi, a nie cytat.' },
     { id: 'services', label: 'Cloud services obsługujące warehouse', monitor: true, budget: true, why: 'Monitor liczy warehouse razem z cloud services potrzebnymi do jego obsługi. Uwaga z dokumentacji: limit monitora nie uwzględnia dziennej korekty 10%, więc monitor może liczyć zużycie, za które ostatecznie nie zapłacisz.' }
   ] as CoverageItem[],
-  takeaway: '<b>Wniosek.</b> <b>Resource monitor</b> to hamulec: potrafi wstrzymać warehouse, ale widzi tylko warehouse\'y. <b>Budżet</b> to obraz: obejmuje też serverless, ale domyślnie tylko powiadamia. Zdanie „mamy monitory, więc koszt jest pod kontrolą" jest prawdziwe tylko dla części rachunku.',
+  takeaway: '<b>Wniosek.</b> <b>Resource monitor</b> to hamulec. Potrafi wstrzymać warehouse, ale widzi tylko warehouse\'y. <b>Budżet</b> daje szerszy obraz. Obejmuje też serverless, ale domyślnie tylko powiadamia. Zdanie „mamy monitory, więc koszt jest pod kontrolą" jest prawdziwe tylko dla części rachunku.',
   monitorTitle: 'Resource monitor: szczegóły, które wychodzą na rozmowie',
   monitor: [
     'Limit w kredytach na okres (domyślnie miesiąc kalendarzowy, możliwe też dzień, tydzień, rok albo bez resetu). Akcje: powiadom, powiadom i wstrzymaj, powiadom i wstrzymaj natychmiast.',
@@ -635,8 +635,8 @@ export const cost = {
   levers: [
     '<b>Czytaj mniej.</b> Pruning, mniej kolumn, poprawione joiny. Mniej pracy to krótszy czas warehouse\'u przy tym samym rozmiarze.',
     '<b>Nie płać za bezczynność.</b> Auto-suspend dopasowany do przerw w obciążeniu, auto-resume włączony.',
-    '<b>Dobierz rozmiar pomiarem.</b> W górę, dopóki czas spada proporcjonalnie. Potem płacisz już tylko za rozmiar.',
-    '<b>Izoluj obciążenia.</b> Osobne warehouse\'y pozwalają dobrać rozmiar i auto-suspend do profilu pracy oraz przypisać koszt do zespołu.',
+    '<b>Dobierz rozmiar pomiarem.</b> Zwiększaj, dopóki czas spada proporcjonalnie. Potem płacisz już tylko za rozmiar.',
+    '<b>Rozdziel obciążenia.</b> Osobne warehouse\'y pozwalają dobrać rozmiar i auto-suspend do rodzaju pracy oraz przypisać koszt do zespołu.',
     '<b>Postaw bezpieczniki.</b> <code>STATEMENT_TIMEOUT_IN_SECONDS</code> (domyślnie 172 800 sekund, czyli 2 dni), limit czasu w kolejce, uprawnienia do tworzenia i zmiany warehouse\'ów. Dokumentacja zaznacza, że te kontrolki nie dotyczą cloud services ani funkcji serverless.'
   ]
 };
@@ -646,8 +646,8 @@ export type StreamAction = 'insert' | 'update' | 'select' | 'task';
 export const stream = {
   title: 'Streams & Tasks: przetwarzaj tylko to, co się zmieniło',
   intro: [
-    'Tabela źródłowa ma miliard wierszy, od ostatniego przebiegu zmieniło się kilkanaście. Potrzebujesz odpowiedzi na pytanie „co się zmieniło od ostatniego razu" i czegoś, co uruchomi przetwarzanie.',
-    '<b>Stream</b> to zakładka na tabeli: pamięta <b>offset</b>, czyli punkt w historii jej wersji, i na żądanie zwraca różnicę między tym punktem a stanem bieżącym. <b>Task</b> to zaplanowane uruchomienie SQL. Zmieniaj tabelę, zaglądaj do streamu i uruchamiaj task.'
+    'Tabela źródłowa ma miliard wierszy. Od ostatniego przebiegu zmieniło się kilkanaście. Potrzebujesz dwóch rzeczy: odpowiedzi na pytanie „co się zmieniło od ostatniego razu" i czegoś, co uruchomi przetwarzanie.',
+    '<b>Stream</b> działa jak zakładka na tabeli. Pamięta <b>offset</b>, czyli punkt w historii jej wersji. Gdy go odpytasz, zwraca różnicę między tym punktem a stanem bieżącym. <b>Task</b> to SQL uruchamiany według harmonogramu. Zmieniaj tabelę, zaglądaj do streamu i uruchamiaj task.'
   ],
   assumptions: 'Model uproszczony: tabela orders, jeden stream i jeden task, który robi MERGE do tabeli docelowej. Wersje tabeli są ponumerowane dla czytelności.',
   actions: [
@@ -660,16 +660,16 @@ export const stream = {
   start: 'Stream utworzony przy wersji 1 tabeli. Zmień coś w tabeli.',
   messages: {
     insert: 'Tabela dostała nową wersję. Offset streamu stoi w miejscu, więc stream pokazuje nowy wiersz jako rekord INSERT.',
-    update: 'Update wiersza, który istniał przed offsetem, stream pokazuje jako parę rekordów: DELETE starej wersji i INSERT nowej, oba z METADATA$ISUPDATE = TRUE.',
-    updateAgain: 'Kolejny update tego samego wiersza nie dodaje rekordów. Stream zwraca zmianę netto między offsetem a stanem bieżącym: nadal jedna para.',
+    update: 'Ten wiersz istniał już przed offsetem. Jego update stream pokazuje jako parę rekordów: DELETE starej wersji i INSERT nowej, oba z METADATA$ISUPDATE = TRUE.',
+    updateAgain: 'Kolejny update tego samego wiersza nie dodaje rekordów. Stream zwraca zmianę netto, czyli różnicę między stanem z offsetu a stanem bieżącym, bez kroków pośrednich. To nadal jedna para.',
     select: 'Zwykły odczyt streamu pokazuje rekordy, ale nie przesuwa offsetu. Możesz czytać dowolną liczbę razy.',
     selectEmpty: 'Stream jest pusty: od offsetu nic się nie zmieniło.',
-    task: 'Task wykonał MERGE czytający ze streamu i transakcja została zatwierdzona. Dopiero teraz offset przesunął się do bieżącej wersji, a stream jest pusty.',
+    task: 'Task wykonał MERGE czytający ze streamu i transakcja została zatwierdzona. Dopiero teraz offset przesunął się do bieżącej wersji. Stream jest pusty.',
     taskSkipped: 'Warunek WHEN SYSTEM$STREAM_HAS_DATA zwrócił fałsz, więc uruchomienie zostało pominięte. MERGE się nie wykonał.'
   },
   takeaway: [
-    '<b>Wniosek.</b> Stream nie przechowuje danych, tylko offset. Offset przesuwa wyłącznie zatwierdzona transakcja DML, która czyta ze streamu. Dzięki temu zapis do tabeli docelowej i „odhaczenie" zmian to jedna transakcja: jeśli MERGE się nie powiedzie, zmiany czekają na następny przebieg.',
-    'Z tej samej reguły wynika pułapka: każdy odbiorca zmian potrzebuje własnego streamu, bo pierwszy, który skonsumuje stream, przesuwa offset.'
+    '<b>Wniosek.</b> Stream nie przechowuje danych, tylko offset. Offset przesuwa wyłącznie zatwierdzona transakcja, w której instrukcja zmieniająca dane (DML, np. MERGE) czyta ze streamu. Dzięki temu zapis do tabeli docelowej i „odhaczenie" zmian to jedna transakcja. Jeśli MERGE się nie powiedzie, zmiany czekają na następny przebieg.',
+    'Z tej samej reguły wynika pułapka. Pierwszy odbiorca, który skonsumuje stream, przesuwa offset. Dlatego każdy odbiorca zmian potrzebuje własnego streamu.'
   ],
   codeTitle: 'Ten sam cykl w SQL',
   lines: [
@@ -716,9 +716,9 @@ export const stream = {
   ] as ExplainedLine[],
   riskTitle: 'Co może pójść źle',
   risks: [
-    '<b>Nieaktualny stream.</b> Stream staje się nieaktualny (stale), gdy jego offset wypadnie poza okres retencji danych tabeli źródłowej. Snowflake wydłuża tę retencję dla niekonsumowanego streamu domyślnie do 14 dni, niezależnie od edycji. Po tym czasie stream trzeba utworzyć od nowa. Kolumna STALE_AFTER w <code>SHOW STREAMS</code> pokazuje termin.',
+    '<b>Nieaktualny stream.</b> Stream staje się nieaktualny (stale), gdy jego offset wypadnie poza okres retencji tabeli źródłowej, czyli poza czas, przez który tabela trzyma stare wersje danych. Dla streamu, którego nikt nie konsumuje, Snowflake wydłuża tę retencję domyślnie do 14 dni, niezależnie od edycji. Po tym czasie stream trzeba utworzyć od nowa. Termin pokazuje kolumna STALE_AFTER w <code>SHOW STREAMS</code>.',
     '<b>Przeciągnięty task.</b> Jeśli task jeszcze działa, gdy przychodzi pora następnego uruchomienia, to uruchomienie jest pomijane. Domyślnie jednocześnie działa tylko jedno uruchomienie grafu zadań.',
-    '<b>Cicho wstrzymany task.</b> Graf zadań jest domyślnie wstrzymywany po 10 kolejnych nieudanych uruchomieniach. Nikt nie konsumuje streamu, a zegar nieaktualności tyka.',
+    '<b>Cicho wstrzymany task.</b> Graf zadań jest domyślnie wstrzymywany po 10 kolejnych nieudanych uruchomieniach. Nikt nie konsumuje wtedy streamu, a czas do jego nieaktualności płynie.',
     '<b>Odtworzenie tabeli.</b> <code>CREATE OR REPLACE TABLE</code> na źródle usuwa jego historię, więc streamy na nim stają się nieaktualne.',
     '<b>Uprawnienia.</b> Task działa z uprawnieniami roli, która jest jego właścicielem. Zmiana grantów tej roli potrafi zatrzymać pipeline.'
   ],
@@ -726,20 +726,20 @@ export const stream = {
   types: [
     '<b>Standard</b> śledzi wstawienia, zmiany i usunięcia i zwraca zmianę netto. Wiersz wstawiony i usunięty między dwoma odczytami w ogóle się nie pojawi.',
     '<b>Append-only</b> śledzi tylko wstawienia. <b>Insert-only</b> jest dla tabel zewnętrznych i tabel Iceberg zarządzanych zewnętrznie.',
-    'Bez streamu zmiany można odczytać klauzulą <code>CHANGES</code> w zapytaniu: wymaga włączonego śledzenia zmian na tabeli (albo istniejącego streamu) i jawnego punktu startu przez <code>AT</code> lub <code>BEFORE</code>. Nie ma wtedy offsetu, który ktoś za Ciebie przesuwa.'
+    'Zmiany można odczytać też bez streamu, klauzulą <code>CHANGES</code> w zapytaniu. Wymaga to włączonego śledzenia zmian na tabeli (albo istniejącego streamu) i jawnego punktu startu przez <code>AT</code> lub <code>BEFORE</code>. Nie ma wtedy offsetu, który ktoś za Ciebie przesuwa.'
   ],
   dynamicTitle: 'Kiedy zamiast tego dynamic tables',
   dynamic: [
-    'Dynamic table to deklaracja: podajesz zapytanie SELECT i docelowe opóźnienie (target lag), a Snowflake sam śledzi zależności i odświeża wynik, przyrostowo tam, gdzie potrafi.',
-    'Dokumentacja wskazuje to jako zalecane podejście dla nowych wielotabelowych potoków SQL. Streams i tasks zaleca wtedy, gdy potrzebujesz procedur składowanych, operacji MERGE albo wywołań funkcji zewnętrznych.',
+    'Dynamic table opisujesz, zamiast programować. Podajesz zapytanie SELECT i docelowe opóźnienie (target lag). Snowflake sam śledzi zależności i odświeża wynik, przyrostowo tam, gdzie potrafi.',
+    'Dokumentacja wskazuje to jako zalecane podejście dla nowych potoków SQL z wieloma tabelami. Streams i tasks zaleca wtedy, gdy potrzebujesz procedur składowanych, operacji MERGE albo wywołań funkcji zewnętrznych.',
     'Ograniczenia: dynamic table jest tylko do odczytu, minimalny target lag to 1 minuta, a rzeczywiste opóźnienie może przekroczyć docelowe, gdy odświeżanie trwa dłużej, niż przewidziano.'
   ],
   bridgeTitle: 'Analogia: model incremental w dbt',
   bridge: {
     from: 'dbt',
-    known: 'Model incremental przetwarza tylko nowe wiersze: w bloku is_incremental() filtrujesz po znaczniku czasu większym niż maksimum z tabeli docelowej, a unique_key zamienia zapis na MERGE.',
-    fresh: 'Stream robi to samo bez kolumny ze znacznikiem czasu: silnik sam wie, co zmieniło się od ostatniej konsumpcji, łącznie z usunięciami, których filtr po dacie nie widzi.',
-    breaks: 'W dbt granicę wyznacza zawartość tabeli docelowej, więc model można przebudować w dowolnej chwili. Stream ma własny stan: offset. Można go zgubić przez nieaktualność, a konsumuje go każdy zatwierdzony DML, także uruchomiony przez pomyłkę.'
+    known: 'Model incremental przetwarza tylko nowe wiersze. W bloku is_incremental() filtrujesz po znaczniku czasu większym niż maksimum z tabeli docelowej, a unique_key zamienia zapis na MERGE.',
+    fresh: 'Stream robi to samo bez kolumny ze znacznikiem czasu. Silnik sam wie, co zmieniło się od ostatniej konsumpcji. Widzi też usunięcia, których filtr po dacie nie pokaże.',
+    breaks: 'W dbt granicę wyznacza zawartość tabeli docelowej, więc model można przebudować w dowolnej chwili. Stream ma własny stan: offset. Można go stracić, gdy stream stanie się nieaktualny. Przesuwa go też każdy zatwierdzony DML czytający ze streamu, także uruchomiony przez pomyłkę.'
   } as Bridge
 };
 
@@ -749,7 +749,7 @@ export interface CloneStep { id: string; label: string; source: string[]; clone:
 export const history = {
   title: 'Time Travel, Fail-safe i klony: jedna własność, trzy funkcje',
   intro: [
-    'W etapie Mechanizm padło zdanie: zmiana w tabeli zapisuje nowe mikropartycje, a stare nie znikają od razu. Z tej jednej własności wynikają trzy funkcje, które łatwo ze sobą pomylić.',
+    'W etapie Mechanizm było zdanie: zmiana w tabeli zapisuje nowe mikropartycje, a stare nie znikają od razu. Z tego jednego faktu wynikają trzy funkcje, które łatwo ze sobą pomylić.',
     'Najpierw czas. Wybierz typ tabeli i zobacz, co dzieje się ze starą wersją danych po zmianie albo usunięciu.'
   ],
   typeLabel: 'Typ tabeli',
@@ -765,16 +765,16 @@ export const history = {
     failsafe: { name: 'Fail-safe', who: 'tylko Snowflake, przez zgłoszenie do supportu' },
     gone: { name: 'Usunięte', who: 'nie do odzyskania' }
   },
-  takeaway: '<b>Wniosek.</b> <b>Time Travel</b> to okres, w którym sam korzystasz ze starych wersji. <b>Fail-safe</b> to kolejne 7 dni, których nie skonfigurujesz i z których dane może odzyskać tylko Snowflake. Oba są płatne jak zwykły storage. Fail-safe to ostatnia deska ratunku, nie mechanizm do naprawiania pomyłek.',
+  takeaway: '<b>Wniosek.</b> <b>Time Travel</b> to okres, w którym sam korzystasz ze starych wersji. <b>Fail-safe</b> to kolejne 7 dni. Nie da się go skonfigurować, a dane może z niego odzyskać tylko Snowflake. Za oba płacisz jak za zwykły storage. Fail-safe to ostatnia deska ratunku, a nie sposób na naprawianie pomyłek.',
   detailTitle: 'Szczegóły Time Travel i Fail-safe',
   detail: [
     'Time Travel: standardowo 1 dzień, włączony automatycznie. Więcej niż 1 dzień wymaga edycji Enterprise: do 90 dni dla obiektów stałych. Tabele transient i temporary: 0 albo 1 dzień. Parametr: <code>DATA_RETENTION_TIME_IN_DAYS</code>.',
     'Dostęp: klauzula <code>AT</code> albo <code>BEFORE</code> w SELECT i w CREATE ... CLONE (znacznik czasu, przesunięcie albo identyfikator instrukcji) oraz <code>UNDROP</code>.',
     'Fail-safe: 7 dni, bez możliwości konfiguracji, zaczyna się zaraz po Time Travel. Dokumentacja opisuje go jako usługę best effort, a odzyskanie danych może trwać od kilku godzin do kilku dni. Zamiast polegać na Fail-safe, zaleca funkcję backupów Snowflake.',
-    'Koszt: storage jest naliczany niezależnie od tego, czy dane są aktywne, w Time Travel czy w Fail-safe. Dla tabel o dużej rotacji dane historyczne bywają dużo większe niż aktywne.'
+    'Koszt: storage jest naliczany tak samo dla danych aktywnych, w Time Travel i w Fail-safe. W tabelach, które często się zmieniają, danych historycznych bywa dużo więcej niż aktywnych.'
   ],
   cloneTitle: 'Zero-copy cloning: kopia, która nic nie kopiuje',
-  cloneIntro: 'Skoro tabela to lista wskazań na mikropartycje, kopię można zrobić bez kopiowania danych: wystarczy druga lista wskazująca na te same mikropartycje. Przejdź przez trzy kroki.',
+  cloneIntro: 'Tabela to lista wskazań na mikropartycje. Kopię można więc zrobić bez kopiowania danych: wystarczy druga lista, która wskazuje na te same mikropartycje. Przejdź przez trzy kroki.',
   cloneAssumptions: 'Ilustracja: tabela z czterema mikropartycjami. Litera z primem oznacza nową wersję mikropartycji.',
   defaultStep: 'clone',
   steps: [
@@ -782,7 +782,7 @@ export const history = {
     { id: 'cloneWrite', label: 'Po UPDATE w klonie', source: ['A', 'B', 'C', 'D'], clone: ['A', 'B', 'C', "D'"], say: "Zmiana w klonie zapisała nową mikropartycję D', która należy tylko do klonu. Źródło nic o niej nie wie. Dodatkowy storage: jedna mikropartycja." },
     { id: 'sourceWrite', label: 'Po UPDATE w źródle', source: ["A'", 'B', 'C', 'D'], clone: ['A', 'B', 'C', "D'"], say: "Źródło zapisało A'. Stara A nie należy już do bieżącej wersji źródła, ale klon nadal na nią wskazuje, więc nie można jej usunąć. Tak klon utrzymuje przy życiu dane, które źródło dawno porzuciło." }
   ] as CloneStep[],
-  cloneTakeaway: '<b>Wniosek.</b> Klon jest darmowy w chwili utworzenia i niezależny od źródła. Kosztuje to, co się rozejdzie: nowe mikropartycje po zmianach oraz stare, których nie da się usunąć, dopóki ktoś na nie wskazuje. Długo żyjący klon często zmienianej tabeli po cichu zbiera storage.',
+  cloneTakeaway: '<b>Wniosek.</b> Klon jest darmowy w chwili utworzenia i niezależny od źródła. Kosztuje dopiero to, czym klon i źródło zaczną się różnić: nowe mikropartycje po zmianach oraz stare, których nie da się usunąć, dopóki ktoś na nie wskazuje. Długo żyjący klon często zmienianej tabeli po cichu zbiera storage.',
   cloneMoreTitle: 'Co zaskakuje przy klonowaniu bazy albo schematu',
   cloneMore: [
     '<b>Uprawnienia.</b> Klon nie dziedziczy grantów nadanych na sam klonowany kontener, ale obiekty w środku zachowują swoje granty. Przy klonie pojedynczej tabeli granty kopiuje dopiero <code>COPY GRANTS</code>.',
@@ -798,7 +798,7 @@ export interface Role { id: string; label: string; kind: 'system' | 'functional'
 export const access = {
   title: 'Kto co widzi: role, izolacja i udostępnianie',
   intro: [
-    'W Snowflake uprawnień nie nadaje się ludziom. Uprawnienie dostaje <b>rola</b>, a rolę dostaje użytkownik albo inna rola. Nadanie roli innej roli tworzy <b>hierarchię</b>: rola wyżej dziedziczy wszystko, co mają role pod nią.',
+    'W Snowflake uprawnień nie nadaje się ludziom. Uprawnienie dostaje <b>rola</b>, a rolę dostaje użytkownik albo inna rola. Gdy rola dostaje inną rolę, powstaje <b>hierarchia</b>: rola wyżej dziedziczy wszystko, co mają role pod nią.',
     'Poniżej mała, przykładowa hierarchia. Wybierz rolę i sprawdź, co naprawdę może.'
   ],
   assumptions: 'Ilustracja: przykładowe role i uprawnienia. Zasada dziedziczenia i zalecenia są z dokumentacji.',
@@ -811,7 +811,7 @@ export const access = {
     { id: 'engineer', label: 'DATA_ENGINEER', kind: 'functional', grants: ['USAGE na warehouse ETL_WH'], inherits: ['sales_write'], note: 'Rola funkcyjna dla inżynierów i pipeline\'ów. Ma zapis przez SALES_WRITE i osobny warehouse.' },
     { id: 'sysadmin', label: 'SYSADMIN', kind: 'system', grants: ['tworzenie baz i warehouse\'ów'], inherits: ['analyst', 'engineer'], note: 'Rola systemowa. Dokumentacja zaleca podpinać pod nią najwyższe role własne, żeby administratorzy mogli zarządzać ich obiektami.' }
   ] as Role[],
-  takeaway: '<b>Wniosek.</b> <b>Least privilege</b> w Snowflake to struktura, a nie pojedynczy grant: wąskie role dostępu do obiektów, role funkcyjne złożone z nich, a na górze role systemowe. Zmiana uprawnień całego zespołu to wtedy jeden grant, a audyt to przejście po hierarchii.',
+  takeaway: '<b>Wniosek.</b> <b>Least privilege</b>, czyli „tylko tyle uprawnień, ile trzeba", to w Snowflake struktura ról, a nie pojedynczy grant. Na dole są wąskie role dostępu do obiektów. Z nich składasz role funkcyjne. Na górze są role systemowe. Zmiana uprawnień całego zespołu to wtedy jeden grant, a audyt to przejście po hierarchii.',
   adminTitle: 'Role systemowe i zalecenia',
   admin: [
     '<b>ACCOUNTADMIN</b> obejmuje SYSADMIN i SECURITYADMIN. Dokumentacja zaleca: nie używać jej do tworzenia obiektów, nie ustawiać jako roli domyślnej, nie używać w skryptach automatycznych, wymagać MFA i przypisać co najmniej dwóm użytkownikom.',
@@ -821,7 +821,7 @@ export const access = {
     'Future grants definiują uprawnienia dla obiektów, które dopiero powstaną. Role drugorzędne (secondary roles) dają uprawnienia do zapytań i DML, ale prawo do tworzenia obiektów pochodzi tylko z roli głównej.'
   ],
   tenantTitle: 'Izolacja tenantów',
-  tenantIntro: 'Wielu klientów albo zespołów na jednej platformie: jak mocno ich rozdzielić? To wybór na skali, nie jedna poprawna odpowiedź.',
+  tenantIntro: 'Na jednej platformie pracuje wielu klientów albo zespołów, czyli tenantów. Jak mocno ich rozdzielić? Nie ma jednej poprawnej odpowiedzi. To wybór na skali.',
   tenantColumns: ['Poziom', 'Co izoluje', 'Koszt'],
   tenants: [
     ['Osobne konto', 'Dane, compute, role, rozliczenie', 'Najwięcej pracy operacyjnej: każde konto trzeba utrzymać'],
@@ -831,15 +831,15 @@ export const access = {
   ],
   tenantNotes: [
     'Row access policy decyduje, które wiersze zwrócić, i jest wyliczana w czasie zapytania. Wymaga edycji Enterprise. Dokumentacja zaleca funkcję <code>IS_ROLE_IN_SESSION</code>, która uwzględnia hierarchię ról.',
-    'Koszt wydajnościowy z dokumentacji: polityki z prostymi wyrażeniami działają zwykle lepiej niż polityki sięgające do tabel mapujących, a Snowflake musi skanować kolumny związane z polityką, nawet gdy zapytanie ich nie używa. Pomaga klastrowanie po atrybutach używanych w polityce.',
+    'Koszt wydajnościowy z dokumentacji: polityki z prostymi wyrażeniami działają zwykle lepiej niż polityki, które sięgają do tabel mapujących. Snowflake musi też skanować kolumny związane z polityką, nawet gdy zapytanie ich nie używa. Pomaga klastrowanie po atrybutach używanych w polityce.',
     'Ograniczenie: row access policy nie blokuje wstawiania wierszy. Kontrola zapisu to nadal uprawnienia ról.',
-    'Wybór poziomu to ocena ryzyka i skali, nie reguła z dokumentacji: im droższy błąd izolacji, tym wyżej w tabeli.'
+    'Wybór poziomu to ocena ryzyka i skali, a nie reguła z dokumentacji. Im droższy byłby błąd izolacji, tym wyżej w tabeli.'
   ],
   shareTitle: 'Secure data sharing',
   share: [
     'Dostawca tworzy <b>share</b>, dodaje do niego obiekty i wskazuje konta odbiorców. Odbiorca tworzy z niego bazę. Dokumentacja: żadne dane nie są kopiowane ani przesyłane między kontami.',
     'Udostępnione obiekty są u odbiorcy tylko do odczytu i nie zajmują jego storage. Odbiorca płaci wyłącznie za compute, którym je odpytuje. Dostawca nadal płaci za storage.',
-    'To działa dzięki architekturze z etapu Intuicja: dane leżą raz, a dostęp to kwestia metadanych i uprawnień w warstwie cloud services.',
+    'To działa dzięki architekturze z etapu Intuicja. Dane leżą raz, a dostęp to sprawa metadanych i uprawnień w warstwie cloud services.',
     'Bezpośredni share działa tylko między kontami w tym samym regionie. Dla innych regionów i chmur dokumentacja wskazuje listing z auto-fulfillment.',
     'Odbiorca bez konta Snowflake może dostać reader account: konto utworzone i opłacane przez dostawcę, które może czytać dane tylko od tego dostawcy.'
   ]
@@ -895,13 +895,13 @@ export const quiz: QuizItem[] = [
     setup: 'Założenia: dane tabeli nie zmieniły się od godziny, rola ma uprawnienia do tabeli.',
     options: ['Dowolne zapytanie z filtrem po dacie', 'Zapytanie identyczne co do znaku z wykonanym godzinę temu', 'Zapytanie, które czyta tylko jedną kolumnę'],
     correct: 1,
-    why: 'Identyczne zapytanie na niezmienionych danych może dostać zapisany wynik z result cache: Snowflake pomija wtedy wykonanie. Filtr po dacie i jedna kolumna ograniczają ilość czytanych danych, ale zapytanie nadal trzeba wykonać na warehouse\'ie.'
+    why: 'Identyczne zapytanie na niezmienionych danych może dostać zapisany wynik z result cache. Snowflake pomija wtedy wykonanie. Filtr po dacie i jedna kolumna zmniejszają ilość czytanych danych, ale zapytanie nadal trzeba wykonać na warehouse\'ie.'
   },
   {
     q: 'Tabela jest ładowana chronologicznie. Zapytanie <code>WHERE customer_id = 4217</code> skanuje wszystkie mikropartycje. Dlaczego?',
     options: ['Bo na customer_id nie ma indeksu', 'Bo zakres customer_id każdej mikropartycji obejmuje 4217', 'Bo pruning działa tylko dla dat'],
     correct: 1,
-    why: 'Pruning porównuje filtr z zakresem min–max kolumny w każdej mikropartycji. Klienci są wymieszani we wszystkich mikropartycjach, więc każdy zakres obejmuje 4217 i żadnej nie da się wykluczyć. Pruning działa dla dowolnej kolumny, o ile jej wartości są skupione.'
+    why: 'Pruning porównuje filtr z zakresem min–max kolumny w każdej mikropartycji. Klienci są wymieszani we wszystkich mikropartycjach, więc każdy zakres obejmuje 4217 i żadnej nie da się wykluczyć. Pruning działa dla dowolnej kolumny, o ile jej wartości są skupione w niewielu mikropartycjach.'
   },
   {
     q: 'W Query Profile operator Join przyjmuje 50 mln i 1 mln wierszy, a oddaje 4 mld. Zapytanie zrzuca dane do zdalnego storage. Od czego zaczynasz?',
@@ -914,7 +914,7 @@ export const quiz: QuizItem[] = [
     setup: 'Założenia: warehouse jednoklastrowy, edycja Enterprise, zapytań jest kilkadziesiąt naraz.',
     options: ['Scale up o dwa rozmiary', 'Multi-cluster warehouse albo rozdzielenie zapytań na osobne warehouse\'y', 'Clustering key na tabelach dashboardu'],
     correct: 1,
-    why: 'Zapytania są szybkie, tylko czekają w kolejce: to problem współbieżności. Dokumentacja wskazuje dodatkowe warehouse\'y albo multi-cluster i zaznacza, że zmiana rozmiaru nie jest przeznaczona do takich problemów.'
+    why: 'Zapytania są szybkie, tylko czekają w kolejce. To problem współbieżności: zapytań jest za dużo naraz. Dokumentacja wskazuje dodatkowe warehouse\'y albo multi-cluster i zaznacza, że zmiana rozmiaru nie jest przeznaczona do takich problemów.'
   },
   {
     q: 'Warehouse Large kończy job w 40 minut. X-Large kończy ten sam job w 20 minut. Który wariant zużyje więcej kredytów?',
