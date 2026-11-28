@@ -126,7 +126,7 @@ export const beats: Beat[] = [
       html: [
         'Model znormalizowany, taki jak w systemie źródłowym, trzyma każdą informację w jednym miejscu. To dobre do zapisu. Do analizy jest niewygodne: jedno pytanie wymaga wielu złączeń i łatwo o takie, które powiela wiersze.',
         'Jedna szeroka tabela jest wygodna dla jednego raportu. Kłopot zaczyna się przy pięciu raportach, w których ten sam klient albo produkt ma być opisany tak samo. Drugi kłopot: opis się zmienia i trzeba zdecydować, czy przepisać historię.',
-        'Gwiazda jest kompromisem. Liczby do sumowania są w jednym miejscu, a opisy w osobnych, małych tabelach. Każde złączenie idzie od faktu do wymiaru: wiele wierszy faktu wskazuje jeden wiersz wymiaru. To relacja wiele do jednego, więc złączenie nie powiela wierszy faktu.'
+        'Gwiazda jest kompromisem. Liczby, które się analizuje, są w jednym miejscu, a opisy w osobnych, małych tabelach. Każde złączenie idzie od faktu do wymiaru: wiele wierszy faktu wskazuje jeden wiersz wymiaru. To relacja wiele do jednego, więc złączenie nie powiela wierszy faktu.'
       ]
     },
     next: 'Skąd wiadomo, co ma opisywać jeden wiersz?'
@@ -134,7 +134,7 @@ export const beats: Beat[] = [
   {
     html: '<h2>Ziarno: co opisuje jeden wiersz</h2>\n<p>Biznes ma trzy pytania. Wybierz, co ma opisywać jeden wiersz tabeli faktów, i sprawdź, na które pytania taka tabela odpowie.</p>',
     visual: 'grain',
-    after: '<b>Wniosek.</b> To, co opisuje jeden wiersz tabeli faktów, nazywa się <b>ziarnem</b> (grain). Ziarno ustala się najpierw, przed wymiarami i przed miarami, czyli liczbami do sumowania. Każdy wymiar i każda miara muszą do niego pasować. Żadne z czterech ziaren nie odpowiedziało na wszystkie trzy pytania. Zdarzenia i stan na koniec miesiąca to dwa różne ziarna, więc potrzebne są <b>dwie tabele faktów</b>. Dwóch ziaren nie miesza się w jednej tabeli.',
+    after: '<b>Wniosek.</b> To, co opisuje jeden wiersz tabeli faktów, nazywa się <b>ziarnem</b> (grain). Ziarno ustala się najpierw, przed wymiarami i przed miarami, czyli liczbami, które się analizuje. Nie każdą miarę wolno sumować (odsetek, stan z migawki): o tym w etapie Fakty i wymiary. Każdy wymiar i każda miara muszą do niego pasować. Żadne z czterech ziaren nie odpowiedziało na wszystkie trzy pytania. Zdarzenia i stan na koniec miesiąca to dwa różne ziarna, więc potrzebne są <b>dwie tabele faktów</b>. Dwóch ziaren nie miesza się w jednej tabeli.',
     more: {
       title: 'Cztery kroki projektowania według Kimballa',
       html: [
@@ -148,7 +148,7 @@ export const beats: Beat[] = [
   {
     html: '<h2>Skąd wzięło się 56</h2>\n<p>Ktoś chciał jednym zapytaniem policzyć dwie rzeczy: przychód i MRR (monthly recurring revenue), czyli sumę miesięcznych opłat aktywnych subskrypcji. Złączył tabelę subskrypcji z transakcjami. Porównaj oba zapytania i zobacz, co dzieje się z wierszami.</p>',
     visual: 'fanout',
-    after: '<b>Wniosek.</b> Subskrypcja S-1 ma dwie transakcje. Po złączeniu jej wiersz występuje więc dwa razy i jej MRR liczy się podwójnie. To jest <b>fan-out</b>: jeden wiersz pasuje do wielu wierszy po drugiej stronie złączenia, więc zostaje powielony, a suma jego kolumn rośnie. Kino Nord wygląda poprawnie, bo ma jedną transakcję. Błąd nie rozkłada się równo i dlatego trudno go zauważyć na oko. Lekarstwo: najpierw sprowadź obie strony do tego samego ziarna, potem łącz.',
+    after: '<b>Wniosek.</b> Subskrypcja S-1 ma dwie transakcje. Po złączeniu jej wiersz występuje więc dwa razy i jej MRR liczy się podwójnie. To jest <b>fan-out</b>: jeden wiersz pasuje do wielu wierszy po drugiej stronie złączenia, więc zostaje powielony, a suma powielonej miary może wyjść zawyżona. Kino Nord wygląda poprawnie, bo ma jedną transakcję. Błąd nie rozkłada się równo i dlatego trudno go zauważyć na oko. Lekarstwo: najpierw sprowadź obie strony do tego samego ziarna, potem łącz.',
     more: {
       title: 'Jak rozpoznać fan-out, zanim trafi na dashboard',
       html: [
@@ -553,7 +553,7 @@ export const pit = {
   reportTitle: 'Przychód per kraj, wszystkie transakcje Q1',
   totalNote: { ok: 'Razem 162 EUR. Zgadza się z sumą transakcji.', bad: 'Razem {total} EUR zamiast 162. Wpłaty Bena policzone podwójnie.' },
   takeaway: [
-    '<b>Wniosek.</b> Wpłata ma dostać tę wersję klienta, która obowiązywała w dniu wpłaty. Takie dobieranie wersji po dacie to <b>złączenie punkt-w-czasie</b> (point-in-time join). Przedziały ważności muszą być rozłączne i bez dziur, a jeden z końców otwarty. Inaczej wpłata z dnia zmiany pasuje do dwóch wersji albo do żadnej.',
+    '<b>Wniosek.</b> Wpłata ma dostać tę wersję klienta, która obowiązywała w dniu wpłaty. Takie dobieranie wersji po dacie to <b>złączenie punkt-w-czasie</b> (point-in-time join). Przedziały ważności jednego klucza biznesowego nie mogą na siebie zachodzić, dlatego jeden koniec jest otwarty. Inaczej wpłata z dnia zmiany pasuje do dwóch wersji. Luki bywają uzasadnione. Fakt, który nie trafia w żadną wersję, dostaje jawny wiersz „nieznany”, a nigdy wersję, która już wygasła.',
     'W modelu wymiarowym to złączenie robi się <b>raz, przy ładowaniu faktu</b>. Ładowanie znajduje klucz zastępczy właściwej wersji i zapisuje go w wierszu faktu. Zapytania analityczne łączą potem fakt z wymiarem zwykłym warunkiem równości po <code>customer_key</code>, bez dat.'
   ],
   currentTitle: 'Stan bieżący i stan historyczny z jednego modelu',
@@ -726,7 +726,7 @@ export const preagg = {
   table: { name: 'agg_revenue_daily_publisher', columns: ['date_key', 'publisher_key', 'revenue_eur', 'txn_count'], rows: [[20260105, 1, '10.00', 1], [20260115, 1, '10.00', 1], [20260120, 1, '96.00', 1], [20260201, 2, '8.00', 1]] } as SampleTable,
   points: [
     '<b>Agregat ma własne ziarno.</b> Tu: dzień × wydawca. Odpowie na pytanie o miesiąc i wydawcę. Na pytanie o produkt nie odpowie, bo produktu w nim nie ma.',
-    '<b>Narzędzie powinno wybierać samo.</b> W Power BI agregacje zdefiniowane przez użytkownika przekierowują zapytanie do tabeli agregatów. Gdy ta nie wystarcza, zapytanie wraca do tabeli szczegółowej. Tabela szczegółowa musi być w trybie DirectQuery. W Looker aggregate awareness wybiera najmniejszą tabelę, która odpowie poprawnie. Gdy takiej nie ma, używa tabeli bazowej.',
+    '<b>Narzędzie powinno wybierać samo.</b> W Power BI agregacje zdefiniowane przez użytkownika przekierowują zapytanie do tabeli agregatów. Gdy ta nie wystarcza, zapytanie wraca do tabeli szczegółowej. Tabela szczegółowa musi być w trybie DirectQuery. To tryb Power BI, w którym raport pyta źródło w chwili wyświetlenia, zamiast korzystać z zaimportowanych danych. W Looker aggregate awareness wybiera najmniejszą tabelę, która odpowie poprawnie. Gdy takiej nie ma, używa tabeli bazowej.',
     '<b>Nie każda miara się zwija.</b> Sumy dzienne dodasz do sumy miesięcznej. Liczby unikalnych klientów nie dodasz: klient aktywny w dwóch dniach zostałby policzony dwa razy. Dokumentacja Looker wymienia jako obsługiwane sumę, licznik, minimum, maksimum i średnią. Licznik unikalnych wartości obsługuje tylko przy dokładnym dopasowaniu tabeli albo w wersji przybliżonej.',
     '<b>Agregat musi być świeży i spójny.</b> Spóźniony fakt albo poprawka wymiaru wstecz wymagają przeliczenia agregatu. Kimball ostrzega przed tym przy typie 1: po nadpisaniu atrybutu trzeba zadbać o przeliczenie tabel zagregowanych, których dotyczy zmiana.'
   ],
