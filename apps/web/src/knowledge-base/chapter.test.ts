@@ -4,7 +4,9 @@ import { glossary } from '@content/glossary';
 import { chapters, chapterById, type KbBlock, type KbFigure } from '@content/knowledge-base/index';
 import facts from '../../../../docs/verified-facts.md?raw';
 import { parseRich, termIds } from '../lib/richText';
-import { END, cellCounts, chapterRich, contentHash, outline, pdfPath, readingMinutes, scannedParts } from './outline';
+import * as modeling from '@content/data-modeling/dimensional-modeling/lesson';
+import { countryReport, fanoutResult, fanoutRows, matchVersions, mrrByMonth, refundRates, rlsView, semanticCount, threeNumbers, totalRevenue } from '../academy/data-modeling/model';
+import { END, cellCounts, chapterRich, contentHash, outline, pdfPath, readingMinutes, scannedParts, wordCount } from './outline';
 import { renderPrintDocument } from './print';
 import manifest from './pdf-manifest.json';
 
@@ -23,10 +25,15 @@ describe('Knowledge Base: rejestr rozdziałów', () => {
     for (const id of ids) expect(id).toMatch(SLUG);
   });
   it('nie zmienił identyfikatorów, bo są częścią adresów i nazw plików PDF', () => {
-    expect(chapters.map(c => c.id)).toEqual(['database-architecture']);
+    expect(chapters.map(c => c.id)).toEqual(['database-architecture', 'advanced-data-modeling']);
     expect(chapterById('database-architecture')!.sections.map(s => s.id)).toEqual([
       'oltp-olap', 'wiersze-kolumny', 'projekt-logiczny-fizyczny', 'normalizacja', 'denormalizacja', 'klucze', 'indeksy',
       'pruning', 'plan-wykonania', 'transakcje', 'warehouse-lake-lakehouse', 'etl-elt', 'storage-compute', 'dobor-architektury'
+    ]);
+    expect(chapterById('advanced-data-modeling')!.sections.map(s => s.id)).toEqual([
+      'fakty-i-wymiary', 'ziarno', 'fan-out', 'rodzaje-faktow-i-addytywnosc', 'klucze-zastepcze', 'nietypowe-fakty-i-wymiary', 'ksztalt-modelu',
+      'scd', 'punkt-w-czasie', 'spoznione-dane', 'warstwa-semantyczna', 'kardynalnosc', 'rls', 'pre-agregacje', 'power-bi-looker', 'gdzie-logika',
+      'metodyki', 'projektowanie'
     ]);
   });
 });
@@ -165,5 +172,148 @@ describe('Knowledge Base: liczby w tekście rozdziału Database & Data Architect
       ['Repeatable read', 'wykluczony', 'wykluczony', 'możliwy'],
       ['Serializable', 'wykluczony', 'wykluczony', 'wykluczony']
     ]);
+  });
+});
+
+describe('Knowledge Base: liczby w tekście rozdziału Advanced Data Modeling wynikają z danych lekcji', () => {
+  const id = 'advanced-data-modeling';
+  const chapter = chapterById(id)!;
+  const section = (sectionId: string) => chapter.sections.find(s => s.id === sectionId)!.blocks;
+  const text = (sectionId: string) => section(sectionId).flatMap(b => (b.type === 'p' ? [b.html] : b.type === 'list' ? b.items : b.type === 'callout' ? b.html : [])).join(' ');
+  const tableBy = (sectionId: string, column: string) => {
+    const found = section(sectionId).find(b => b.type === 'table' && b.columns.includes(column));
+    if (found?.type !== 'table') throw new Error(`brak tabeli z kolumną ${column}`);
+    return found.rows.map(r => r.map(c => c.replace(/<\/?b>/g, '')));
+  };
+  const minis = (sectionId: string) => section(sectionId).flatMap(b => (b.type === 'tables' ? b.tables : []));
+  const code = (sectionId: string) => section(sectionId).flatMap(b => (b.type === 'code' ? [b] : []));
+  /** Zapytanie bez komentarzy i z pojedynczymi odstępami: rozdział łamie linie inaczej niż lekcja. */
+  const flat = (q: string) => q.replace(/--.*$/gm, '').replace(/\s+/g, ' ').trim();
+  const report = (mode: 'pit' | 'current' | 'natural') => Object.fromEntries(countryReport(mode).rows.map(r => [r.country, String(r.revenue)]));
+
+  it('trzy liczby z pierwszej części to wpłaty lutego, MRR i MRR po błędnym złączeniu', () => {
+    expect(threeNumbers()).toEqual({ cash: 28, mrr: 36, fanned: 56 });
+    expect(text('fakty-i-wymiary')).toContain('<b>28</b>, <b>36</b> i <b>56 EUR</b>');
+    const [subscriptions, transactions] = minis('fakty-i-wymiary');
+    expect(subscriptions.rows.length).toBe(4);
+    expect(transactions.rows.length).toBe(10);
+    // Wiersz T-4 rozpisany po kluczach wskazuje istniejące wiersze wymiarów.
+    expect(tableBy('fakty-i-wymiary', 'Kolumna faktu').map(r => r[2])).toEqual(['20260201: 2026-02-01, weekend', '2: Ben, DE', '3: Kino Monthly', '2: Kino Nord', 'T-4', '8.00']);
+  });
+  it('ziarno: żadne z czterech ziaren nie odpowiada na wszystkie trzy pytania', () => {
+    const rows = tableBy('ziarno', 'Jeden wiersz to');
+    expect(rows.length).toBe(4);
+    for (const row of rows) expect(row.slice(1).every(c => c === 'tak'), row[0]).toBe(false);
+    for (const q of [1, 2, 3]) expect(rows.some(r => r[q] === 'tak')).toBe(true);
+  });
+  it('fan-out: 4 subskrypcje stają się 6 wierszami, MRR wychodzi 56 zamiast 36, a przychód się zgadza', () => {
+    expect(tableBy('fan-out', 'Transakcja').length).toBe(fanoutRows('wrong').length);
+    const [wrong, right] = [fanoutResult('wrong'), fanoutResult('right')];
+    expect(tableBy('fan-out', 'Przychód')).toEqual([
+      ...wrong.byPublisher.map((w, i) => [w.publisher, String(w.mrr), String(right.byPublisher[i].mrr), String(w.revenue)]),
+      ['Razem', '56', '36', '144']
+    ]);
+    expect([wrong.mrr, right.mrr, right.revenue, right.rows]).toEqual([56, 36, 144, 4]);
+    const lanes = figures(id).find(f => f.kind === 'lanes')!;
+    if (lanes.kind !== 'lanes') throw new Error('brak ilustracji fan-outu');
+    expect(lanes.lanes.map(l => l.steps.map(s => s.where))).toEqual([['4 wiersze', '6 wierszy', 'zamiast 36'], ['6 wierszy', '4 wiersze', '4 wiersze']]);
+    for (const lane of lanes.lanes) expect(lane.steps.length).toBe(3);
+  });
+  it('zapytania SQL to te same zapytania co w lekcji, tylko inaczej połamane', () => {
+    const [wrong, right] = code('fan-out');
+    expect(flat(wrong.code)).toBe(flat(modeling.fanout.sql.wrong));
+    expect(flat(right.code)).toBe(flat(modeling.fanout.sql.right));
+    const pit = code('punkt-w-czasie');
+    expect(pit.slice(0, 3).map(c => c.code)).toEqual([modeling.pit.sql.natural, modeling.pit.sql.current, modeling.pit.sql.pit]);
+    expect(flat(pit[3].code)).toBe(flat(modeling.pit.asofCode));
+  });
+  it('rodzaje tabel faktów: 5, 6 i 2 wiersze na koniec kwietnia, a zmienia się tylko narastająca migawka', () => {
+    expect(minis('rodzaje-faktow-i-addytywnosc').map(t => t.rows.length)).toEqual([5, 6, 2]);
+    expect(minis('rodzaje-faktow-i-addytywnosc')[2].rows[0]).toContain('03-18');
+    expect(tableBy('rodzaje-faktow-i-addytywnosc', 'Miesiąc')).toEqual([
+      ['styczeń', '2 nowe wiersze', '2 nowe wiersze', '2 nowe wiersze'],
+      ['luty', '1 nowy wiersz', '2 nowe wiersze', 'bez zmian'],
+      ['marzec', '2 nowe wiersze', '1 nowy wiersz', 'zmiana w istniejącym wierszu'],
+      ['kwiecień', 'nic nie przybywa', '1 nowy wiersz', 'bez zmian']
+    ]);
+  });
+  it('addytywność: 162, 90 oraz 5,6% wobec 11,1%', () => {
+    expect(totalRevenue()).toBe(162);
+    expect(mrrByMonth().map(m => m.mrr)).toEqual([28, 36, 26]);
+    expect(mrrByMonth().reduce((n, m) => n + m.mrr, 0) / 3).toBe(30);
+    expect(+(refundRates().overall * 100).toFixed(1)).toBe(11.1);
+    expect(+(refundRates().averageOfRates * 100).toFixed(1)).toBe(5.6);
+    const sums = section('rodzaje-faktow-i-addytywnosc').flatMap(b => (b.type === 'table' && b.columns.length === 2 ? [b.rows[b.rows.length - 1][1]] : []));
+    expect(sums).toEqual(['<b>162</b>', '<b>90</b> (wynik bez sensu)', '<b>5,6%</b> (wynik bez sensu)']);
+    for (const n of ['162 EUR', '90 EUR', '(26)', '(30)', '5,6%', '11,1%']) expect(text('rodzaje-faktow-i-addytywnosc')).toContain(n);
+  });
+  it('tabela pomostowa: bez wag 308, z wagami 162', () => {
+    const revenue = (key: number) => modeling.data.transactions.filter(t => modeling.data.products.find(x => x.id === modeling.data.subscriptions.find(s => s.id === t.sub)!.product)!.key === key).reduce((n, t) => n + t.amount, 0);
+    const bridge = minis('nietypowe-fakty-i-wymiary').find(t => t.name === 'bridge_product_category')!;
+    const total = (weighted: boolean) => bridge.rows.reduce((n, [key, , weight]) => n + revenue(+key) * (weighted ? +weight : 1), 0);
+    expect([total(false), total(true)]).toEqual([308, 162]);
+    expect(tableBy('nietypowe-fakty-i-wymiary', 'Kategoria').at(-1)).toEqual(['Razem', '308', '162']);
+  });
+  it('SCD i złączenie punkt-w-czasie: raporty per kraj zgadzają się z modelem lekcji', () => {
+    const [current, pit, natural] = [report('current'), report('pit'), report('natural')];
+    expect(tableBy('scd', 'Kraj')).toEqual([['DE', 'brak', pit.DE], ['FR', current.FR, pit.FR], ['PL', current.PL, pit.PL], ['Razem', '162', '162']]);
+    expect(tableBy('scd', 'Kraj')).toEqual([['DE', 'brak', '18'], ['FR', '96', '96'], ['PL', '66', '48'], ['Razem', '162', '162']]);
+    expect(tableBy('punkt-w-czasie', 'Kraj')).toEqual([
+      ['DE', natural.DE, 'brak', pit.DE],
+      ['FR', natural.FR, current.FR, pit.FR],
+      ['PL', natural.PL, current.PL, pit.PL],
+      ['Razem', String(countryReport('natural').total), '162', '162']
+    ]);
+    expect(countryReport('natural').total).toBe(198);
+    expect(text('punkt-w-czasie')).toContain('ze 162 do 198 EUR');
+    // Wymiar typu 2 pokazuje wszystkie wersje, a typ 1 tylko bieżący kraj Bena.
+    const [type1, type2] = minis('scd');
+    expect(type1.rows.find(r => r[1] === 'C-102')![3]).toBe('PL');
+    expect(type2.rows.filter(r => r[1] === 'C-102').map(r => r[2])).toEqual(['DE', 'PL']);
+  });
+  it('spóźniony fakt z 8 lutego dostaje klucz 2, a nie bieżący klucz 4', () => {
+    const late = { id: 'T-11', date: '2026-02-08', sub: 'S-2', type: 'payment' as const, amount: 10 };
+    expect(matchVersions(late, 'pit').map(v => v.key)).toEqual([2]);
+    expect(matchVersions(late, 'current').map(v => v.key)).toEqual([4]);
+    const path = figures(id).find(f => f.kind === 'path')!;
+    if (path.kind !== 'path') throw new Error('brak ilustracji spóźnionego faktu');
+    expect(path.steps[1].options[path.steps[1].pick]).toBe('klucz 2: DE, od 01-08 do 02-10');
+    expect(path.steps[2].options).toEqual(['customer_key = 2']);
+    expect(path.total).toContain('klucz 2 (DE), a nie bieżący klucz 4 (PL)');
+  });
+  it('warstwa semantyczna: trzy zespoły dostają 4, 5 i 8', () => {
+    expect(tableBy('warstwa-semantyczna', 'Zespół').map(r => r[3])).toEqual(modeling.semantic.presets.map(x => String(semanticCount(modeling.semantic.subs, x).value)));
+    expect(tableBy('warstwa-semantyczna', 'Zespół').map(r => r[3])).toEqual(['4', '5', '8']);
+  });
+  it('RLS: 8 z 10 transakcji i 146 EUR, 2 z 10 i 16 EUR, 10 z 10 i 162 EUR', () => {
+    const views = modeling.rls.users.map(u => rlsView(u.publishers));
+    expect(tableBy('rls', 'Kto patrzy').map(r => r.slice(2))).toEqual(views.map(v => [`${v.visible.length} z 10`, `${v.revenue} EUR`]));
+    expect(views.map(v => v.revenue)).toEqual([146, 16, 162]);
+  });
+  it('projekt raportu rezygnacji: MRR 28, 36, 26 wynika z nowej S-3 i utraconej S-2', () => {
+    const at = (month: string) => modeling.data.snapshot.filter(r => r.month === month);
+    const diff = (from: string, to: string) => ({
+      gained: at(to).filter(r => !at(from).some(x => x.sub === r.sub)).map(r => [r.sub, r.mrr]),
+      lost: at(from).filter(r => !at(to).some(x => x.sub === r.sub)).map(r => [r.sub, r.mrr])
+    });
+    expect(diff('2026-01-31', '2026-02-28')).toEqual({ gained: [['S-3', 8]], lost: [] });
+    expect(diff('2026-02-28', '2026-03-31')).toEqual({ gained: [], lost: [['S-2', 10]] });
+    expect(text('projektowanie')).toContain('przybywa S-3 (8 EUR), więc MRR rośnie z 28 do 36. W marcu ubywa S-2 (10 EUR), więc spada do 26');
+  });
+  it('miejsce logiki w czterech przypadkach jest takie jak w lekcji', () => {
+    const places = section('gdzie-logika').flatMap(b => (b.type === 'p' ? [b.html.match(/^<b>Miejsce: ([^.]+)\.<\/b>/)?.[1]] : [])).filter(Boolean);
+    expect(places).toEqual(modeling.placement.cases.map(c => ['hurtownia', 'warstwa semantyczna', 'raport'][c.correct]));
+  });
+  it('treść główna rozdziału jest krótsza od lekcji', () => {
+    const main = wordCount({ ...chapter, keyPoints: [], glossary: [], misconceptions: [] });
+    const strings: string[] = [];
+    const walk = (v: unknown): void => {
+      if (typeof v === 'string') strings.push(v);
+      else if (Array.isArray(v)) v.forEach(walk);
+      else if (v && typeof v === 'object') Object.values(v).forEach(walk);
+    };
+    walk({ ...modeling });
+    const lessonWords = strings.join(' ').replace(/<[^>]+>/g, ' ').split(/\s+/).filter(Boolean).length;
+    expect(main).toBeLessThan(lessonWords);
   });
 });
