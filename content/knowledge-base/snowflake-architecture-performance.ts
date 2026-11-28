@@ -28,6 +28,8 @@ const overlaps = ([min, max]: [number, number], [from, to]: [number, number]) =>
 const thousands = (n: number) => String(n).replace(/\B(?=(\d{3})+$)/g, ' ');
 const num = (n: number) => String(Math.round(n * 100) / 100).replace('.', ',');
 const days = (n: number) => (n === 1 ? '1 dzień' : `${n} dni`);
+/** Strzałek nie ma w czcionkach osadzanych w PDF (weszłaby czcionka zastępcza), więc etykiety z lekcji dostają słowa. */
+const noArrow = (text: string, word: string) => text.replace(/ → /g, ` ${word} `);
 
 /* ---- pruning: te same osiem mikropartycji co w lekcji ---- */
 
@@ -49,7 +51,7 @@ const profile = (id: string) => lesson.profiles.cases.find(c => c.id === id)!;
 const stats = (id: string) =>
   table(
     ['Statystyka', 'Wartość'],
-    profile(id).stats.map(s => (s.flag ? [`<b>${s.name}</b>`, `<b>${s.value}</b>`] : [s.name, s.value])),
+    profile(id).stats.map(s => [noArrow(s.name, 'i'), noArrow(s.value, 'i')]).map((row, i) => (profile(id).stats[i].flag ? row.map(cell => `<b>${cell}</b>`) : row)),
     'Ilustracja: wartości wymyślone.'
   );
 
@@ -57,7 +59,7 @@ const stats = (id: string) =>
 
 const workload = (id: string) => lesson.scale.workloads.find(w => w.id === id)!;
 const credits = (o: lesson.ScaleOutcome) => (o.rate * o.clusters * o.minutes) / 60;
-const actionLabel = (id: lesson.ScaleOutcome['action']) => lesson.scale.actions.find(a => a.id === id)!.label;
+const actionLabel = (id: lesson.ScaleOutcome['action']) => noArrow(lesson.scale.actions.find(a => a.id === id)!.label, 'na');
 const scaleRows = (id: string) => workload(id).outcomes.map(o => [actionLabel(o.action), `${o.clusters} × ${o.size}`, `${o.minutes} min`, num(credits(o))]);
 const run = (n: number) => `${n} ${n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? 'działają' : 'działa'}`;
 const waveSteps = (o: lesson.ScaleOutcome) => {

@@ -398,7 +398,7 @@ describe('Knowledge Base: liczby w tekście rozdziału Snowflake Architecture & 
     expect(text('cache')).toContain(snow.cache.queryA);
   });
   it('Query Profile: statystyki czterech scenariuszy są z lekcji, a join oddaje 80 razy więcej wierszy', () => {
-    for (const [i, c] of snow.profiles.cases.entries()) expect(tableBy('query-profile', 'Statystyka', i)).toEqual(c.stats.map(s => [s.name, s.value]));
+    for (const [i, c] of snow.profiles.cases.entries()) expect(tableBy('query-profile', 'Statystyka', i)).toEqual(c.stats.map(s => [s.name.replace(' → ', ' i '), s.value.replace(' → ', ' i ')]));
     const value = (stat: string) => {
       const [n, unit] = snow.profiles.cases.find(c => c.id === 'join')!.stats.find(s => s.name.includes(stat))!.value.split(' ');
       return +n.replace(',', '.') * { mln: 1e6, mld: 1e9 }[unit as 'mln' | 'mld'];
@@ -414,7 +414,7 @@ describe('Knowledge Base: liczby w tekście rozdziału Snowflake Architecture & 
     for (const [i, w] of ['heavy', 'many'].entries()) {
       expect(tableBy('skalowanie', 'Kredyty', i)).toEqual(snow.scale.actions.map(a => {
         const o = outcome(w, a.id);
-        return [a.label, `${o.clusters} × ${o.size}`, `${o.minutes} min`, pl(credits(o))];
+        return [a.label.replace(' → ', ' na '), `${o.clusters} × ${o.size}`, `${o.minutes} min`, pl(credits(o))];
       }));
     }
     expect(tableBy('skalowanie', 'Kredyty', 0).map(r => r[3])).toEqual(['4', '2,67', '4']);
@@ -479,6 +479,9 @@ describe('Knowledge Base: liczby w tekście rozdziału Snowflake Architecture & 
     const readers = snow.access.roles.filter(r => inherited(r.id).some(x => x.id === 'sales_read')).map(r => r.label).sort();
     expect(readers).toEqual(['ANALYST', 'DATA_ENGINEER', 'SALES_WRITE', 'SYSADMIN']);
     for (const label of readers) expect(text('role')).toContain(`<code>${label}</code>`);
+  });
+  it('nie używa strzałek, których nie ma w czcionkach osadzanych w PDF', () => {
+    expect(JSON.stringify(chapter)).not.toMatch(/[→←↔⇒]/);
   });
   it('tabele izolacji i porównania są tabelami lekcji', () => {
     expect(tableBy('izolacja-sharing', snow.access.tenantColumns[0])).toEqual(snow.access.tenants);

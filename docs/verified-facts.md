@@ -596,6 +596,8 @@ Objaśnienia pojęć dopisane po to, żeby rozdział dało się czytać bez lekc
 
 Wnioski dopisane ponad tekst lekcji, wszystkie wynikają z danych przykładu albo z tabeli „Lekcja 10": uporządkowanie po kliencie odbiera pruning po dacie (z modelu lekcji: 8 z 8); „1% wierszy rozsiany po całej tabeli może przepisać dużą jej część" (z tego, że mikropartycja jest przepisywana w całości, co samo jest wiedzą ogólną); „bez future grants każda nowa tabela wymaga osobnego nadania"; trzecia naprawa spillingu, czyli mniej danych przed drogim operatorem (z pola `senior` pytania w banku, oznaczona w tekście jako wniosek z profilu, a nie zalecenie dokumentacji).
 
+Etykiety z lekcji, które zawierają strzałkę („Medium → X-Large", „wejście → wyjście"), są w rozdziale zapisane słowami („Medium na X-Large", „wejście i wyjście"): strzałek nie ma w czcionkach osadzanych w PDF. Znaczenie i liczby są te same.
+
 Rzeczy podane z tymi samymi zastrzeżeniami co w lekcji (sekcja „Niezweryfikowane", wpisy o lekcji 10): mikropartycje nie są poprawiane w miejscu; pruning odbywa się w warstwie cloud services przed wykonaniem zapytania; wynik z result cache nie wymaga działającego warehouse'u; sortowanie przy ładowaniu; reguły robocze dla auto-suspend; czas w kolejce widoczny w historii zapytań; budżet nie obejmuje storage; skala izolacji tenantów; kolumny o klasycznej bazie i Sparku w tabeli porównawczej; metoda sześciu kroków; lista pól `SYSTEM$CLUSTERING_INFORMATION` znana ze streszczenia strony; próg 10 nieudanych uruchomień potwierdzony tylko dla grafu zadań.
 
 ### Lekcja 08: Databricks Platform & Delta Lake (sprawdzone 2026-11-27)
