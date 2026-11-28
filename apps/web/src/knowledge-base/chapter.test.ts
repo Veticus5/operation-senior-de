@@ -6,6 +6,8 @@ import facts from '../../../../docs/verified-facts.md?raw';
 import { parseRich, termIds } from '../lib/richText';
 import * as modeling from '@content/data-modeling/dimensional-modeling/lesson';
 import * as snow from '@content/snowflake/architecture/lesson';
+import * as delta from '@content/databricks/platform-delta-lake/lesson';
+import { canRead, mergeRows, snapshot, vacuumed, versionStatus, written } from '../academy/databricks-delta-lake/engine';
 import { credits, inherited, mustScan } from '../academy/snowflake-architecture/Visuals';
 import { countryReport, fanoutResult, fanoutRows, matchVersions, mrrByMonth, refundRates, rlsView, semanticCount, threeNumbers, totalRevenue } from '../academy/data-modeling/model';
 import { END, cellCounts, chapterRich, contentHash, outline, pdfPath, readingMinutes, scannedParts, wordCount } from './outline';
@@ -27,7 +29,7 @@ describe('Knowledge Base: rejestr rozdziałów', () => {
     for (const id of ids) expect(id).toMatch(SLUG);
   });
   it('nie zmienił identyfikatorów, bo są częścią adresów i nazw plików PDF', () => {
-    expect(chapters.map(c => c.id)).toEqual(['database-architecture', 'advanced-data-modeling', 'snowflake-architecture-performance']);
+    expect(chapters.map(c => c.id)).toEqual(['database-architecture', 'advanced-data-modeling', 'snowflake-architecture-performance', 'databricks-platform-delta-lake']);
     expect(chapterById('database-architecture')!.sections.map(s => s.id)).toEqual([
       'oltp-olap', 'wiersze-kolumny', 'projekt-logiczny-fizyczny', 'normalizacja', 'denormalizacja', 'klucze', 'indeksy',
       'pruning', 'plan-wykonania', 'transakcje', 'warehouse-lake-lakehouse', 'etl-elt', 'storage-compute', 'dobor-architektury'
@@ -40,6 +42,11 @@ describe('Knowledge Base: rejestr rozdziałów', () => {
     expect(chapterById('snowflake-architecture-performance')!.sections.map(s => s.id)).toEqual([
       'trzy-warstwy', 'rozdzielenie-storage-compute', 'mikropartycje-pruning', 'clustering', 'cache', 'query-profile', 'skalowanie', 'metoda-strojenia',
       'koszty', 'streams-tasks', 'time-travel-fail-safe', 'klony', 'role', 'izolacja-sharing', 'porownanie'
+    ]);
+    expect(chapterById('databricks-platform-delta-lake')!.sections.map(s => s.id)).toEqual([
+      'katalog-plikow', 'log-transakcyjny', 'rownolegle-zapisy', 'merge', 'schemat', 'time-travel-vacuum', 'male-pliki-optimize',
+      'data-skipping-clustering', 'change-data-feed', 'platforma', 'control-compute-storage', 'compute', 'unity-catalog', 'lakeflow',
+      'bundles-cicd', 'microsoft', 'wybor-platformy'
     ]);
   });
 });
@@ -496,6 +503,216 @@ describe('Knowledge Base: liczby w tekście rozdziału Snowflake Architecture & 
       else if (v && typeof v === 'object') Object.values(v).forEach(walk);
     };
     walk({ ...snow });
+    const lessonWords = strings.join(' ').replace(/<[^>]+>/g, ' ').split(/\s+/).filter(Boolean).length;
+    expect(main).toBeLessThan(lessonWords);
+  });
+});
+
+describe('Knowledge Base: liczby w tekście rozdziału Databricks Platform & Delta Lake wynikają z danych lekcji', () => {
+  const id = 'databricks-platform-delta-lake';
+  const chapter = chapterById(id)!;
+  const section = (sectionId: string) => chapter.sections.find(s => s.id === sectionId)!.blocks;
+  const text = (sectionId: string) => section(sectionId).flatMap(b => (b.type === 'p' ? [b.html] : b.type === 'list' ? b.items : b.type === 'callout' ? b.html : [])).join(' ');
+  const plain = (cell: string) => cell.replace(/<\/?(b|code)>/g, '');
+  const tableBy = (sectionId: string, column: string) => {
+    const found = section(sectionId).find(b => b.type === 'table' && b.columns.includes(column));
+    if (found?.type !== 'table') throw new Error(`brak tabeli z kolumną ${column}`);
+    return found.rows.map(r => r.map(plain));
+  };
+  const minis = (sectionId: string) => section(sectionId).flatMap(b => (b.type === 'tables' ? b.tables : []));
+  const code = (sectionId: string) => section(sectionId).flatMap(b => (b.type === 'code' ? [b.code] : []));
+  const figureOf = <K extends KbFigure['kind']>(sectionId: string, kind: K) => {
+    const found = section(sectionId).flatMap(b => (b.type === 'figure' ? [b.figure] : [])).find(f => f.kind === kind);
+    if (!found) throw new Error(`brak ilustracji ${kind} w części ${sectionId}`);
+    return found as Extract<KbFigure, { kind: K }>;
+  };
+  /** Zapytanie z pojedynczymi odstępami: rozdział łamie linie inaczej niż lekcja. */
+  const flat = (q: string) => q.replace(/\s+/g, ' ').trim();
+  const commits = delta.log.commits;
+  const short = (path: string) => path.replace('.parquet', '');
+
+  it('przerwany job: katalog Parquet pokazuje 1200 zamówień, tabela Delta 1000, a miało być 1400', () => {
+    const sum = (files: { rows: number }[]) => files.reduce((n, f) => n + f.rows, 0);
+    const before = sum(delta.crash.oldFiles);
+    const written2 = delta.crash.newFiles.filter(f => f.written);
+    expect([before, before + sum(written2), before + sum(delta.crash.newFiles)]).toEqual([1000, 1200, 1400]);
+    const stacks = figureOf('katalog-plikow', 'stacks');
+    expect(stacks.columns.map(c => c.label)).toEqual(['Katalog Parquet: raport pokazuje 1200', 'Tabela Delta: raport pokazuje 1000']);
+    // Oba sposoby czytania widzą te same cztery pliki w katalogu. Różni je tylko to, które pliki należą do tabeli.
+    for (const column of stacks.columns) expect(column.layers.map(l => l.name)).toEqual([...delta.crash.oldFiles, ...written2].map(f => f.name));
+    expect(stacks.columns.map(c => c.layers.filter(l => l.text.endsWith('czytany')).length)).toEqual([4, 2]);
+    for (const n of ['raport pokaże 1200 zamówień', 'przed jobem było 1000, po nim miało być 1400', 'raport pokazuje 1000 zamówień']) expect(text('katalog-plikow')).toContain(n);
+    expect(tableBy('katalog-plikow', delta.versus.columns[1])).toEqual(delta.versus.rows);
+  });
+  it('log: akcje, lista plików i liczba wierszy w każdej wersji zgadzają się z modelem lekcji', () => {
+    const rows = tableBy('log-transakcyjny', 'Akcje w commicie');
+    expect(rows).toEqual(commits.map(c => {
+      const state = snapshot(commits, c.version);
+      const actions = [...c.add.map(f => `add ${short(f.path)}`), ...c.remove.map(path => `remove ${short(path)}`)].join(', ');
+      return [`${c.version}: ${c.operation}`, actions, state.files.map(f => short(f.path)).join(', '), String(state.rows.length)];
+    }));
+    expect(rows.map(r => r[2])).toEqual(['part-a', 'part-a, part-b', 'part-b, part-c', 'part-c, part-d', 'part-e']);
+    expect(rows.map(r => r[3])).toEqual(['3', '5', '5', '4', '4']);
+    expect(minis('log-transakcyjny')[0].rows).toEqual(snapshot(commits, 1).rows.map(r => [String(r.id), r.customer, r.status, String(r.amount)]));
+    expect(written(commits, 4).length).toBe(5);
+    expect(text('log-transakcyjny')).toContain('tabela ma 4 wiersze w jednym pliku, a w katalogu leży 5 plików');
+    expect(flat(code('log-transakcyjny')[0])).toBe(flat(`${commits.slice(2).map(c => c.sql).join('; ')};`));
+  });
+  it('równoległe zapisy: wynik czterech par jest taki jak w lekcji, a oba joby walczą o commit 5', () => {
+    const rows = tableBy('rownolegle-zapisy', 'Wynik');
+    expect(rows.map(r => r[0])).toEqual(delta.conflict.cases.map(c => c.label));
+    expect(rows.map(r => r[2].startsWith('Bez konfliktu'))).toEqual(delta.conflict.cases.map(c => c.ok));
+    expect(rows.map(r => r[2].startsWith('Konflikt'))).toEqual(delta.conflict.cases.map(c => !c.ok));
+    const lanes = figureOf('rownolegle-zapisy', 'lanes');
+    expect(lanes.lanes.map(l => l.steps.find(s => s.hot)!.where)).toEqual(['zapisuje numer 5', 'numer 5 jest zajęty']);
+    expect(lanes.lanes.map(l => l.steps[0].where)).toEqual(['wersja 4', 'wersja 4']);
+    for (const lane of lanes.lanes) expect(lane.steps.length).toBe(3);
+    expect(commits.at(-1)!.version).toBe(4);
+    expect(section('rownolegle-zapisy').find(b => b.type === 'list' && b.ordered)).toMatchObject({ items: { length: delta.conflict.steps.length } });
+  });
+  it('MERGE: wynik dwóch klauzul, duplikat klucza i trzecia klauzula zgadzają się z modelem lekcji', () => {
+    const { target, source, duplicate } = delta.merge;
+    const on = { matched: true, notMatched: true, bySource: false };
+    const tag = (what: string) => (what.startsWith('zmieniony') ? 'updated' : what === 'wstawiony' ? 'inserted' : what === 'bez zmian' ? 'same' : what);
+    expect(tableBy('merge', 'Co się stało').map(r => [r[0], r[1], r[2], tag(r[3])])).toEqual(mergeRows(target, source, on).rows.map(r => [String(r.id), r.name, r.tier, r.tag]));
+    expect(tableBy('merge', 'Co się stało').map(r => r[3])).toEqual(['bez zmian', 'zmieniony, było: gold', 'bez zmian', 'zmieniony, było: bronze', 'wstawiony']);
+    expect(minis('merge').map(t => t.rows.length)).toEqual([target.length, source.length]);
+    expect(mergeRows(target, [...source, duplicate], on).error).toBe(true);
+    expect(text('merge')).toContain(`<code>id = ${duplicate.id}</code>`);
+    const deleted = mergeRows(target, source, { ...on, bySource: true }).rows.filter(r => r.tag === 'deleted').map(r => r.name);
+    expect(deleted).toEqual(['Ala', 'Celina']);
+    expect(text('merge')).toContain('skasowałaby klientów: Ala i Celina');
+    expect(flat(code('merge').join(' '))).toBe(flat(delta.merge.lines.map(l => l.code).join(' ')));
+  });
+  it('schemat: cztery wyniki dla dwóch paczek i dwóch trybów', () => {
+    const rows = tableBy('schemat', 'Tryb zapisu');
+    expect(rows).toEqual(delta.schema.batches.flatMap(batch => delta.schema.modes.map(mode => {
+      const r = delta.schema.results[`${batch.id}|${mode.id}`];
+      return [batch.label, mode.label, r.ok ? 'Zapis przechodzi' : 'Zapis odrzucony', String(r.columns.length)];
+    })));
+    expect(rows.map(r => r.slice(2))).toEqual([['Zapis przechodzi', '4'], ['Zapis przechodzi', '4'], ['Zapis odrzucony', '4'], ['Zapis przechodzi', '5']]);
+  });
+  it('time travel: status wersji w dniach 9 i 40 jest taki jak w modelu lekcji', () => {
+    const retention = { fileDays: delta.timeTravel.fileRetentionDays, logDays: delta.timeTravel.logRetentionDays };
+    expect(retention).toEqual({ fileDays: 7, logDays: 30 });
+    const label = (version: number, day: number, vacuum: boolean) => delta.timeTravel.statuses[versionStatus(commits, version, day, vacuum, retention)].label;
+    expect(tableBy('time-travel-vacuum', 'Dzień 40')).toEqual(commits.map(c => [`${c.version} (dzień ${c.day})`, label(c.version, 9, false), label(c.version, 9, true), label(c.version, 40, false)]));
+    expect(tableBy('time-travel-vacuum', 'Dzień 40').map(r => r.slice(1))).toEqual([
+      ['poza oknem', 'pliki usunięte', 'log usunięty'],
+      ['poza oknem', 'pliki usunięte', 'log usunięty'],
+      ['dostępna', 'dostępna', 'log usunięty'],
+      ['dostępna', 'dostępna', 'log usunięty'],
+      ['bieżąca', 'bieżąca', 'bieżąca']
+    ]);
+    for (const day of [9, 40]) expect(delta.timeTravel.days).toContain(day);
+    // Podpis tabeli: dnia 5 wszystkie wersje są dostępne, z VACUUM i bez.
+    for (const c of commits.slice(0, -1)) for (const vacuum of [false, true]) expect(label(c.version, 5, vacuum)).toBe('dostępna');
+    // Dnia 9 VACUUM kasuje tylko part-a, którego potrzebują wersje 0 i 1.
+    expect(vacuumed(commits, 9, retention.fileDays)).toEqual(['part-a.parquet']);
+    expect(commits.filter(c => snapshot(commits, c.version).files.some(f => f.path === 'part-a.parquet')).map(c => c.version)).toEqual([0, 1]);
+    expect(code('time-travel-vacuum')[0]).toBe(delta.timeTravel.lines.slice(0, 3).map(l => `${l.code};`).join('\n'));
+    for (const n of ['domyślnie 7 dni', 'domyślnie 30 dni', `<code>${delta.timeTravel.lines[4].code}</code>`]) expect(text('time-travel-vacuum')).toContain(n);
+  });
+  it('kompaktowanie: 24, 25 i 1 plik w magazynie, czyli 120, 240 i 120 MB', () => {
+    expect(tableBy('male-pliki-optimize', 'Dane w magazynie')).toEqual([
+      [delta.compaction.states[0].label, '24', '24', '120 MB'],
+      [delta.compaction.states[1].label, '1', '25', '240 MB'],
+      [delta.compaction.states[2].label, '1', '1', '120 MB']
+    ]);
+    expect(delta.compaction.states.map(s => [s.current, s.stored])).toEqual([[24, 24], [1, 25], [1, 1]]);
+    expect(delta.compaction.smallFiles * delta.compaction.smallMb).toBe(120);
+    expect(text('male-pliki-optimize')).toContain('tabela ma 24 pliki po 5 MB');
+  });
+  it('data skipping: filtr po kliencie 417 otwiera 4 z 4 plików bez układu i 1 z 4 po CLUSTER BY', () => {
+    const f = figureOf('data-skipping-clustering', 'partitions');
+    expect(f.filter.range).toEqual([delta.clustering.value, delta.clustering.value]);
+    expect(f.layouts.map(l => l.label)).toEqual(delta.clustering.layouts.map(l => l.label));
+    expect(f.layouts.map(l => l.parts)).toEqual(delta.clustering.layouts.map(l => l.files.map(file => [file.min, file.max])));
+    expect(f.layouts.map(l => scannedParts(l.parts, f.filter.range).filter(Boolean).length)).toEqual([4, 1]);
+    expect(flat(code('data-skipping-clustering')[0])).toBe(`${delta.clustering.query};`);
+    expect(text('data-skipping-clustering')).toContain('Trzy pliki odpadają');
+  });
+  it('Change Data Feed: zapytanie i trzy wiersze zmian są z lekcji', () => {
+    expect(code('change-data-feed')).toEqual([`${delta.cdf.query};`]);
+    expect(tableBy('change-data-feed', '_change_type')).toEqual(delta.cdf.rows.map(r => [r.slice(0, 4).join(', '), r[4], r[5]]));
+    expect(tableBy('change-data-feed', '_change_type').map(r => r[1])).toEqual(['update_preimage', 'update_postimage', 'delete']);
+  });
+  it('architektura: części platformy leżą na tych kontach co w lekcji', () => {
+    const [databricks, you] = figureOf('control-compute-storage', 'clusters').panels;
+    const names = (owner: string) => delta.arch.boxes.filter(b => b.owner === owner && b.id !== 'storage').map(b => b.name);
+    expect(databricks.nodes.map(n => n.name)).toEqual(names('databricks'));
+    expect(you.nodes.map(n => n.name)).toEqual(names('you'));
+    expect(delta.arch.boxes.find(b => b.id === 'storage')!.owner).toBe('you');
+    expect(you.shared).toContain('Storage');
+    expect(databricks.shared).toBeUndefined();
+    // Warstwy platformy i numery części, które je opisują.
+    const part = (sectionId: string) => chapter.sections.findIndex(s => s.id === sectionId) + 1;
+    expect(tableBy('platforma', 'Warstwa')).toEqual(delta.stack.layers.map((l, i) => [l.name, l.what, ['części 1–9', 'części 11 i 12', 'część 13', 'część 14', 'części 14 i 15'][i]]));
+    expect(['change-data-feed', 'control-compute-storage', 'compute', 'unity-catalog', 'lakeflow', 'bundles-cicd'].map(part)).toEqual([9, 11, 12, 13, 14, 15]);
+  });
+  it('compute: cztery rodzaje pracy i wybór compute są z lekcji', () => {
+    expect(tableBy('compute', 'Compute')).toEqual(delta.compute.cases.map(c => [c.label.replace(/ → /g, ', '), c.pick]));
+  });
+  it('Unity Catalog: to, co analityk przeczyta, wynika z reguły odczytu z lekcji', () => {
+    const read = (grant: 'catalog' | 'schema' | 'table', use: boolean) => delta.uc.objects.filter(o => canRead(o, grant, { catalog: use, salesSchema: use })).map(o => o.name).join(', ') || 'nic';
+    expect(tableBy('unity-catalog', 'Analityk przeczyta')).toEqual([
+      ['katalogu prod', 'tak', read('catalog', true)],
+      ['schemacie prod.sales', 'tak', read('schema', true)],
+      ['tabeli prod.sales.orders', 'tak', read('table', true)],
+      ['katalogu prod', 'nie', read('catalog', false)]
+    ]);
+    expect([read('catalog', true), read('table', true), read('catalog', false)]).toEqual(['orders, customers', 'orders', 'nic']);
+    const path = figureOf('unity-catalog', 'path');
+    expect(path.steps.map(s => s.options)).toEqual([[delta.uc.catalog], delta.uc.schemas, ['orders', 'customers', 'raw_files (wolumen)']]);
+    expect(path.steps.map(s => s.options[s.pick])).toEqual(['prod', 'sales', 'orders']);
+  });
+  it('kod pipeline\'u i bundle\'a to kod z lekcji, a przepływ wdrożenia ma te same kroki', () => {
+    expect(flat(code('lakeflow')[0])).toBe(flat(delta.lakeflow.lines.map(l => l.code).join(' ')));
+    expect(code('bundles-cicd')).toEqual([delta.deploy.lines.map(l => l.code).join('\n')]);
+    const flow = section('bundles-cicd').find(b => b.type === 'list' && b.ordered);
+    if (flow?.type !== 'list') throw new Error('brak listy kroków wdrożenia');
+    expect(flow.items).toEqual(delta.deploy.flow.map(f => `<b>${f.step}:</b> ${f.text}.`));
+  });
+  it('Microsoft: droga danych ma te same etapy co w lekcji, a każda z siedmiu nazw ma swój akapit', () => {
+    const lane = figureOf('microsoft', 'lanes').lanes[0];
+    expect(lane.steps.map(s => s.name)).toEqual(delta.microsoft.chain);
+    expect(lane.steps.filter(s => s.hot).map(s => s.name)).toEqual(['ADLS / OneLake']);
+    const names = section('microsoft').flatMap(b => (b.type === 'p' ? [b.html.match(/^<b>([^<]+)<\/b>/)?.[1]] : [])).filter(Boolean);
+    expect(names).toEqual(delta.microsoft.items.map(x => x.name));
+    expect(names.length).toBe(7);
+  });
+  it('porównanie platform i cztery rekomendacje są takie jak w lekcji', () => {
+    const blocks = section('wybor-platformy');
+    for (const d of delta.compare.dims) {
+      const at = blocks.findIndex(b => b.type === 'h3' && b.text === d.label);
+      expect(at, d.label).toBeGreaterThan(-1);
+      const items = blocks[at + 1];
+      if (items.type !== 'list') throw new Error(`brak listy po nagłówku ${d.label}`);
+      // Jedyna różnica względem lekcji: tekst mówi o sobie „rozdział", a nie „lekcja".
+      const fabric = d.fabric.replace('co w tej lekcji', 'co w tym rozdziale').replace('w Fabric tu nie sprawdzałem', 'w Fabric nie sprawdzano');
+      expect(items.items).toEqual([`<b>Snowflake.</b> ${d.snowflake}`, `<b>Databricks.</b> ${d.databricks}`, `<b>Fabric.</b> ${fabric}`]);
+    }
+    expect(JSON.stringify(chapter.sections)).not.toMatch(/lekcj|sprawdzałem/i);
+    const picks = blocks.flatMap(b => (b.type === 'p' ? [b.html.match(/^<b>Rekomendacja: (.+?)\.<\/b>/)?.[1]] : [])).filter(Boolean);
+    expect(picks).toEqual(delta.choose.cases.map(c => c.options[c.correct]));
+    expect(picks.slice(0, 3)).toEqual(['Snowflake', 'Databricks', 'Microsoft Fabric']);
+  });
+  it('nie używa strzałek, których nie ma w czcionkach osadzanych w PDF', () => {
+    expect(JSON.stringify(chapter)).not.toMatch(/[→←↔⇒]/);
+  });
+  it('błędne przekonania nie powtarzają dosłownie tytułów ramek z treści', () => {
+    const titles = chapter.sections.flatMap(s => s.blocks).flatMap(b => (b.type === 'callout' ? [b.title] : []));
+    for (const m of chapter.misconceptions) for (const title of titles) expect(m.myth.includes(title) || title.includes(m.myth), m.myth).toBe(false);
+  });
+  it('treść główna rozdziału jest krótsza od lekcji', () => {
+    const main = wordCount({ ...chapter, keyPoints: [], glossary: [], misconceptions: [] });
+    const strings: string[] = [];
+    const walk = (v: unknown): void => {
+      if (typeof v === 'string') strings.push(v);
+      else if (Array.isArray(v)) v.forEach(walk);
+      else if (v && typeof v === 'object') Object.values(v).forEach(walk);
+    };
+    walk({ ...delta });
     const lessonWords = strings.join(' ').replace(/<[^>]+>/g, ' ').split(/\s+/).filter(Boolean).length;
     expect(main).toBeLessThan(lessonWords);
   });
