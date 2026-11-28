@@ -623,7 +623,7 @@ export const cost = {
     'Miesięczny limit wydatków na compute, wyrażony w kredytach. Budżet konta obejmuje całe zużycie kredytów konta. Budżet własny obejmuje wybraną grupę obiektów, np. warehouse\'y, bazy, schematy, tabele, zadania, pipe\'y, albo obiekty z danym tagiem.',
     'Powiadomienie jest wysyłane, gdy prognoza wskazuje przekroczenie limitu: e-mailem, do kolejki w chmurze albo przez webhook.',
     'Budżet może też wywołać procedurę składowaną po osiągnięciu progu (do 10 akcji na budżet) oraz na początku cyklu. Tak da się pośrednio wstrzymać warehouse, ale to logika, którą piszesz sam.',
-    'Dane odświeżają się domyślnie co najwyżej co 6,5 godziny. Tryb z odświeżaniem co godzinę zwiększa koszt samego budżetu dwunastokrotnie.'
+    'Domyślnie budżet jest odświeżany w odstępie do 6,5 godziny. Jest też opcjonalny tryb z odświeżaniem co godzinę, który zwiększa koszt samego budżetu dwunastokrotnie. W obu trybach budżet pokazuje zużycie z opóźnieniem. To nie jest twardy limit działający w czasie rzeczywistym.'
   ],
   storageTitle: 'Storage: co się w nim liczy',
   storage: [
