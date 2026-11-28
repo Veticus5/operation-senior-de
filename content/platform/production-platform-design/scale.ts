@@ -59,8 +59,8 @@ export const workload = {
       outcomes: {
         none: { fit: 'bad', metrics: [['Dashboard czeka', '4 min'], ['Ładowanie dbt', '40 min'], ['Koszt w szczycie', '4 kredyty/h']], verdict: 'Zapytania dashboardów są szybkie, tylko nie mogą się zacząć. To nie jest problem wydajności zapytań, tylko rywalizacji o te same zasoby.' },
         up: { fit: 'partial', metrics: [['Dashboard czeka', '1,5 min'], ['Ładowanie dbt', '22 min'], ['Koszt w szczycie', '8 kredytów/h']], verdict: 'Pomaga pośrednio: wszystko liczy się szybciej, więc kolejka krócej stoi. Ale ładowanie i dashboardy nadal rywalizują, a podwójną stawkę płacisz za każdą godzinę pracy, nie tylko za szczyt.' },
-        out: { fit: 'partial', metrics: [['Dashboard czeka', 'kilka sekund'], ['Ładowanie dbt', '40 min'], ['Koszt w szczycie', 'do 12 kredytów/h']], verdict: 'Skalowanie wszerz jest zrobione właśnie pod równoczesność: gdy rośnie kolejka, startuje kolejny klaster tego samego rozmiaru. Kolejka znika. Ładowanie nie przyspiesza, a oba obciążenia nadal dzielą jeden rachunek i jedną konfigurację.' },
-        split: { fit: 'good', metrics: [['Dashboard czeka', 'kilka sekund'], ['Ładowanie dbt', '36 min'], ['Koszt w szczycie', '4 + 2 kredyty/h']], verdict: 'Ładowanie dostaje własny warehouse M, dashboardy własny S. Przestają sobie przeszkadzać, każdy ma rozmiar dobrany do swojej pracy, wyłącza się niezależnie i widać, kto ile kosztuje. To jest <b>izolacja obciążeń</b>.' }
+        out: { fit: 'partial', metrics: [['Dashboard czeka', 'kilka sekund'], ['Ładowanie dbt', '40 min'], ['Koszt w szczycie', 'do 12 kredytów/h']], verdict: 'Skalowanie wszerz (scale out) jest zrobione właśnie na wiele zapytań naraz: gdy rośnie kolejka, startuje kolejny klaster tego samego rozmiaru. Kolejka znika. Ładowanie nie przyspiesza, a ładowanie i dashboardy nadal mają jeden rachunek i jedną konfigurację.' },
+        split: { fit: 'good', metrics: [['Dashboard czeka', 'kilka sekund'], ['Ładowanie dbt', '36 min'], ['Koszt w szczycie', '4 + 2 kredyty/h']], verdict: 'Ładowanie dostaje własny warehouse M, dashboardy własny S. Przestają sobie przeszkadzać, każdy ma rozmiar dobrany do swojej pracy, wyłącza się niezależnie i widać, kto ile kosztuje. To jest <b>izolacja obciążeń</b> (workload isolation): każdy rodzaj pracy ma własne zasoby.' }
       }
     },
     {
@@ -73,13 +73,13 @@ export const workload = {
       ],
       outcomes: {
         none: { fit: 'bad', metrics: [['Czas modelu', '96 min'], ['Zrzut na dysk', '80 GB'], ['Koszt przebiegu', '6,4 kredytu']], verdict: 'Kolejki nie ma, więc nikt nie przeszkadza. Zapytaniu brakuje pamięci: dane pośrednie nie mieszczą się i są zrzucane na dysk (spilling), co jest wielokrotnie wolniejsze niż praca w pamięci.' },
-        up: { fit: 'good', metrics: [['Czas modelu', '30 min'], ['Zrzut na dysk', '0 GB'], ['Koszt przebiegu', '4 kredyty']], verdict: 'Większy warehouse ma więcej pamięci, więc zrzut na dysk znika. Stawka jest dwa razy wyższa, ale przebieg ponad trzy razy krótszy: 30 min × 8 kredytów/h to mniej niż 96 min × 4 kredyty/h. To jest <b>skalowanie w górę</b> tam, gdzie pasuje.' },
+        up: { fit: 'good', metrics: [['Czas modelu', '30 min'], ['Zrzut na dysk', '0 GB'], ['Koszt przebiegu', '4 kredyty']], verdict: 'Większy warehouse ma więcej pamięci, więc zrzut na dysk znika. Stawka jest dwa razy wyższa, ale przebieg ponad trzy razy krótszy: 30 min × 8 kredytów/h to mniej niż 96 min × 4 kredyty/h. To jest <b>skalowanie w górę</b> (scale up) tam, gdzie pasuje.' },
         out: { fit: 'bad', metrics: [['Czas modelu', '96 min'], ['Zrzut na dysk', '80 GB'], ['Koszt przebiegu', '6,4 kredytu']], verdict: 'Dodatkowe klastry obsługują dodatkowe zapytania, a nie przyspieszają jednego. To zapytanie nadal działa na jednym klastrze rozmiaru M i nadal brakuje mu pamięci.' },
         split: { fit: 'partial', metrics: [['Czas modelu', '96 min'], ['Zrzut na dysk', '80 GB'], ['Koszt przebiegu', '6,4 kredytu']], verdict: 'Osobny warehouse chroni innych przed tym modelem, ale jego samego nie przyspiesza. Dobry ruch to połączenie: własny, większy warehouse tylko na czas tego modelu. Lepszy to najpierw sprawdzić, czy model musi czytać trzy lata za każdym razem.' }
       }
     }
   ] as WorkloadCase[],
-  takeaway: '<b>Wniosek.</b> Najpierw objaw, potem lekarstwo. Długa kolejka przy krótkim wykonaniu to problem równoczesności: pomaga skalowanie wszerz albo rozdzielenie obciążeń. Długie wykonanie ze zrzutem na dysk to problem pojedynczego zapytania: pomaga większa maszyna albo mniej danych do przeczytania. Większy rozmiar bez diagnozy to płacenie więcej za ten sam problem.',
+  takeaway: '<b>Wniosek.</b> Najpierw objaw, potem lekarstwo. Długa kolejka przy krótkim wykonaniu znaczy, że za dużo zapytań chce działać naraz (problem równoczesności, concurrency). Pomaga skalowanie wszerz albo rozdzielenie obciążeń. Długie wykonanie ze zrzutem na dysk to problem jednego zapytania. Pomaga większa maszyna albo mniej danych do przeczytania. Większy rozmiar bez diagnozy to płacenie więcej za ten sam problem.',
   more: {
     title: 'Gdzie te objawy widać w Snowflake',
     html: [
@@ -94,12 +94,12 @@ export const workload = {
 /** Skalowanie pionowe i poziome oraz podstawy przetwarzania rozproszonego, bez szczegółów silnika. */
 export const distributed = {
   title: 'Dlaczego dołożenie maszyn nie zawsze pomaga?',
-  intro: 'Skalowanie <b>w górę</b> (pionowe) to większa maszyna: prosto, ale do granicy największej dostępnej. Skalowanie <b>wszerz</b> (poziome) to więcej maszyn: bez twardej granicy, ale tylko wtedy, gdy pracę da się podzielić.',
+  intro: 'Skalowanie <b>w górę</b> (pionowe, scale up) to większa maszyna. Proste, ale kończy się na największej dostępnej. Skalowanie <b>wszerz</b> (poziome, scale out) to więcej maszyn. Nie ma twardej granicy, ale pomaga tylko wtedy, gdy pracę da się podzielić.',
   points: [
     '<b>Podział pracy.</b> Dane dzieli się na części, każdą liczy osobna maszyna, a koordynator składa wynik. Filtr albo proste przekształcenie skaluje się niemal liniowo, bo części nie muszą nic o sobie wiedzieć.',
     '<b>Przegrupowanie.</b> Join i <code>GROUP BY</code> wymagają, żeby wiersze z tym samym kluczem spotkały się w jednym miejscu, więc dane trzeba przesłać między maszynami. To zwykle najdroższy krok i rośnie razem z danymi.',
     '<b>Nierówny podział.</b> Jeśli jeden klient ma połowę zdarzeń, jedna część jest ogromna i jedna maszyna pracuje za wszystkie. Dziesięć kolejnych maszyn nic nie zmieni.',
-    '<b>Część, której nie da się podzielić.</b> Koordynacja, końcowe sortowanie, zapis do jednego miejsca. Im więcej maszyn, tym większą część czasu zajmuje to, czego nie da się zrównoleglić.'
+    '<b>Część, której nie da się podzielić.</b> Koordynacja, końcowe sortowanie, zapis do jednego miejsca. Im więcej maszyn, tym większą część czasu zajmuje to, czego nie da się robić równolegle.'
   ],
   takeaway: '<b>Wniosek.</b> Skalowanie wszerz przesuwa granicę, ale jej nie usuwa: wąskim gardłem staje się przesyłanie danych, nierówny podział albo krok, który musi być jeden. W Snowflake większość tego jest schowana przed użytkownikiem, w Sparku jest widoczna i sterowalna.',
   more: {
@@ -114,7 +114,7 @@ export const distributed = {
 /** Planowanie pojemności: prosty rachunek na liczbach przykładu. Każdy wiersz wynika z poprzednich (pilnuje tego test). */
 export const capacity = {
   title: 'Ile tego będzie za rok?',
-  intro: 'Planowanie pojemności to rachunek na serwetce, który robi się przed wyborem narzędzi. Na rozmowie pokazuje, że pytasz o wolumen, zanim zaczniesz rysować architekturę.',
+  intro: 'Planowanie pojemności (capacity planning) to prosty rachunek na kartce, który robisz przed wyborem narzędzi. Na rozmowie pokazuje, że najpierw pytasz o ilość danych, a dopiero potem rysujesz architekturę.',
   inputs: { users: 2_000_000, eventsPerUser: 40, bytesPerEvent: 500, peakFactor: 3 },
   columns: ['Krok', 'Rachunek', 'Wynik'],
   rows: [
@@ -133,14 +133,14 @@ export const tenants: Compare & { title: string; intro: string; takeaway: string
   title: 'Jedna platforma, wielu klientów. Jak ich rozdzielić?',
   intro: 'Załóżmy, że platforma zaczyna obsługiwać nie jeden serwis wideo, lecz 200 wydawców, a każdy ma widzieć tylko swoje dane. Każdy taki klient to <b>tenant</b>. Trzy sposoby rozdzielenia:',
   label: 'Model izolacji',
-  assumptions: 'Porównanie jakościowe. Nazwy obiektów ze Snowflake to punkty odniesienia.',
+  assumptions: 'Porównanie ogólne, bez pomiarów. Nazwy obiektów ze Snowflake są tu przykładami.',
   defaultId: 'shared',
   options: [
     {
       id: 'shared', label: 'Wspólne tabele',
       rows: [
         ['Jak wygląda', 'Jedna tabela dla wszystkich, kolumna <code>tenant_id</code> i polityka, która filtruje wiersze według roli'],
-        ['Izolacja danych', 'Logiczna. Błąd w polityce albo zapytanie z pominięciem filtra pokazuje cudze dane'],
+        ['Izolacja danych', 'Tylko logiczna: dane leżą razem, a rozdziela je filtr. Błąd w polityce albo zapytanie, które omija filtr, pokazuje cudze dane'],
         ['Głośny sąsiad', 'Duży klient spowalnia wszystkich, jeśli dzielą zasoby obliczeniowe'],
         ['Koszt utrzymania', 'Najniższy: jeden schemat, jedno wdrożenie, jedna migracja'],
         ['Koszt na klienta', 'Trudny do wyliczenia bez dodatkowego tagowania zapytań']

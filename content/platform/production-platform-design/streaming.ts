@@ -13,7 +13,7 @@ export const modes: Compare & { title: string; intro: string; takeaway: string }
   title: 'Trzy sposoby przetwarzania tych samych zdarzeń',
   intro: 'Zdarzenia płatności i odtworzeń z aplikacji. Różnica nie leży w danych, tylko w tym, <b>kiedy</b> są przetwarzane.',
   label: 'Tryb przetwarzania',
-  assumptions: 'Porównanie jakościowe. Opóźnienia to rzędy wielkości, a nie gwarancje konkretnego narzędzia.',
+  assumptions: 'Porównanie ogólne, bez pomiarów. Opóźnienia pokazują rząd wielkości, a nie gwarancję konkretnego narzędzia.',
   defaultId: 'batch',
   options: [
     {
@@ -33,7 +33,7 @@ export const modes: Compare & { title: string; intro: string; takeaway: string }
         ['Jak działa', 'To samo co batch, tylko co kilka minut albo sekund i na małych porcjach'],
         ['Droga danych', 'aplikacja → pliki lub kolejka → ładowanie ciągłe → przyrostowe przeliczenie → dashboard'],
         ['Opóźnienie', 'Sekundy do minut'],
-        ['Koszt i utrzymanie', 'Średnie. Zasoby pracują często lub stale, ale model myślenia zostaje batchowy'],
+        ['Koszt i utrzymanie', 'Średnie. Zasoby pracują często lub stale, ale sposób pracy zostaje taki jak w batchu'],
         ['Spóźnione zdarzenia', 'Trzeba zdecydować, jak długo na nie czekać']
       ],
       verdict: 'Dobry kompromis dla dashboardów operacyjnych. W Snowflake tak działają Snowpipe oraz Streams z Tasks, a w Sparku Structured Streaming w trybie domyślnym.'
@@ -44,13 +44,13 @@ export const modes: Compare & { title: string; intro: string; takeaway: string }
         ['Jak działa', 'Każde zdarzenie jest przetwarzane, gdy tylko nadejdzie'],
         ['Droga danych', 'aplikacja → kolejka zdarzeń → procesor strumieniowy → usługa lub baza odpowiadająca od razu'],
         ['Opóźnienie', 'Milisekundy do sekund'],
-        ['Koszt i utrzymanie', 'Najwyższe. System działa bez przerwy, wymaga dyżurów, zarządzania stanem i innego sposobu testowania'],
+        ['Koszt i utrzymanie', 'Najwyższe. System działa bez przerwy. Wymaga dyżurów, pilnowania stanu, czyli tego, co system pamięta między zdarzeniami, i innego sposobu testowania'],
         ['Spóźnione zdarzenia', 'Stały problem: wynik trzeba wydać, zanim wiadomo, czy przyszły wszystkie dane']
       ],
       verdict: 'Uzasadniony, gdy system ma zareagować sam i natychmiast: blokada oszustwa, rekomendacja w trakcie sesji, alert. Dla raportu czytanego przez człowieka to koszt bez korzyści.'
     }
   ],
-  takeaway: '<b>Wniosek.</b> Niższe opóźnienie kupujesz kosztem i złożonością. Trzecia oś to przepustowość: przetwarzanie dużymi porcjami jest tańsze na rekord niż rekord po rekordzie. Dlatego pytanie nie brzmi „batch czy streaming", tylko „jakie opóźnienie jest warte swojej ceny dla tej konkretnej decyzji".'
+  takeaway: '<b>Wniosek.</b> Za mniejsze opóźnienie płacisz pieniędzmi i bardziej złożonym systemem. Liczy się też przepustowość (throughput), czyli ile rekordów przetwarzasz w danym czasie: duże porcje wychodzą taniej na rekord niż przetwarzanie rekord po rekordzie. Dlatego pytanie nie brzmi „batch czy streaming", tylko „jakie opóźnienie jest warte swojej ceny dla tej konkretnej decyzji".'
 };
 
 /** Trzy potrzeby biznesowe, do każdej inny tryb. Każdy tryb jest dobrą odpowiedzią dokładnie raz. */
@@ -120,7 +120,7 @@ export const windows = {
     'event|5': 'Okno czekało do 12:10 i policzyło 4 z 5. Zdarzenie spóźnione o 17 minut przepadło. Wynik jest pełniejszy, ale dostępny 5 minut później.',
     'event|20': 'Okno czekało do 12:25 i policzyło wszystkie 5. Wynik jest kompletny, ale dostępny 20 minut po fakcie, a system przez cały ten czas musiał trzymać otwarte okno w pamięci.'
   } as Record<string, string>,
-  takeaway: '<b>Wniosek.</b> Liczenie według czasu zdarzenia daje poprawny obraz tego, co się wydarzyło, ale wymaga decyzji: jak długo czekać na spóźnione dane. Tę granicę nazywa się <b>watermarkiem</b>. To pokrętło między kompletnością a opóźnieniem i zużyciem pamięci, a nie ustawienie techniczne do skopiowania z przykładu.',
+  takeaway: '<b>Wniosek.</b> Liczenie według czasu zdarzenia daje poprawny obraz tego, co się wydarzyło. Wymaga jednak decyzji: jak długo czekać na spóźnione dane. Tę granicę nazywa się <b>watermarkiem</b>. Dłuższe czekanie daje pełniejszy wynik, ale później i kosztem pamięci. To decyzja dla konkretnego przypadku, a nie ustawienie techniczne do skopiowania z przykładu.',
   more: {
     title: 'Watermark w Sparku i odpowiednik w batchu',
     html: [
@@ -139,7 +139,7 @@ export interface StreamEvent {
 /** Semantyki dostarczenia na jednej awarii. Logika: model.ts (deliver). Wyniki w werdyktach wynikają z modelu. */
 export const semantics = {
   title: 'Konsument padł w połowie paczki. Co jest w tabeli?',
-  intro: 'Konsument czyta z kolejki trzy zdarzenia, zapisuje je do tabeli i potwierdza kolejce, dokąd doszedł. To potwierdzenie pozycji nazywa się commitem offsetu, a utrwalony stan, od którego można wznowić pracę, <b>checkpointem</b>. Awaria następuje po zapisaniu dwóch z trzech zdarzeń. Po restarcie konsument zaczyna od ostatniej potwierdzonej pozycji.',
+  intro: 'Konsument, czyli program czytający z kolejki, bierze trzy zdarzenia, zapisuje je do tabeli i potwierdza kolejce, dokąd doszedł. To potwierdzenie pozycji nazywa się commitem offsetu. Zapisany stan, od którego można wznowić pracę po awarii, to <b>checkpoint</b>. Awaria następuje po zapisaniu dwóch z trzech zdarzeń. Po restarcie konsument zaczyna od ostatniej potwierdzonej pozycji.',
   assumptions: 'Model uproszczony: jedna paczka trzech zdarzeń, jedna awaria po zapisaniu dwóch, potem restart bez kolejnych awarii.',
   events: [
     { id: 'e-1', amount: 49 },
@@ -167,13 +167,13 @@ export const semantics = {
       verdict: 'Paczka jest czytana ponownie, ale zapis po kluczu nadpisuje te same dwa wiersze, zamiast je dublować. Dostawa nadal jest „co najmniej raz". Dokładnie raz jest dopiero skutek w tabeli.'
     }
   ],
-  takeaway: '<b>Wniosek.</b> „Exactly-once" to nie cecha kolejki, którą się włącza, tylko własność całego łańcucha: źródło, które umie odtworzyć dane od zapamiętanej pozycji, plus zapis, który można powtarzać albo który jest zatwierdzany razem z pozycją w jednej transakcji. Na rozmowie mów „at-least-once z idempotentnym zapisem" i wyjaśnij, co daje każdy z dwóch elementów.',
+  takeaway: '<b>Wniosek.</b> „Exactly-once" to nie przełącznik w kolejce, tylko cecha całego łańcucha. Potrzebne są dwie rzeczy. Źródło, które umie podać dane jeszcze raz od zapamiętanej pozycji. I zapis, który można powtarzać albo który jest zatwierdzany razem z pozycją w jednej transakcji. Na rozmowie mów „at-least-once z idempotentnym zapisem" i wyjaśnij, co daje każdy z dwóch elementów.',
   more: {
     title: 'Kafka i architektury Lambda oraz Kappa w pigułce',
     html: [
       '<b>Kafka</b> to trwały dziennik zdarzeń podzielony na partycje. Kolejność jest zachowana wewnątrz partycji, nie między nimi. Pozycja konsumenta w partycji to jedna liczba, offset, czyli numer następnego zdarzenia do przeczytania. Dokumentacja Kafki definiuje trzy gwarancje tak jak w symulacji: przy at-most-once wiadomość może zginąć, przy at-least-once może przyjść ponownie.',
       'Kafka ma idempotentnego producenta i transakcje, które pozwalają osiągnąć exactly-once wewnątrz Kafki. Gdy wynik trafia do zewnętrznego systemu, np. hurtowni, nadal potrzebna jest współpraca tego systemu: zapis idempotentny albo transakcyjny.',
-      'Spark Structured Streaming zapisuje w checkpoincie zakres offsetów każdej paczki. Dokumentacja opisuje gwarancję end-to-end exactly-once przy odtwarzalnym źródle i idempotentnym ujściu.',
+      'Spark Structured Streaming zapisuje w checkpoincie zakres offsetów każdej paczki. Dokumentacja opisuje gwarancję end-to-end exactly-once przy źródle, które da się odtworzyć (replayable), i idempotentnym ujściu (sink), czyli miejscu zapisu.',
       '<b>Lambda</b> to dwie równoległe ścieżki dla tych samych danych: szybka, przybliżona (streaming) i wolna, dokładna (batch), której wynik zastępuje szybki. Wada: ta sama logika w dwóch miejscach. <b>Kappa</b> to jedna ścieżka strumieniowa, a przeliczenie historii polega na ponownym odtworzeniu dziennika zdarzeń. Wada: wymaga długiej retencji dziennika i silnika, który udźwignie przeliczenie.',
       'Na rozmowie wystarczy nazwać kompromis: Lambda płaci podwójną logiką, Kappa płaci retencją i trudniejszym przeliczaniem. Wiele platform kończy na batchu z jedną wąską ścieżką strumieniową dla przypadków, które naprawdę jej wymagają.'
     ]

@@ -22,9 +22,9 @@ export const strategies: Compare & { title: string; intro: string; takeaway: str
         ['Czy widzi usunięte wiersze', 'Tak. Czego nie ma w źródle, tego nie ma w nowej kopii'],
         ['Czy widzi stany pośrednie', 'Nie. Widzi stan z chwili odczytu, a nie to, co działo się między odczytami'],
         ['Czego wymaga od źródła', 'Niczego poza prawem odczytu'],
-        ['Kiedy przestaje działać', 'Gdy tabela rośnie tak, że odczyt nie mieści się w oknie czasu albo zbyt obciąża bazę źródłową']
+        ['Kiedy przestaje działać', 'Gdy tabela urośnie tak, że odczyt nie kończy się na czas albo zbyt obciąża bazę źródłową']
       ],
-      verdict: 'Najprostsze i samonaprawiające się: każde uruchomienie zastępuje poprzednie, więc błąd z wczoraj znika. Dla małych tabel i słowników to często najlepszy wybór, a nie brak ambicji.'
+      verdict: 'Najprostsze i samo się naprawia: każde uruchomienie zastępuje poprzednie, więc błąd z wczoraj znika. Dla małych tabel i słowników to często najlepszy wybór.'
     },
     {
       id: 'hwm', label: 'Przyrostowe po znaczniku',
@@ -35,7 +35,7 @@ export const strategies: Compare & { title: string; intro: string; takeaway: str
         ['Czego wymaga od źródła', 'Wiarygodnej kolumny <code>updated_at</code>, ustawianej przy każdej zmianie, najlepiej z indeksem'],
         ['Kiedy przestaje działać', 'Gdy źródło usuwa wiersze fizycznie, zmienia je z pominięciem <code>updated_at</code> albo zatwierdza zmiany z opóźnieniem']
       ],
-      verdict: 'Znacznik, do którego doszło ostatnie ładowanie, nazywa się <b>high-water mark</b>. Tanie i wystarczające w wielu przypadkach, ale ma ciche tryby awarii. Jeden z nich zobaczysz za chwilę.'
+      verdict: 'Ładowanie zapamiętuje, dokąd doszło, i następnym razem zaczyna od tego miejsca. Ten zapamiętany punkt to <b>high-water mark</b>. Tanie i w wielu przypadkach wystarcza. Potrafi jednak zgubić dane bez żadnego błędu. Jeden taki przypadek zobaczysz za chwilę.'
     },
     {
       id: 'cdc', label: 'CDC z dziennika',
@@ -46,10 +46,10 @@ export const strategies: Compare & { title: string; intro: string; takeaway: str
         ['Czego wymaga od źródła', 'Dostępu do dziennika transakcji i narzędzia, które go czyta, np. AWS DMS albo Debezium'],
         ['Kiedy przestaje działać', 'Gdy narzędzie stoi dłużej, niż baza przechowuje dziennik. Wtedy potrzebne jest ponowne pełne ładowanie']
       ],
-      verdict: '<b>CDC</b> (change data capture) daje najpełniejszy obraz, ale to dodatkowy system do utrzymania i strumień zmian, który trzeba jeszcze złożyć w aktualny stan tabeli. Wybierasz je, gdy potrzebujesz usunięć, historii zmian albo niskiego opóźnienia.'
+      verdict: '<b>CDC</b> (change data capture) widzi najwięcej, ale ma dwie ceny. To dodatkowy system do utrzymania. A dostajesz z niego listę zmian, z której trzeba dopiero złożyć aktualny stan tabeli. Wybierasz CDC, gdy potrzebujesz usunięć, historii zmian albo małego opóźnienia.'
     }
   ],
-  takeaway: '<b>Wniosek.</b> To nie jest ranking. Pytania, które rozstrzygają wybór: jak duża jest tabela, czy źródło usuwa wiersze, czy potrzebujesz historii zmian i ile pracy możesz zlecić zespołowi źródła.'
+  takeaway: '<b>Wniosek.</b> To nie jest ranking. O wyborze decydują cztery pytania: jak duża jest tabela, czy źródło usuwa wiersze, czy potrzebujesz historii zmian i ile pracy możesz zlecić zespołowi źródła.'
 };
 
 export interface SourceVersion {
@@ -71,7 +71,7 @@ export interface SourceVersion {
 export const hwm = {
   title: 'Czy „weź wszystko nowsze niż ostatnio" może zgubić rekord?',
   intro: 'Ładowanie przyrostowe co godzinę. Każde uruchomienie pyta źródło o wiersze z <code>updated_at</code> nowszym niż najnowszy, jaki już widziało. Uruchom trzy ładowania i policz, co trafiło do celu.',
-  assumptions: 'Model uproszczony: 7 wersji wierszy w źródle, ładowania o 10:00, 11:00 i 12:00. Kropka to wartość <code>updated_at</code>. Kreska za kropką to czas do zatwierdzenia transakcji: wcześniej wiersz nie jest widoczny dla odczytu.',
+  assumptions: 'Model uproszczony: 7 wersji wierszy w źródle, ładowania o 10:00, 11:00 i 12:00. Kropka to wartość <code>updated_at</code>. Kreska za kropką to czas do zatwierdzenia transakcji (commit). Dopóki transakcja nie jest zatwierdzona, ładowanie tego wiersza nie widzi.',
   runs: [600, 660, 720],
   /** Zakres osi czasu w minutach od północy. */
   axis: [570, 725] as [number, number],
@@ -106,7 +106,7 @@ export const hwm = {
   more: {
     title: 'Jak dobrać okno wstecz i czego ono nie załatwi',
     html: [
-      'Okno musi być dłuższe niż największe realne opóźnienie między ustawieniem <code>updated_at</code> a widocznością wiersza. To zgadywanie poparte obserwacją: zbyt krótkie gubi dane, zbyt długie podnosi koszt każdego ładowania.',
+      'Okno musi być dłuższe niż największe realne opóźnienie między ustawieniem <code>updated_at</code> a chwilą, w której wiersz staje się widoczny. Tego opóźnienia nie znasz z góry, więc szacujesz je z obserwacji. Za krótkie okno gubi dane, za długie podnosi koszt każdego ładowania.',
       'Okno nie pomoże na wiersze usunięte w źródle ani na zmiany wykonane z pominięciem <code>updated_at</code>. Na to odpowiada CDC z dziennika transakcji albo okresowe pełne porównanie ze źródłem.',
       'W dbt ten sam pomysł ma nazwę <code>lookback</code> w strategii przyrostowej <code>microbatch</code>: model przelicza także kilka poprzednich paczek czasu, żeby złapać spóźnione rekordy.',
       'Spóźnione zdarzenia z aplikacji to osobny przypadek. Jeśli znacznik opiera się na czasie załadowania, a nie na czasie zdarzenia, rekord nie zginie, ale trafi do „złego" dnia. Wraca to w etapie o streamingu.'
@@ -126,7 +126,7 @@ export const api = {
   intro: 'API dostawcy płatności zwraca dane stronami i odrzuca zbyt częste zapytania kodem 429. Poniżej szkielet pobierania w Pythonie. Kliknij linie: każda odpowiada na jedno „a co, jeśli".',
   codeTitle: 'Pobieranie przyrostowe z API',
   lines: [
-    { code: 'cursor = state.load("payments_cursor")', label: 'punkt wznowienia', text: 'Pobieranie zaczyna od miejsca, w którym skończyło poprzednie. Kursor to nieprzezroczysty znacznik pozycji zwracany przez API. Jest tym samym co high-water mark, tylko wydaje go źródło.' },
+    { code: 'cursor = state.load("payments_cursor")', label: 'punkt wznowienia', text: 'Pobieranie zaczyna tam, gdzie skończyło poprzednie. Kursor to znacznik pozycji, który zwraca API. Nie musisz wiedzieć, co jest w środku: po prostu odsyłasz go przy następnym zapytaniu. Pełni tę samą rolę co high-water mark, tylko wydaje go źródło.' },
     { code: 'while True:', label: 'strona po stronie', text: 'Każda strona to osobne zapytanie. Awaria może przerwać pętlę po dowolnej stronie, więc kolejne linie muszą to wytrzymać.' },
     { code: '    resp = get("/payments", after=cursor, limit=100)', label: 'paginacja kursorem', text: 'Prosisz o 100 rekordów po kursorze. Paginacja numerem strony (<code>page=7</code>) jest groźniejsza: gdy w trakcie pobierania dojdzie nowy rekord, strony się przesuwają i jeden rekord dostajesz dwa razy albo wcale.' },
     { code: '    if resp.status == 429:', label: 'limit zapytań', text: 'Kod 429 znaczy: za dużo zapytań. To nie jest błąd danych, tylko prośba, żeby zwolnić.' },
@@ -134,7 +134,7 @@ export const api = {
     { code: '    s3.put(f"raw/payments/{run_id}/{cursor}.json", resp.body)', label: 'najpierw zapisz surowe', text: 'Strona trafia do S3 w niezmienionej postaci, zanim ktokolwiek ją zinterpretuje. Nazwa pliku wynika z kursora, więc ponowne pobranie tej samej strony nadpisuje ten sam plik, zamiast tworzyć drugi.' },
     { code: '    cursor = resp.next_cursor', label: 'następna strona', text: 'Kursor przesuwa się dopiero po udanym zapisie strony. Odwrotna kolejność zgubiłaby stronę przy awarii między tymi dwiema liniami.' },
     { code: '    state.save("payments_cursor", cursor)', label: 'utrwal postęp', text: 'Postęp jest zapisany po każdej stronie. Po awarii pobieranie wznawia od ostatniej zapisanej strony, a nie od początku.' },
-    { code: '    if not resp.has_more: break', label: 'koniec', text: 'API mówi, że nie ma więcej stron. Zakończenie pętli nie dowodzi kompletności: to sprawdza dopiero porównanie liczby rekordów ze źródłem.' }
+    { code: '    if not resp.has_more: break', label: 'koniec', text: 'API mówi, że nie ma więcej stron. Koniec pętli nie dowodzi, że masz wszystko. To sprawdza dopiero porównanie liczby rekordów ze źródłem.' }
   ] as ExplainedLine[],
   takeaway: '<b>Wniosek.</b> Trzy nawyki, które widać w tym szkielecie: surowa odpowiedź jest zapisywana przed przetworzeniem, postęp jest utrwalany po każdym kroku, a ponowienie tego samego kroku nadpisuje, a nie dopisuje.',
   more: {
@@ -179,14 +179,14 @@ export const retry = {
       verdicts: [
         'W tabeli zostały 4 z 6 wierszy. Dashboard, który teraz odczyta dane, pokaże niepełny dzień i nic nie będzie o tym świadczyć.',
         'Ponowienie zaczęło od początku i dopisało wszystkie 6 wierszy do 4, które już były. Cztery płatności są policzone podwójnie: 620 zł zamiast 374 zł.',
-        'Każde kolejne uruchomienie dokłada następne 6 wierszy. Wynik zależy od tego, ile razy ktoś kliknął. Taki job nie jest idempotentny.'
+        'Każde kolejne uruchomienie dokłada następne 6 wierszy. Wynik zależy od tego, ile razy ktoś kliknął. O takim jobie mówi się, że nie jest idempotentny.'
       ]
     },
     {
       id: 'overwrite', label: 'DELETE + INSERT w jednej transakcji',
       how: 'Jedna transakcja: usuń wiersze z 20 listopada, wstaw wszystkie 6, zatwierdź na końcu.',
       verdicts: [
-        'Transakcja nie została zatwierdzona, więc baza wycofała obie porcje. Tabela wygląda tak, jakby job w ogóle nie ruszył: czytelnik widzi stan poprzedni, nigdy połowę.',
+        'Transakcja nie została zatwierdzona, więc baza wycofała obie porcje. Tabela wygląda tak, jakby job w ogóle nie ruszył. Kto ją czyta, widzi poprzedni stan, nigdy połowę.',
         'Ponowienie usunęło dzień (nie było czego) i wstawiło komplet. 6 wierszy, 374 zł.',
         'Trzecie uruchomienie usunęło 6 wierszy i wstawiło te same 6. Wynik jest taki sam po każdym uruchomieniu.'
       ]
@@ -206,8 +206,8 @@ export const retry = {
   more: {
     title: 'Która z dwóch bezpiecznych strategii i kiedy',
     html: [
-      '<b>Nadpisanie zakresu</b> (usuń i wstaw dzień albo partycję w jednej transakcji) jest najprostsze, gdy dane mają naturalny podział na dni, a paczka zawiera komplet danego dnia. Daje też atomowość: czytelnik widzi stary albo nowy dzień, nigdy połowę.',
-      '<b>MERGE po kluczu</b> pasuje, gdy przychodzą pojedyncze zmiany rozrzucone po wielu dniach, np. z CDC. Wymaga wiarygodnego klucza i tego, żeby w paczce źródłowej był najwyżej jeden wiersz na klucz. W Snowflake kilka wierszy źródła pasujących do jednego wiersza celu to domyślnie błąd niedeterministycznego MERGE.',
+      '<b>Nadpisanie zakresu</b> (usuń i wstaw dzień albo partycję w jednej transakcji) jest najprostsze, gdy dane mają naturalny podział na dni, a paczka zawiera komplet danego dnia. Taki zapis jest też atomowy, czyli wykonuje się w całości albo wcale: kto czyta tabelę, widzi stary albo nowy dzień, nigdy połowę.',
+      '<b>MERGE po kluczu</b> pasuje, gdy przychodzą pojedyncze zmiany rozrzucone po wielu dniach, np. z CDC. Wymaga wiarygodnego klucza i tego, żeby w paczce źródłowej był najwyżej jeden wiersz na klucz. Ten wiersz trzeba wybierać według stałej reguły, a spóźniona, starsza zmiana nie może nadpisać nowszej. Sam MERGE po kluczu tego nie zapewnia. W Snowflake kilka wierszy źródła pasujących do jednego wiersza celu to domyślnie błąd niedeterministycznego MERGE.',
       'W dbt odpowiadają temu strategie modeli przyrostowych: <code>delete+insert</code>, <code>merge</code> i <code>microbatch</code>. Model przyrostowy bez <code>unique_key</code> tylko dopisuje wiersze, czyli zachowuje się jak pierwsza, niebezpieczna opcja w symulacji.',
       'Częściowa awaria dotyczy też wielu tabel naraz: fakty załadowane, wymiar nie. Dlatego publikację dla odbiorców robi się jako ostatni krok, po testach, a nie w trakcie.'
     ]
@@ -229,7 +229,7 @@ export interface DeliveredEvent {
 /** Ćwiczenie: wybierz klucz deduplikacji. Logika: model.ts (dedupe). Kwoty w werdyktach wynikają z danych. */
 export const dedup = {
   title: 'Które z tych zdarzeń są duplikatami?',
-  intro: 'Kolejka dostarczyła 7 zdarzeń płatności. System kolejkowy gwarantuje, że każde zdarzenie dotrze <b>co najmniej raz</b>, więc po awarii konsumenta część przychodzi ponownie. Wybierz, po czym rozpoznasz duplikat.',
+  intro: 'Kolejka dostarczyła 7 zdarzeń płatności. System kolejkowy gwarantuje, że każde zdarzenie dotrze <b>co najmniej raz</b>. Dlatego po awarii konsumenta, czyli programu, który czyta z kolejki, część zdarzeń przychodzi ponownie. Wybierz, po czym rozpoznasz duplikat.',
   assumptions: 'Dane wymyślone. Prawdziwy przychód to 275 zł z 5 płatności: tyle zaksięgował system płatności.',
   expectedTotal: 275,
   events: [
@@ -244,7 +244,7 @@ export const dedup = {
   keyLabel: 'Klucz deduplikacji',
   keys: [
     { id: 'none', label: 'Żaden, liczę wszystko', verdict: 'Dwie powtórne dostawy zostały policzone jako płatności. Przychód jest zawyżony o 148 zł i rośnie z każdą awarią konsumenta.' },
-    { id: 'natural', label: 'user_id + kwota + czas', verdict: 'Zniknęły obie powtórki, ale razem z nimi prawdziwa płatność e-104: ten sam użytkownik, ta sama kwota, ta sama sekunda. Przychód jest zaniżony o 49 zł. Podobieństwo to nie tożsamość.' },
+    { id: 'natural', label: 'user_id + kwota + czas', verdict: 'Zniknęły obie powtórki, ale razem z nimi prawdziwa płatność e-104: ten sam użytkownik, ta sama kwota, ta sama sekunda. Przychód jest zaniżony o 49 zł. Podobne nie znaczy to samo.' },
     { id: 'event', label: 'event_id', verdict: 'Zostało 5 płatności i 275 zł. Identyfikator nadany przez producenta w chwili powstania zdarzenia jest taki sam przy każdej dostawie i różny dla dwóch osobnych płatności.' }
   ],
   takeaway: '<b>Wniosek.</b> Deduplikacja jest tak dobra jak klucz. Klucz zgadywany z treści (użytkownik, kwota, czas) myli powtórną dostawę z drugim, takim samym zdarzeniem. Dlatego w kontrakcie ze źródłem jedno z pierwszych pytań brzmi: <b>czy każde zdarzenie ma stabilny, unikalny identyfikator nadany u źródła?</b>',
@@ -296,14 +296,14 @@ export const backfill = {
       ask: 'Jak zapisujesz przeliczone dni?',
       options: ['Dopisuję poprawne wiersze obok starych', 'Zastępuję każdy dzień w jednej transakcji: usuń dzień, wstaw dzień', 'Usuwam całą tabelę i buduję ją od nowa z tych trzech dni'],
       correct: 1,
-      why: 'Backfill to to samo ładowanie co codziennie, tylko z innym zakresem dat. Jeśli codzienny job zastępuje dzień atomowo, backfill jest jego trzykrotnym uruchomieniem z parametrem. Dopisywanie zdublowałoby dni. Budowa tabeli od nowa z trzech dni skasowałaby resztę historii.',
+      why: 'Backfill to to samo ładowanie co codziennie, tylko z innym zakresem dat. Jeśli codzienny job zastępuje cały dzień w jednej transakcji, backfill to trzy uruchomienia tego samego joba, każde z inną datą. Dopisywanie zdublowałoby dni. Budowa tabeli od nowa z trzech dni skasowałaby resztę historii.',
       days: 'fixed'
     },
     {
       ask: 'Skąd wiesz, że naprawione?',
       options: ['Job zakończył się sukcesem', 'Porównuję sumy i liczby wierszy dla dni 18–20 z systemem płatności i przekazuję wynik odbiorcom', 'Wykres na dashboardzie wygląda normalnie'],
       correct: 1,
-      why: 'Sukces joba mówi, że kod się wykonał. Poprawność potwierdza dopiero uzgodnienie z niezależnym źródłem: liczba płatności i suma kwot za każdy dzień powinny zgadzać się z systemem płatności, z uwzględnieniem znanych różnic. Dopiero potem zdejmujesz oznaczenie błędu i zamykasz incydent.',
+      why: 'Sukces joba mówi, że kod się wykonał. Poprawność potwierdza dopiero porównanie z niezależnym źródłem, czyli uzgodnienie (reconciliation). Liczba płatności i suma kwot za każdy dzień powinny zgadzać się z systemem płatności, z uwzględnieniem znanych różnic. Dopiero potem zdejmujesz oznaczenie błędu i zamykasz incydent.',
       days: 'verified'
     }
   ] as BackfillStep[],
@@ -312,9 +312,9 @@ export const backfill = {
     title: 'Na co uważać przy dużym backfillu',
     html: [
       '<b>Zasoby.</b> Przeliczenie roku danych uruchomione na tym samym warehousie co codzienne ładowanie potrafi je zablokować. Osobny warehouse albo przeliczanie w mniejszych paczkach rozwiązuje to kosztem czasu.',
-      '<b>Odbiorcy w dół.</b> Przeliczona tabela to nowe dane dla wszystkiego, co z niej czyta: modeli zależnych, eksportów, powiadomień. Trzeba wiedzieć, co się uruchomi, a do tego służy lineage, o którym będzie w etapie 4.',
+      '<b>Wszystko, co czyta z tej tabeli.</b> Przeliczona tabela to nowe dane dla modeli zależnych, eksportów i powiadomień. Trzeba wiedzieć, co się przez to uruchomi. Pokazuje to lineage, czyli mapa zależności między tabelami, o której będzie w etapie 4.',
       '<b>Dane, których już nie ma w RAW.</b> Jeśli błąd sięga dalej niż retencja RAW, zostaje prośba do źródła o ponowne wysłanie albo pogodzenie się z korektą tylko części historii. To wraca do decyzji o retencji z etapu 1.',
-      'W dbt strategia <code>microbatch</code> pozwala przeliczyć wskazany zakres czasu opcjami <code>--event-time-start</code> i <code>--event-time-end</code>, a każda paczka czasu jest osobną, ponawialną jednostką.'
+      'W dbt strategia <code>microbatch</code> pozwala przeliczyć wskazany zakres czasu opcjami <code>--event-time-start</code> i <code>--event-time-end</code>, a każdą paczkę czasu można ponowić osobno.'
     ]
   } as More
 };
@@ -364,16 +364,16 @@ export const dag = {
       id: 'test', label: 'Test STG wykrył duplikaty',
       status: ['ok', 'ok', 'fail', 'skip', 'skip', 'skip'],
       dashboard: 'Dane z wczoraj, z widoczną datą ostatniego odświeżenia.',
-      verdict: 'Dane dotarły, ale nie spełniają reguły. Test działa jak bramka: MRT nie zostało przeliczone na podejrzanych danych. Stare, poprawne dane są lepsze niż świeże i błędne, o ile odbiorca wie, że są stare.'
+      verdict: 'Dane dotarły, ale nie spełniają reguły. Test działa jak bramka: MRT nie zostało przeliczone na podejrzanych danych. Stare, poprawne dane są lepsze niż świeże i błędne, o ile odbiorca wie, że są stare. Bramka chroni odbiorców tylko wtedy, gdy sprawdzona wersja jest publikowana atomowo, np. budowana obok i podmieniana po testach. Jeśli czytają wprost tabelę, która jest właśnie testowana, mogą już widzieć złe dane.'
     }
   ] as DagCase[],
   takeaway: '<b>Wniosek.</b> Orkiestracja to nie harmonogram, tylko zależności: krok startuje, gdy poprzedni się powiódł. Awaria powinna zatrzymać to, co od niej zależy, i zostawić odbiorcy ostatni poprawny stan.',
   more: {
     title: 'Jak to wygląda w dbt i Snowflake oraz czym jest uzgadnianie',
     html: [
-      '<code>dbt build</code> uruchamia modele i testy w kolejności zależności, a gdy test modelu się nie powiedzie, pomija modele, które od niego zależą. To jest bramka z ilustracji. Test z ważnością <code>warn</code> tylko ostrzega i niczego nie zatrzymuje.',
+      '<code>dbt build</code> uruchamia modele i testy w kolejności zależności, a gdy test modelu się nie powiedzie, pomija modele, które od niego zależą. To jest bramka z ilustracji. Sama nie wystarczy: żeby odbiorcy nie przeczytali wersji, która nie przeszła testu, sprawdzoną wersję trzeba publikować atomowo, np. zbudować obok i podmienić po testach. Test z ważnością <code>warn</code> tylko ostrzega i niczego nie zatrzymuje.',
       'W Snowflake zależności między instrukcjami SQL można zapisać jako graf <term id="streams-tasks">Tasks</term>: zadanie główne ma harmonogram, a zadania zależne startują po zakończeniu poprzedników. Wystarcza to dla prostych przepływów wewnątrz hurtowni. Zależności między systemami, np. „najpierw API, potem dbt", lepiej wyrazić w zewnętrznym orkiestratorze.',
-      '<b>Uzgadnianie</b> (reconciliation) to porównanie platformy z niezależnym źródłem prawdy: liczba wierszy i suma kwot za dzień w RAW kontra to, co raportuje system płatności. Testy sprawdzają, czy dane są wewnętrznie spójne. Uzgadnianie sprawdza, czy są kompletne względem świata zewnętrznego.',
+      '<b>Uzgadnianie</b> (reconciliation) to porównanie platformy z niezależnym źródłem prawdy: liczba wierszy i suma kwot za dzień w RAW kontra to, co raportuje system płatności. Testy sprawdzają, czy dane zgadzają się same ze sobą. Uzgadnianie sprawdza, czy niczego nie brakuje w porównaniu ze światem zewnętrznym.',
       'Różnica w uzgodnieniu nie zawsze jest błędem: strefy czasowe, płatności w toku i zwroty zaksięgowane później tworzą znane, wyjaśnialne rozbieżności. Próg alertu ustawia się powyżej nich.'
     ]
   } as More

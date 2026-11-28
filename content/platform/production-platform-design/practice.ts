@@ -21,27 +21,27 @@ export const failures = {
   items: [
     {
       q: 'A scheduler glitch ran your nightly load twice. What happens to the data?',
-      a: 'If the load is designed properly, nothing. Each run replaces its own date range atomically or merges on a business key, so a second run produces the same rows as the first. If it is a plain append, I now have duplicates, and I would fix the data by rebuilding the affected partition from the raw layer, then fix the job so the next double run is harmless. I would also add a uniqueness test on the key so this is caught before the marts are rebuilt.',
+      a: 'If the load is designed well, nothing happens. Each run replaces its own date range in one transaction, or it merges on a business key. So the second run produces the same rows as the first. If it’s a plain append, I now have duplicates. Then I’d rebuild the affected partition from the raw layer, and fix the job so the next double run is harmless. I’d also add a uniqueness test on the key, so this gets caught before the marts are rebuilt.',
       pl: 'Idempotentny zapis sprawia, że drugie uruchomienie nic nie zmienia. Jeśli nie był idempotentny: przelicz partycję z RAW, napraw job, dodaj test unikalności.'
     },
     {
       q: 'A source team renamed a column without telling you. Walk me through what happens.',
-      a: 'The raw layer keeps loading because it stores the payload as it arrives. The staging model selects the old column name, so either it fails or the column turns into nulls. That is why I put a not-null test on critical fields: I want a loud failure in staging, not a silent zero in the revenue report. Downstream models are skipped and the dashboard keeps yesterday\'s data with a visible refresh date. Then I fix the mapping, replay from raw, and talk to the source owner about a contract, because the real fix is not technical.',
+      a: 'The raw layer keeps loading, because it stores the payload as it arrives. The staging model still selects the old column name. So it either fails, or the column turns into nulls. That’s why I put a not-null test on critical fields. I want a loud failure in staging, not a silent zero in the revenue report. Downstream models are skipped, and the dashboard keeps yesterday’s data with a visible refresh date. Then I fix the mapping and replay from raw. And I talk to the source owner about a contract, because the real fix isn’t technical.',
       pl: 'RAW przyjmuje, STG zatrzymuje się głośno na teście, odbiorca widzi wczorajsze dane. Naprawa: mapowanie, replay z RAW i kontrakt ze źródłem.'
     },
     {
       q: 'Finance says yesterday\'s revenue is three percent lower than in the payment provider\'s report. How do you investigate?',
-      a: 'I compare one number layer by layer, starting from the source. Row count and amount sum for that day in the provider\'s report, in raw, in staging and in the mart. The first layer where the number changes tells me where to look. If raw is short, it is ingestion: a missed page, a late-arriving record, a time zone boundary. If raw matches and staging does not, it is deduplication or a filter. If only the mart differs, it is a business rule, such as refunds or test accounts, and then it may be a definition question rather than a bug.',
+      a: 'I compare one number layer by layer, starting from the source. I take the row count and the amount sum for that day in the provider’s report, in raw, in staging and in the mart. The first layer where the number changes tells me where to look. If raw is short, it’s ingestion: a missed page, a late-arriving record, or a time zone boundary. If raw matches and staging doesn’t, it’s deduplication or a filter. If only the mart differs, it’s a business rule, such as refunds or test accounts. Then it may be a question about the definition, not a bug.',
       pl: 'Jedna liczba porównywana warstwa po warstwie od źródła. Pierwsza warstwa, w której się zmienia, wskazuje krok: ładowanie, deduplikacja albo reguła biznesowa.'
     },
     {
       q: 'You find a transformation bug that has been live for two weeks. What do you do?',
-      a: 'First I stop the damage: tell consumers which dates and tables are affected, and ship the fix so new data is correct. Then I backfill exactly the affected range from raw, using the same job with a date parameter, writing by partition replacement so it is safe to rerun. I check that raw retention covers those two weeks. After that I reconcile the corrected days against the source and tell consumers it is fixed. Finally I ask why it took two weeks to notice and add the test or the reconciliation that would have caught it on day one.',
+      a: 'First I stop the damage. I tell consumers which dates and tables are affected, and I ship the fix so new data is correct. Then I backfill exactly the affected range from raw. I use the same job with a date parameter, and it replaces whole partitions, so it’s safe to rerun. I check that raw retention covers those two weeks. After that I reconcile the corrected days against the source and tell consumers it’s fixed. Finally I ask why it took two weeks to notice. And I add the test or the reconciliation that would have caught it on day one.',
       pl: 'Zatrzymaj szkodę i poinformuj, wdróż poprawkę, przelicz dokładnie zakres błędu z RAW, uzgodnij ze źródłem, dodaj kontrolę, która złapałaby to pierwszego dnia.'
     },
     {
       q: 'The warehouse bill doubled this month. Where do you look?',
-      a: 'I would break the cost down by warehouse and by workload before changing anything. Typical causes are a warehouse that never suspends, a full refresh that should be incremental, a backfill someone left running, or a dashboard refreshing every minute for nobody. Query history shows which queries consume the most time and whether they spill to disk or wait in a queue. If workloads share one warehouse, I cannot attribute the cost, so separating them is often the first step. Then I set a spending limit with alerts so the next surprise arrives as a notification, not as an invoice.',
+      a: 'Before I change anything, I’d break the cost down by warehouse and by workload. Typical causes are a warehouse that never suspends, a full refresh that should be incremental, a backfill someone left running, or a dashboard that refreshes every minute for nobody. Query history shows which queries take the most time, and whether they spill to disk or wait in a queue. If workloads share one warehouse, I can’t tell which one caused the cost, so separating them is often the first step. Then I set a spending limit with alerts. That way the next surprise comes as a notification, not as an invoice.',
       pl: 'Najpierw rozbij koszt na warehouse\'y i obciążenia. Typowe przyczyny: brak auto-wyłączania, pełne przeliczanie zamiast przyrostowego, zapomniany backfill. Potem limit z alertem.'
     }
   ] as FailureScenario[]
@@ -98,8 +98,8 @@ export const design = {
         '<b>Payment API.</b> A Python job with cursor pagination and backoff on rate limits. Each page is written unchanged to S3 before parsing, and progress is saved after each page. Incremental with a lookback window, merged on payment ID.',
         '<b>Playback events.</b> Apps send events to a queue or directly to object storage in small files, loaded continuously into raw. Each event has a unique ID and an event timestamp. Delivery is at-least-once, so staging deduplicates on event ID.',
         '<b>Layers.</b> Raw keeps everything as received with load metadata, retained long enough to replay, for example ninety days or more for payments. Staging does typing, renaming and deduplication, one model per source table. Marts hold the business definitions: revenue, MRR, active subscriber. One definition, one owner.',
-        '<b>Writes.</b> Every load is idempotent: partition replacement for daily facts, merge on key for change streams. Backfill is the same job with a date range.',
-        '<b>Orchestration.</b> Dependencies by completion, not by clock. Tests gate publication: if staging tests fail, marts are not rebuilt and the dashboard keeps the last good data with a visible refresh time.',
+        '<b>Writes.</b> Every load is idempotent: partition replacement for daily facts, merge on key for change streams, with each batch deduplicated by a fixed rule and late, older changes not allowed to overwrite newer ones. Backfill is the same job with a date range.',
+        '<b>Orchestration.</b> Dependencies by completion, not by clock. Tests gate publication: if staging tests fail, marts are not rebuilt and the dashboard keeps the last good data with a visible refresh time. The gate only protects consumers if the tested version is published atomically, for example built aside and swapped in. Otherwise they can already read it.',
         '<b>Failed payments for support.</b> A separate micro-batch path: the same raw payment data refreshed every few minutes into a small table. No streaming engine needed.',
         '<b>Trust.</b> dbt tests for keys and critical fields, freshness and volume monitoring on raw tables, a daily reconciliation of revenue against the provider\'s report. An SLO for the finance report, for example ready by 7:00 on ninety-five percent of days.',
         '<b>Access and cost.</b> Roles by function, personal data masked outside the raw layer, service accounts for loading. Separate compute for loading, transformation and BI, each with auto-suspend.'
@@ -131,7 +131,7 @@ export const design = {
  */
 export const interview = {
   honestIntro: 'Nikt nie budował samodzielnie każdego elementu takiej platformy. Jeśli któryś znasz z dokumentacji, a nie z własnego wdrożenia, powiedz to i pokaż, jak byś do niego podszedł. Na przykład tak:',
-  honestEn: '“I have not run log-based CDC in production myself, so let me tell you how I would reason about it. I would use it where I need deletes or the full history of changes, and keep a simple watermark with a lookback window where the source has a reliable updated-at column. Either way the write on my side has to be idempotent, because any of these mechanisms can deliver the same change twice. And I would reconcile against the source regularly, because that is what tells me whether the mechanism is actually working.”',
+  honestEn: '“I haven’t run log-based CDC in production myself, so let me tell you how I’d think about it. I’d use it where I need deletes or the full history of changes. Where the source has a reliable updated-at column, I’d keep a simple watermark with a lookback window. Either way, the write on my side has to be idempotent, because any of these mechanisms can deliver the same change twice. And I’d reconcile against the source regularly, because that tells me whether the mechanism really works.”',
   honestPl: 'Po polsku: nie prowadziłem CDC z dziennika na produkcji, więc powiem, jak bym o nim myślał. Użyłbym go tam, gdzie potrzebuję usunięć albo pełnej historii zmian, a prosty znacznik z oknem wstecz zostawił tam, gdzie źródło ma wiarygodną kolumnę updated-at. W obu przypadkach zapis po mojej stronie musi być idempotentny, bo każdy z tych mechanizmów może dostarczyć tę samą zmianę dwa razy. I regularnie uzgadniałbym dane ze źródłem, bo to mówi, czy mechanizm naprawdę działa.'
 };
 
@@ -179,7 +179,7 @@ export const quiz: QuizItem[] = [
     setup: 'Założenia: jeden warehouse współdzielony z nocnym ładowaniem, tak jak w symulacji.',
     options: ['Większy rozmiar warehouse\'u', 'Rozdzielenie ładowania i dashboardów na osobne warehouse\'y albo skalowanie wszerz', 'Przepisanie zapytań dashboardów'],
     correct: 1,
-    why: 'Długa kolejka przy krótkim wykonaniu to problem równoczesności, a nie wydajności zapytań. Zapytania są już szybkie, tylko nie mogą się zacząć. Większy rozmiar pomoże pośrednio i kosztuje podwójnie przez cały czas pracy.'
+    why: 'Długa kolejka przy krótkim wykonaniu znaczy, że za dużo zapytań chce działać naraz. Same zapytania są już szybkie, tylko nie mogą się zacząć. Większy rozmiar pomoże pośrednio i kosztuje podwójnie przez cały czas pracy.'
   },
   {
     q: 'Tabela płatności nie dostała dziś żadnych nowych wierszy, bo API zwróciło pustą odpowiedź. Job zakończył się sukcesem. Co to wykryje?',
