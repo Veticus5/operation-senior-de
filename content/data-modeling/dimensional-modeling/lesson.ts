@@ -114,19 +114,19 @@ export const beats: Beat[] = [
   {
     html: '<h1>Jedno pytanie, trzy liczby</h1>\n<p class="lede">Platforma subskrypcyjna: wydawcy sprzedają klientom dostęp do swoich produktów. Na spotkaniu pada pytanie „ile mamy z subskrypcji w lutym?”. Trzy osoby przynoszą trzy liczby: <b>28</b>, <b>36</b> i <b>56 EUR</b>.</p>\n<p>Nikt nie pomylił się w rachunkach. 28 to wpłaty, które przyszły w lutym. 36 to suma miesięcznych opłat aktywnych subskrypcji na koniec lutego. 56 to zapytanie z błędem, który znajdziesz za chwilę. Zanim powstanie jakakolwiek tabela, trzeba ustalić, <b>co dokładnie opisuje jeden jej wiersz</b>.</p>\n<p>Poniżej jest model, który na te pytania odpowiada. Kliknij tabelę, żeby zobaczyć jej wiersze. W tabeli pośrodku kliknij wiersz, żeby zobaczyć, co mówią o nim tabele dookoła.</p>',
     visual: 'star',
-    after: '<b>Wniosek.</b> Tabela pośrodku to <b>tabela faktów</b>: jeden wiersz to jedno zdarzenie, które da się zmierzyć, tutaj wpłata albo zwrot. Tabele dookoła to <b>wymiary</b>: opisują, kto, co, kiedy i u kogo. Fakty się sumuje, po wymiarach się filtruje i grupuje. Ten układ nazywa się <b>star schema</b>, czyli schemat gwiazdy.',
+    after: '<b>Wniosek.</b> Tabela pośrodku to <b>tabela faktów</b> (fact table). Jeden jej wiersz to jedno zdarzenie, które da się zmierzyć. Tutaj to wpłata albo zwrot. Tabele dookoła to <b>wymiary</b> (dimensions). Opisują, kto, co, kiedy i u kogo. Fakty się sumuje. Po wymiarach się filtruje i grupuje. Taki układ nazywa się <b>star schema</b>, czyli schemat gwiazdy.',
     bridge: {
       from: 'dbt',
       known: 'W projekcie dbt masz warstwę marts z modelami <code>fct_</code> i <code>dim_</code>. Często powstają z tego, co akurat było potrzebne do raportu.',
-      fresh: 'To te same tabele, ale z kontraktem: fakt ma zadeklarowane ziarno, wymiar ma jeden wiersz na wersję obiektu, a klucze obce faktu wskazują dokładnie jeden wiersz wymiaru.',
-      breaks: 'Sam prefiks <code>fct_</code> niczego nie gwarantuje. Model dbt może mieszać dwa poziomy szczegółowości albo mieć zduplikowane klucze i nadal się zbudować. Kontrakt trzeba zapisać i przetestować, na przykład testem unikalności klucza.'
+      fresh: 'To te same tabele, ale z jasnymi zasadami. Wiadomo, co opisuje jeden wiersz faktu. Wymiar ma jeden wiersz na klienta albo produkt, a gdy zapisuje historię, jeden wiersz na każdą jego wersję. Każdy klucz obcy w fakcie wskazuje dokładnie jeden wiersz wymiaru.',
+      breaks: 'Sam prefiks <code>fct_</code> niczego nie gwarantuje. Model dbt może mieszać dwa poziomy szczegółowości albo mieć zduplikowane klucze i nadal się zbuduje. Te zasady trzeba zapisać i sprawdzać, na przykład testem unikalności klucza.'
     },
     more: {
       title: 'Dlaczego gwiazda, a nie jedna szeroka tabela albo model znormalizowany',
       html: [
-        'Model znormalizowany (jak w systemie źródłowym) jest dobry do zapisu: każda informacja jest w jednym miejscu. Do analizy jest niewygodny, bo jedno pytanie wymaga wielu złączeń, a łatwo o złączenie, które powiela wiersze.',
-        'Jedna szeroka tabela jest wygodna do jednego raportu. Kłopot zaczyna się, gdy ten sam klient albo produkt ma być opisany tak samo w pięciu raportach, albo gdy atrybut się zmienia i trzeba zdecydować, czy przepisać historię.',
-        'Gwiazda jest kompromisem: miary są w jednym miejscu, opisy w osobnych, małych tabelach, a każde złączenie idzie od faktu do wymiaru w relacji wiele do jednego, więc nie powiela wierszy faktu.'
+        'Model znormalizowany, taki jak w systemie źródłowym, trzyma każdą informację w jednym miejscu. To dobre do zapisu. Do analizy jest niewygodne: jedno pytanie wymaga wielu złączeń i łatwo o takie, które powiela wiersze.',
+        'Jedna szeroka tabela jest wygodna dla jednego raportu. Kłopot zaczyna się przy pięciu raportach, w których ten sam klient albo produkt ma być opisany tak samo. Drugi kłopot: opis się zmienia i trzeba zdecydować, czy przepisać historię.',
+        'Gwiazda jest kompromisem. Liczby, które się analizuje, są w jednym miejscu, a opisy w osobnych, małych tabelach. Każde złączenie idzie od faktu do wymiaru: wiele wierszy faktu wskazuje jeden wiersz wymiaru. To relacja wiele do jednego, więc złączenie nie powiela wierszy faktu.'
       ]
     },
     next: 'Skąd wiadomo, co ma opisywać jeden wiersz?'
@@ -134,28 +134,28 @@ export const beats: Beat[] = [
   {
     html: '<h2>Ziarno: co opisuje jeden wiersz</h2>\n<p>Biznes ma trzy pytania. Wybierz, co ma opisywać jeden wiersz tabeli faktów, i sprawdź, na które pytania taka tabela odpowie.</p>',
     visual: 'grain',
-    after: '<b>Wniosek.</b> To, co opisuje jeden wiersz tabeli faktów, nazywa się <b>ziarnem</b> (grain). Ziarno deklaruje się przed wyborem wymiarów i miar, bo każdy wymiar i każda miara muszą być z nim zgodne. Żadne pojedyncze ziarno nie odpowiedziało na wszystkie trzy pytania: zdarzenia i stan na koniec miesiąca to dwa różne ziarna, a więc <b>dwie tabele faktów</b>. Dwóch ziaren nie miesza się w jednej tabeli.',
+    after: '<b>Wniosek.</b> To, co opisuje jeden wiersz tabeli faktów, nazywa się <b>ziarnem</b> (grain). Ziarno ustala się najpierw, przed wymiarami i przed miarami, czyli liczbami, które się analizuje. Nie każdą miarę wolno sumować (odsetek, stan z migawki): o tym w etapie Fakty i wymiary. Każdy wymiar i każda miara muszą do niego pasować. Żadne z czterech ziaren nie odpowiedziało na wszystkie trzy pytania. Zdarzenia i stan na koniec miesiąca to dwa różne ziarna, więc potrzebne są <b>dwie tabele faktów</b>. Dwóch ziaren nie miesza się w jednej tabeli.',
     more: {
       title: 'Cztery kroki projektowania według Kimballa',
       html: [
         'Kimball Group opisuje projekt modelu jako cztery decyzje: <b>1.</b> wybierz proces biznesowy (tu: płatności za subskrypcje), <b>2.</b> zadeklaruj ziarno, <b>3.</b> wskaż wymiary, <b>4.</b> wskaż fakty, czyli miary.',
-        'Zalecenie brzmi: zaczynaj od ziarna atomowego, czyli najniższego poziomu, jaki rejestruje proces. Z danych atomowych zawsze da się policzyć agregat. Z agregatu nie da się odtworzyć szczegółu. Tabele zagregowane są dodatkiem dla wydajności, nie punktem wyjścia.',
+        'Zalecenie: zacznij od najbardziej szczegółowego poziomu, jaki rejestruje proces. To <b>ziarno atomowe</b> (atomic grain). Ze szczegółu zawsze policzysz sumę. Z sumy szczegółu nie odtworzysz. Tabele z gotowymi sumami są dodatkiem dla wydajności, a nie punktem wyjścia.',
         'Na rozmowie zdanie „jeden wiersz to jedna wpłata albo zwrot” powiedz jako pierwsze. To sygnał, że projektujesz od pytania biznesowego, a nie od tego, jakie kolumny były w źródle.'
       ]
     },
     next: 'A skąd wzięło się 56?'
   },
   {
-    html: '<h2>Skąd wzięło się 56</h2>\n<p>Ktoś chciał w jednym zapytaniu policzyć MRR (miesięczną opłatę aktywnych subskrypcji) i przychód. Złączył tabelę subskrypcji z transakcjami. Porównaj oba zapytania i zobacz, co dzieje się z wierszami.</p>',
+    html: '<h2>Skąd wzięło się 56</h2>\n<p>Ktoś chciał jednym zapytaniem policzyć dwie rzeczy: przychód i MRR (monthly recurring revenue), czyli sumę miesięcznych opłat aktywnych subskrypcji. Złączył tabelę subskrypcji z transakcjami. Porównaj oba zapytania i zobacz, co dzieje się z wierszami.</p>',
     visual: 'fanout',
-    after: '<b>Wniosek.</b> Subskrypcja S-1 ma dwie transakcje, więc po złączeniu jej wiersz występuje dwa razy, a jej MRR liczy się podwójnie. To jest <b>fan-out</b>: złączenie w stronę „wiele” powiela wiersze strony „jeden”, a suma miary z tej strony rośnie. Zauważ, że Kino Nord wygląda poprawnie, bo ma jedną transakcję. Błąd nie rozkłada się równo, dlatego trudno go zauważyć na oko. Lekarstwo: najpierw sprowadź obie strony do tego samego ziarna, potem łącz.',
+    after: '<b>Wniosek.</b> Subskrypcja S-1 ma dwie transakcje. Po złączeniu jej wiersz występuje więc dwa razy i jej MRR liczy się podwójnie. To jest <b>fan-out</b>: jeden wiersz pasuje do wielu wierszy po drugiej stronie złączenia, więc zostaje powielony, a suma powielonej miary może wyjść zawyżona. Kino Nord wygląda poprawnie, bo ma jedną transakcję. Błąd nie rozkłada się równo i dlatego trudno go zauważyć na oko. Lekarstwo: najpierw sprowadź obie strony do tego samego ziarna, potem łącz.',
     more: {
       title: 'Jak rozpoznać fan-out, zanim trafi na dashboard',
       html: [
-        'Zapytaj o każde złączenie: ile wierszy po prawej stronie może pasować do jednego wiersza po lewej? Jeśli więcej niż jeden, to każda miara z lewej strony jest zagrożona.',
+        'Zapytaj o każde złączenie: ile wierszy po prawej stronie może pasować do jednego wiersza po lewej? Jeśli więcej niż jeden, każda liczba sumowana z lewej strony może się policzyć kilka razy.',
         'Sprawdź liczbę wierszy przed złączeniem i po nim. Jeśli fakt miał 4 wiersze, a po złączeniu z wymiarem ma 6, klucz wymiaru nie jest unikalny.',
-        '<code>SELECT DISTINCT</code> albo <code>COUNT(DISTINCT ...)</code> maskuje problem dla liczników, ale nie naprawia sum. Dwie subskrypcje o tym samym MRR zlałyby się w jedną.',
-        'Dwie tabele faktów o różnym ziarnie łączy się przez wspólne wymiary: każdą agreguje się osobno do tego samego poziomu, na przykład wydawcy, i dopiero wyniki zestawia obok siebie. Kimball nazywa to drill-across.'
+        '<code>SELECT DISTINCT</code> albo <code>COUNT(DISTINCT ...)</code> ukrywa problem przy zliczaniu, ale nie naprawia sum. Dwie różne subskrypcje o tym samym MRR zlałyby się w jedną.',
+        'Dwie tabele faktów o różnym ziarnie łączy się przez wspólne wymiary, a nie bezpośrednio. Każdą sumuje się osobno do tego samego poziomu, na przykład wydawcy. Dopiero te wyniki zestawia się obok siebie. Kimball nazywa to <b>drill-across</b>.'
       ]
     },
     next: 'Jakie są rodzaje tabel faktów?'
@@ -191,7 +191,7 @@ export const star = {
     },
     {
       id: 'publisher', name: 'dim_publisher', pos: 'bottom',
-      role: 'Wymiar wydawcy, czyli najemcy platformy (tenant). Po nim później odetniemy dane, których dany wydawca nie może widzieć.',
+      role: 'Wymiar wydawcy. Wydawca jest tu najemcą platformy (tenant): jednym z wielu klientów, którzy korzystają z tej samej platformy. Po tym wymiarze później odetniemy dane, których dany wydawca nie może widzieć.',
       columns: ['publisher_key', 'publisher_id', 'name', 'plan_tier'],
       rows: [[1, 'PUB-AUR', 'Aurora Sport', 'enterprise'], [2, 'PUB-KIN', 'Kino Nord', 'growth']]
     }
@@ -260,7 +260,7 @@ export const grain = {
       ]
     }
   ] as GrainOption[],
-  verdictNone: 'To ziarno nie odpowiada na żadne z trzech pytań. Szczegół utracony przy agregacji nie wraca.',
+  verdictNone: 'To ziarno nie odpowiada na żadne z trzech pytań. Szczegółu, który zniknął przy sumowaniu, nie da się odzyskać.',
   verdictSome: 'Odpowiada na {n} z 3 pytań.'
 };
 
@@ -299,7 +299,7 @@ GROUP BY p.publisher_name`
   resultTitle: 'Wynik',
   note: {
     wrong: 'Złączenie zrobiło z 4 subskrypcji 6 wierszy. MRR subskrypcji S-1 i S-2 jest na dwóch wierszach, więc suma daje {mrr} zamiast {expected}. Przychód {revenue} jest poprawny, bo kwota transakcji występuje raz na wiersz.',
-    right: 'Po sprowadzeniu transakcji do jednego wiersza na subskrypcję złączenie jest jeden do jednego: 4 wiersze zostają 4 wierszami. MRR wynosi {mrr}, przychód {revenue}.'
+    right: 'Transakcje są najpierw zsumowane do jednego wiersza na subskrypcję. Złączenie jest wtedy jeden do jednego: 4 wiersze zostają 4 wierszami. MRR wynosi {mrr}, przychód {revenue}.'
   }
 };
 
@@ -361,20 +361,20 @@ export const factTypes = {
     }
   ],
   takeaway: [
-    '<b>Wniosek.</b> <b>Tabela transakcyjna</b> ma wiersz tylko wtedy, gdy coś się wydarzyło. <b>Okresowa migawka</b> (periodic snapshot) ma wiersz na każdy okres, także wtedy, gdy nic się nie działo, i dlatego odpowiada na pytania o stan. <b>Narastająca migawka</b> (accumulating snapshot) ma jeden wiersz na przebieg procesu o znanym początku i końcu, a wiersz jest uzupełniany, gdy proces dochodzi do kolejnego etapu.',
-    'To nie są trzy warianty do wyboru, tylko trzy odpowiedzi na trzy rodzaje pytań. Dojrzały model subskrypcji zwykle ma tabelę transakcyjną i okresową migawkę obok siebie, połączone wspólnymi wymiarami.'
+    '<b>Wniosek.</b> <b>Tabela transakcyjna</b> (transaction fact table) dostaje wiersz tylko wtedy, gdy coś się wydarzyło. <b>Okresowa migawka</b> (periodic snapshot) dostaje wiersz na każdy okres, także gdy nic się nie działo. Dlatego odpowiada na pytania o stan. <b>Narastająca migawka</b> (accumulating snapshot) ma jeden wiersz na cały przebieg procesu, który ma znany początek i koniec. Ten wiersz jest uzupełniany, gdy proces dochodzi do kolejnego etapu.',
+    'To nie są trzy warianty do wyboru. To trzy odpowiedzi na trzy rodzaje pytań. Dojrzały model subskrypcji zwykle ma tabelę transakcyjną i okresową migawkę obok siebie. Łączą je wspólne wymiary.'
   ],
   notesTitle: 'Zastrzeżenia do tej ilustracji',
   notes: [
-    'Czy anulowana subskrypcja ma mieć wiersz w migawce ze statusem „canceled” i MRR równym zero, to decyzja projektowa. Tu migawka zawiera tylko subskrypcje aktywne w ostatnim dniu miesiąca. Ważne, żeby reguła była zapisana przy ziarnie.',
-    'Migawkę można w prostych przypadkach odtworzyć z historii zdarzeń. Trzyma się ją osobno, bo pytanie o stan jest częste, a odtwarzanie stanu z milionów zdarzeń przy każdym zapytaniu jest kosztowne i łatwo je zrobić niespójnie.',
+    'Czy anulowana subskrypcja ma mieć w migawce wiersz ze statusem „canceled” i MRR równym zero? To decyzja projektowa. Tu migawka zawiera tylko subskrypcje aktywne w ostatnim dniu miesiąca. Ważne, żeby ta reguła była zapisana razem z ziarnem.',
+    'W prostych przypadkach migawkę da się odtworzyć z historii zdarzeń. Trzyma się ją osobno z dwóch powodów. Pytanie o stan pada często, a liczenie stanu z milionów zdarzeń przy każdym zapytaniu jest kosztowne. Łatwo też policzyć go w dwóch miejscach na dwa różne sposoby.',
     'Kimball zaznacza, że narastająca migawka jest jedynym z trzech rodzajów, w którym wiersze są aktualizowane.'
   ]
 };
 
 export const additivity = {
   title: 'Czy tę miarę wolno zsumować?',
-  intro: 'Trzy miary z tego samego modelu. Każda zachowuje się inaczej, gdy dodajesz ją w poprzek wymiarów. Wybierz miarę.',
+  intro: 'Trzy miary z tego samego modelu. Każda zachowuje się inaczej, gdy próbujesz ją zsumować po dniach, produktach albo miesiącach. Wybierz miarę.',
   assumptions: 'Ilustracja: liczby z pełnego zbioru, styczeń–marzec 2026.',
   measures: [
     {
@@ -399,25 +399,25 @@ export const additivity = {
       text: 'Odsetka nie wolno ani sumować, ani uśredniać. Poprawny wynik dla całości to 1 zwrot na 9 wpłat, czyli 11,1%. Dlatego w tabeli faktów trzyma się składniki (liczbę zwrotów i liczbę wpłat), a iloraz liczy się na końcu.'
     }
   ],
-  takeaway: '<b>Wniosek.</b> Miara <b>addytywna</b> sumuje się po każdym wymiarze. <b>Póładdytywna</b> po niektórych, typowo po wszystkich oprócz czasu: tak zachowują się salda i stany. <b>Nieaddytywna</b>, na przykład odsetek, nie sumuje się wcale. Miary w migawkach są często póładdytywne, ale decyduje ich definicja: kwoty sumujemy w zgodnej walucie i po rozłącznych grupach.',
+  takeaway: '<b>Wniosek.</b> Miarę <b>addytywną</b> (additive) wolno sumować po każdym wymiarze. <b>Póładdytywną</b> (semi-additive) tylko po niektórych, typowo po wszystkich oprócz czasu. Tak zachowują się salda i stany. <b>Nieaddytywnej</b> (non-additive), na przykład odsetka, nie sumuje się wcale. Miary w migawkach są często póładdytywne, ale decyduje definicja miary. Zastrzeżenie do każdej sumy: kwoty muszą być w zgodnej walucie, a grupy nie mogą na siebie zachodzić.',
   moreTitle: 'Co z tego wynika dla warstwy BI',
   more: [
-    'Narzędzie BI domyślnie sumuje kolumnę liczbową. Jeśli użytkownik przeciągnie <code>mrr_eur</code> na wykres kwartalny, dostanie 90. Dlatego kolumny póładdytywne i nieaddytywne ukrywa się, a zamiast nich udostępnia zdefiniowaną miarę, która wie, jak się agregować.',
-    'Kimball opisuje przechowywanie addytywnych składników odsetka jako praktykę stosowaną „tam, gdzie to możliwe”, a końcowe dzielenie jako coś, co często robi warstwa BI. To zalecenie, nie reguła bez wyjątków.'
+    'Narzędzie BI domyślnie sumuje kolumnę liczbową. Jeśli użytkownik przeciągnie <code>mrr_eur</code> na wykres kwartalny, dostanie 90. Dlatego kolumny póładdytywne i nieaddytywne się ukrywa. Zamiast nich użytkownik dostaje gotową miarę, w której zapisano, jak ją liczyć.',
+    'Kimball opisuje trzymanie składników odsetka, czyli licznika i mianownika, jako praktykę stosowaną „tam, gdzie to możliwe”. Końcowe dzielenie często robi warstwa BI. To zalecenie, a nie reguła bez wyjątków.'
   ]
 };
 
 export const keys = {
   title: 'Którym kluczem fakt wskazuje wymiar?',
-  intro: 'System źródłowy identyfikuje klienta jako <code>C-102</code>. To <b>klucz naturalny</b>: nadał go system operacyjny i coś znaczy dla biznesu. W hurtowni wymiar dostaje dodatkowo <b>klucz zastępczy</b> (surrogate key): liczbę bez znaczenia, nadaną przy ładowaniu.',
+  intro: 'System źródłowy zna klienta jako <code>C-102</code>. To <b>klucz naturalny</b> (natural key): nadał go system, w którym klient powstał, i biznes go rozpoznaje. W hurtowni wymiar dostaje dodatkowo <b>klucz zastępczy</b> (surrogate key): liczbę bez znaczenia, nadaną przy ładowaniu. Po co drugi klucz? Trzy powody są pod tabelą.',
   table: { name: 'dim_customer', columns: ['customer_key', 'customer_id', 'name', 'country'], rows: [[1, 'C-101', 'Anna', 'PL'], [2, 'C-102', 'Ben', 'DE'], [3, 'C-103', 'Chloé', 'FR']] } as SampleTable,
   legend: '<code>customer_key</code> to klucz zastępczy i klucz główny wymiaru. <code>customer_id</code> to klucz naturalny: zostaje w wymiarze jako zwykła kolumna.',
   reasons: [
-    '<b>Historia.</b> Gdy zaczniesz śledzić zmiany, ten sam klient będzie miał kilka wierszy. Klucz naturalny przestaje być unikalny, więc nie może być kluczem głównym.',
-    '<b>Wiele źródeł.</b> Dwa systemy mogą mieć różne, niezgodne identyfikatory tego samego klienta albo ten sam identyfikator dla różnych klientów.',
-    '<b>Niezależność.</b> Klucze naturalne bywają źle zarządzane po stronie źródła. Klucz zastępczy izoluje hurtownię od takich zmian.'
+    '<b>Historia.</b> Gdy zaczniesz zapisywać zmiany, ten sam klient będzie miał kilka wierszy. Klucz naturalny przestaje być unikalny, więc nie może być kluczem głównym.',
+    '<b>Wiele źródeł.</b> Dwa systemy mogą znać tego samego klienta pod różnymi identyfikatorami. Mogą też używać tego samego identyfikatora dla różnych klientów.',
+    '<b>Niezależność.</b> Źródło nie zawsze dba o swoje klucze i potrafi je zmienić. Własny klucz chroni hurtownię przed takimi zmianami.'
   ],
-  takeaway: '<b>Wniosek.</b> Tabela faktów przechowuje klucz zastępczy wymiaru. Klucz naturalny służy do odnalezienia właściwego wiersza wymiaru w czasie ładowania. Wyjątkiem jest wymiar daty: jego klucz może być czytelny, na przykład <code>20260215</code>.',
+  takeaway: '<b>Wniosek.</b> Tabela faktów przechowuje klucz zastępczy wymiaru. Klucz naturalny służy do tego, żeby przy ładowaniu znaleźć właściwy wiersz wymiaru. Wyjątkiem jest wymiar daty: jego klucz może być czytelny, na przykład <code>20260215</code>.',
   moreTitle: 'Liczba z sekwencji czy hash',
   more: [
     'Kimball opisuje klucz zastępczy jako kolejne liczby całkowite. W projektach dbt na hurtowniach chmurowych często spotkasz zamiast tego hash z klucza naturalnego i daty początku wersji. Hash da się policzyć niezależnie w wielu modelach i przy ponownym ładowaniu wychodzi taki sam, ale jest szerszy niż liczba. To obserwacja praktyki, a nie cytat z dokumentacji.',
@@ -434,13 +434,13 @@ export const patterns = {
       problem: 'W tabeli faktów jest <code>txn_id</code>. Analitycy filtrują po nim przy reklamacjach. Czy potrzebuje własnego wymiaru?',
       tables: [{ name: 'fact_transaction', columns: ['date_key', 'customer_key', 'txn_id', 'amount_eur'], rows: [[20260315, 4, 'T-9', '10.00'], [20260318, 4, 'T-10', '-10.00']] }] as SampleTable[],
       result: 'Wymiar <code>dim_transaction</code> miałby jedną kolumnę i tyle wierszy, ile fakt. Niczego by nie opisywał.',
-      takeaway: 'Identyfikator, który nie ma żadnych atrybutów poza sobą, zostaje w tabeli faktów. To <b>wymiar zdegenerowany</b> (degenerate dimension). Typowe przykłady: numer zamówienia, faktury, transakcji.'
+      takeaway: 'Identyfikator, o którym nie ma nic więcej do powiedzenia, zostaje w tabeli faktów jako zwykła kolumna. To <b>wymiar zdegenerowany</b> (degenerate dimension). Typowe przykłady: numer zamówienia, faktury, transakcji.'
     },
     {
       id: 'factless', label: 'Zdarzenie bez miary',
       problem: 'Wydawca chce wiedzieć, które produkty były objęte promocją w dane dni, a mimo to nic nie sprzedały. Samo objęcie promocją nie ma żadnej kwoty.',
       tables: [{ name: 'fact_promo_coverage', columns: ['date_key', 'product_key', 'promo_key'], rows: [[20260201, 1, 7], [20260201, 3, 7], [20260202, 1, 7]] }] as SampleTable[],
-      result: 'Tabela ma same klucze. Liczy się wiersze: <code>COUNT(*)</code> mówi, ile par produkt–dzień było w promocji. Odjęcie sprzedaży od pokrycia daje to, co się nie wydarzyło.',
+      result: 'Tabela ma same klucze. Zamiast sumować kwoty, liczy się wiersze: <code>COUNT(*)</code> mówi, ile par produkt–dzień było w promocji. Gdy od tego pokrycia odejmiesz pary, które mają sprzedaż, zostaje to, co się nie wydarzyło.',
       takeaway: 'Tabela faktów bez miar to <b>factless fact table</b>. Zapisuje, że coś zaszło albo że coś było możliwe. Bez niej pytanie „co się nie sprzedało” nie ma odpowiedzi, bo w tabeli sprzedaży brak sprzedaży nie zostawia wiersza.'
     },
     {
@@ -451,7 +451,7 @@ export const patterns = {
         { name: 'przychód per kategoria, Q1', columns: ['category', 'bez wag', 'z wagami'], rows: [['Football', '146', '73'], ['Tennis', '146', '73'], ['Film', '16', '16'], ['razem', '308', '162']] }
       ] as SampleTable[],
       result: 'Rzeczywisty przychód to 162 EUR. Złączenie przez tabelę pośrednią bez wag daje w sumie 308, bo każda transakcja produktu sportowego liczy się w obu kategoriach.',
-      takeaway: 'Relację wiele do wielu między faktem a wymiarem rozwiązuje <b>tabela pomostowa</b> (bridge table). Sama tabela nie usuwa podwójnego liczenia. Trzeba zdecydować: albo wynik per kategoria jest poprawny dla każdej kategorii osobno, ale nie sumuje się do całości, albo most dostaje wagi podziału. Wagi to decyzja biznesowa, nie techniczna.'
+      takeaway: 'Gdy jeden wiersz faktu pasuje do kilku wierszy wymiaru (relacja wiele do wielu), między nimi staje <b>tabela pomostowa</b> (bridge table). Sama nie usuwa podwójnego liczenia. Trzeba wybrać. Albo każda kategoria pokazuje pełną kwotę i kategorie nie sumują się do całości. Albo most dostaje wagi, które dzielą kwotę między kategorie. Wagi to decyzja biznesowa, a nie techniczna.'
     }
   ],
   moreTitle: 'Zastrzeżenia',
@@ -465,20 +465,20 @@ export const shapes = {
   title: 'Gwiazda, płatek śniegu i wymiary wspólne',
   intro: 'Produkt należy do wydawcy. Można to zapisać na dwa sposoby.',
   variants: [
-    { name: 'Star schema', text: 'Atrybuty wydawcy są w wymiarze, do którego fakt sięga bezpośrednio: albo jako osobny <code>dim_publisher</code> z własnym kluczem w fakcie, albo spłaszczone w <code>dim_product</code>. Każdy wymiar jest o jedno złączenie od faktu.' },
-    { name: 'Snowflake schema', text: '<code>dim_product</code> ma klucz obcy do <code>dim_publisher</code>, a fakt zna tylko produkt. Mniej powtórzeń, ale do nazwy wydawcy prowadzą dwa złączenia, a użytkownik BI widzi łańcuch tabel.' }
+    { name: 'Star schema', text: 'Dane wydawcy są w wymiarze, do którego fakt sięga bezpośrednio. Albo w osobnym <code>dim_publisher</code> z własnym kluczem w fakcie, albo jako dodatkowe kolumny w <code>dim_product</code>. Każdy wymiar jest o jedno złączenie od faktu.' },
+    { name: 'Snowflake schema', text: '<code>dim_product</code> wskazuje <code>dim_publisher</code> kluczem obcym, a fakt zna tylko produkt. Powtórzeń jest mniej. Ale do nazwy wydawcy prowadzą dwa złączenia, a użytkownik BI widzi łańcuch tabel. Nazwa znaczy „płatek śniegu” i opisuje kształt modelu, a nie hurtownię Snowflake.' }
   ],
-  takeaway: '<b>Wniosek.</b> Oba zapisy niosą tę samą informację. Kimball odradza płatek śniegu, bo jest trudniejszy w nawigacji dla użytkowników biznesowych i może pogorszyć wydajność zapytań. Microsoft dla modeli Power BI pisze ostrożniej: korzyści z jednej tabeli wymiaru na ogół przeważają, ale decyzja może zależeć od wolumenu i wymagań użytkowych.',
+  takeaway: '<b>Wniosek.</b> Oba zapisy zawierają tę samą informację. Kimball odradza płatek śniegu: użytkownikom biznesowym trudniej się w nim poruszać, a zapytania mogą działać wolniej. Microsoft dla modeli Power BI pisze ostrożniej. Jedna tabela wymiaru na ogół się opłaca, ale decyzja może zależeć od ilości danych i wymagań użytkowych.',
   conformedTitle: 'Wymiar wspólny (conformed dimension)',
   conformed: [
     'Masz już dwie tabele faktów: <code>fact_transaction</code> i <code>fact_subscription_monthly</code>. Raport „przychód i MRR per wydawca” wymaga, żeby „wydawca” znaczył w obu to samo: te same nazwy kolumn, te same wartości, te same definicje.',
-    'Wymiar zdefiniowany raz i używany przez wiele tabel faktów to <b>wymiar wspólny</b>. Dzięki niemu można policzyć każdy fakt osobno do poziomu wydawcy i zestawić wyniki obok siebie. Bez niego każdy zespół ma własną listę wydawców i liczby się rozjeżdżają.',
-    'W platformie wielu najemców wymiar wydawcy jest wspólny z definicji: po nim filtrują raporty, po nim rozlicza się wydawców i po nim odcina się dostęp do danych.'
+    'Wymiar zdefiniowany raz i używany przez wiele tabel faktów to <b>wymiar wspólny</b> (conformed dimension). Dzięki niemu każdy fakt sumujesz osobno do poziomu wydawcy, a wyniki zestawiasz obok siebie. Bez niego każdy zespół ma własną listę wydawców i liczby się rozjeżdżają.',
+    'Na platformie z wieloma najemcami (multi-tenant) wymiar wydawcy jest wspólny z definicji. Po nim filtrują raporty, po nim rozlicza się wydawców i po nim odcina się dostęp do danych.'
   ],
   bridge: {
     from: 'Snowflake',
     known: 'Hurtownia kolumnowa dobrze znosi szerokie tabele i złączenia, więc technicznie zadziała i gwiazda, i płatek śniegu, i jedna wielka tabela.',
-    fresh: 'Wybór kształtu modelu jest decyzją o czytelności i spójności: ile tabel widzi użytkownik, ile złączeń musi zrobić narzędzie BI i w ilu miejscach żyje definicja wydawcy.',
+    fresh: 'Kształt modelu wybierasz więc ze względu na czytelność i spójność. Ile tabel widzi użytkownik? Ile złączeń musi zrobić narzędzie BI? W ilu miejscach zapisano, kim jest wydawca?',
     breaks: 'Wydajność silnika nie zwalnia z projektowania. Szybka hurtownia policzy błędną liczbę równie szybko jak poprawną, a fan-out kosztuje tym więcej, im większe tabele.'
   } as Bridge
 };
@@ -498,10 +498,10 @@ export const scd = {
   reportTitle: 'Przychód per kraj, Q1 2026',
   says: {
     scd1: 'Wiersz Bena został nadpisany. Hurtownia nie wie już, że mieszkał w Niemczech, więc wszystkie jego wpłaty, także styczniowe, są przypisane do Polski. Niemcy zniknęły z raportu.',
-    scd2: 'Stary wiersz dostał datę końca, a nowy wiersz nowy klucz. Wpłaty sprzed 10 lutego wskazują starą wersję, późniejsze nową. Raport pokazuje stan z chwili zdarzenia.'
+    scd2: 'Stary wiersz dostał datę końca. Nowy wiersz dostał nowy klucz. Wpłaty sprzed 10 lutego wskazują starą wersję, późniejsze nową. Raport pokazuje kraj z chwili wpłaty.'
   },
   takeaway: [
-    '<b>Wniosek.</b> Wymiar, którego atrybuty zmieniają się rzadko i nieregularnie, to <b>slowly changing dimension</b> (SCD). <b>Typ 1</b> nadpisuje wartość: prosto, ale historia znika, a raporty za zamknięte okresy zmieniają się wstecz. <b>Typ 2</b> dodaje nowy wiersz z nowym kluczem zastępczym, a stary zamyka datą.',
+    '<b>Wniosek.</b> Opis klienta zmienia się rzadko i nieregularnie. Wymiar z takimi atrybutami to <b>slowly changing dimension</b> (SCD), a sposób zapisu zmiany nazywa się typem. <b>Typ 1</b> nadpisuje wartość. To proste, ale historia znika, a raporty za zamknięte okresy zmieniają się wstecz. <b>Typ 2</b> dodaje nowy wiersz z nowym kluczem zastępczym, a stary zamyka datą.',
     'Suma w obu raportach to 162 EUR. Typ wymiaru nie zmienia tego, ile zarobiono, tylko komu to przypisano. Wybór zależy od pytania: „gdzie dziś mieszkają klienci, którzy nam zapłacili” (typ 1) czy „ile zarobiliśmy w każdym kraju” (typ 2).'
   ],
   columnsTitle: 'Kolumny, które musi mieć wymiar typu 2',
@@ -513,7 +513,7 @@ export const scd = {
   ],
   choiceTitle: 'Typ ustala się dla atrybutu, nie dla tabeli',
   choice: [
-    'Literówka w nazwisku to poprawka: typ 1. Zmiana kraju, segmentu albo planu cenowego wydawcy zmienia sposób czytania przychodu: typ 2.',
+    'Literówka w nazwisku to poprawka: typ 1. Zmiana kraju, segmentu albo planu cenowego wydawcy zmienia to, jak czytasz przychód: typ 2.',
     'W jednym wymiarze zwykle są oba rodzaje atrybutów. Decyzję podejmuje się z biznesem, kolumna po kolumnie, pytaniem: „czy stare raporty mają się zmienić, gdy ta wartość się zmieni?”.',
     'Typ 2 ma koszt: wymiar rośnie, ładowanie musi wykrywać zmiany, a każde złączenie po kluczu naturalnym wymaga warunku na daty.'
   ],
@@ -528,7 +528,7 @@ export const scd = {
 export const pit = {
   title: 'Którą wersję klienta dostaje transakcja?',
   intro: 'Wymiar ma teraz dwa wiersze Bena. Transakcja zna tylko <code>customer_id</code> i datę. Kliknij transakcję Bena i wybierz sposób złączenia.',
-  assumptions: 'Ilustracja: sześć transakcji Bena i jego dwie wersje w wymiarze. Przedział ważności jest domknięty z lewej i otwarty z prawej: [valid_from, valid_to).',
+  assumptions: 'Ilustracja: sześć transakcji Bena i jego dwie wersje w wymiarze. Przedział ważności to [valid_from, valid_to): dzień valid_from należy do wersji, a dzień valid_to już do następnej.',
   modes: [
     { id: 'pit', label: 'Po dacie zdarzenia' },
     { id: 'current', label: 'Tylko bieżący wiersz' },
@@ -553,19 +553,19 @@ export const pit = {
   reportTitle: 'Przychód per kraj, wszystkie transakcje Q1',
   totalNote: { ok: 'Razem 162 EUR. Zgadza się z sumą transakcji.', bad: 'Razem {total} EUR zamiast 162. Wpłaty Bena policzone podwójnie.' },
   takeaway: [
-    '<b>Wniosek.</b> Dobranie do zdarzenia tej wersji wymiaru, która obowiązywała w chwili zdarzenia, to <b>złączenie punkt-w-czasie</b> (point-in-time join). Przedziały muszą być rozłączne i bez dziur, a jeden z końców otwarty. Inaczej wpłata z dnia zmiany pasuje do dwóch wersji albo do żadnej.',
-    'W modelu wymiarowym to złączenie wykonuje się <b>raz, przy ładowaniu faktu</b>: ładowanie znajduje klucz zastępczy właściwej wersji i zapisuje go w wierszu faktu. Zapytania analityczne łączą potem fakt z wymiarem zwykłym warunkiem równości po <code>customer_key</code>, bez dat.'
+    '<b>Wniosek.</b> Wpłata ma dostać tę wersję klienta, która obowiązywała w dniu wpłaty. Takie dobieranie wersji po dacie to <b>złączenie punkt-w-czasie</b> (point-in-time join). Przedziały ważności jednego klucza biznesowego nie mogą na siebie zachodzić, dlatego jeden koniec jest otwarty. Inaczej wpłata z dnia zmiany pasuje do dwóch wersji. Luki bywają uzasadnione. Fakt, który nie trafia w żadną wersję, dostaje jawny wiersz „nieznany”, a nigdy wersję, która już wygasła.',
+    'W modelu wymiarowym to złączenie robi się <b>raz, przy ładowaniu faktu</b>. Ładowanie znajduje klucz zastępczy właściwej wersji i zapisuje go w wierszu faktu. Zapytania analityczne łączą potem fakt z wymiarem zwykłym warunkiem równości po <code>customer_key</code>, bez dat.'
   ],
   currentTitle: 'Stan bieżący i stan historyczny z jednego modelu',
   current: [
-    'Często biznes chce obu widoków: przychodu według kraju z chwili wpłaty i według kraju obecnego. Wymiar typu 2 obsługuje oba, jeśli każda wersja niesie też klucz naturalny albo trwały klucz klienta.',
-    'Widok historyczny: fakt łączy się po kluczu zastępczym. Widok bieżący: fakt łączy się z wymiarem po kluczu zastępczym, a potem z wierszem bieżącym tego samego klienta (<code>is_current</code>). W obu przypadkach fakt jest jeden.',
+    'Często biznes chce obu widoków: przychodu według kraju z chwili wpłaty i według kraju obecnego. Wymiar typu 2 obsłuży oba, jeśli w każdej wersji jest też klucz naturalny albo inny trwały klucz klienta.',
+    'Widok historyczny: fakt łączy się z wymiarem po kluczu zastępczym. Widok bieżący: robisz to samo, a potem przechodzisz do bieżącego wiersza tego samego klienta (<code>is_current</code>). Tabela faktów jest w obu przypadkach ta sama.',
     'Model, który trzyma wyłącznie stan bieżący, jest prostszy i wystarcza, gdy nikt nie pyta o przeszłość. Błędem jest dopiero udawanie, że odpowiada na pytania historyczne.'
   ],
   asofTitle: 'Gdy wymiar ma tylko datę początku wersji',
   asof: [
     'Log zmian często ma jedynie <code>changed_at</code>, bez daty końca. Datę końca można wyliczyć funkcją okna <code>LEAD</code> albo użyć złączenia, które samo szuka najbliższego wcześniejszego wiersza.',
-    'W Snowflake służy do tego <code>ASOF JOIN</code> z klauzulą <code>MATCH_CONDITION</code>: dla każdego wiersza z lewej strony zwraca jeden wiersz z prawej, najbliższy w czasie według podanego operatora. Dozwolone są tylko operatory nierówności, a wiersze lewej strony bez dopasowania zostają z wartościami NULL, podobnie jak w złączeniu lewostronnym. Przy remisie dokumentacja nie gwarantuje, który z wierszy zostanie zwrócony. ASOF nie sprawdza valid_to: przy lukach trzeba zweryfikować koniec ważności i obsłużyć brak dopasowania.'
+    'W Snowflake służy do tego <code>ASOF JOIN</code> z klauzulą <code>MATCH_CONDITION</code>. Dla każdego wiersza z lewej strony zwraca jeden wiersz z prawej: najbliższy w czasie według podanego operatora. Dozwolone są tylko operatory nierówności. Wiersz z lewej strony bez dopasowania zostaje z wartościami NULL, podobnie jak w złączeniu lewostronnym. Gdy dwa wiersze są równie blisko, dokumentacja nie gwarantuje, który zostanie zwrócony. ASOF nie sprawdza valid_to. Jeśli historia ma luki, trzeba samemu sprawdzić koniec ważności i obsłużyć brak dopasowania.'
   ],
   asofCode: `SELECT t.txn_id, t.paid_at, c.country
 FROM transactions t
@@ -588,7 +588,7 @@ export const late = {
         { code: "  AND DATE '2026-02-08' >= d.valid_from", label: 'data zdarzenia', text: 'Liczy się data wpłaty, a nie data załadowania. 8 lutego Ben mieszkał jeszcze w Niemczech.' },
         { code: "  AND DATE '2026-02-08' <  d.valid_to", label: 'koniec przedziału', text: 'Warunek wybiera dokładnie jedną wersję: klucz 2, Niemcy.' }
       ] as ExplainedLine[],
-      takeaway: 'Spóźniony fakt dostaje klucz wersji wymiaru, która obowiązywała <b>w chwili zdarzenia</b>. Ładowanie, które zawsze bierze wersję bieżącą, działa poprawnie tylko dla danych przychodzących na czas, więc błąd wychodzi dopiero przy opóźnieniu albo ponownym przeliczeniu.'
+      takeaway: 'Spóźniony fakt (late-arriving fact) dostaje klucz tej wersji wymiaru, która obowiązywała <b>w chwili zdarzenia</b>. Ładowanie, które zawsze bierze wersję bieżącą, działa poprawnie tylko wtedy, gdy dane przychodzą na czas. Błąd wychodzi dopiero przy opóźnieniu albo ponownym przeliczeniu.'
     },
     {
       id: 'dimension', label: 'Spóźniony wymiar',
@@ -599,17 +599,17 @@ export const late = {
         { code: '-- fakt zapisuje klucz tego wiersza', label: 'fakt nie czeka', text: 'Wpłata trafia do tabeli faktów od razu i liczy się w sumach. W podziale na kraje widać ją jako „Unknown”.' },
         { code: "UPDATE dim_customer SET name = 'Greta', country = 'SE'", label: 'uzupełnienie', text: 'Gdy dane klienta dotrą, wiersz zastępczy zostaje nadpisany, czyli zmiana typu 1. Klucz w fakcie się nie zmienia.' }
       ] as ExplainedLine[],
-      takeaway: 'Gdy fakt wyprzedza swój wymiar, tworzy się <b>wiersz zastępczy</b> z kluczem naturalnym i nieznanymi atrybutami, a później się go uzupełnia. Dzięki temu suma przychodu jest kompletna od pierwszego dnia, a brak opisu jest widoczny, a nie ukryty w odrzuconych wierszach.'
+      takeaway: 'Gdy fakt przychodzi przed swoim wymiarem (late-arriving dimension), tworzy się <b>wiersz zastępczy</b>: z kluczem naturalnym i nieznanymi atrybutami. Później się go uzupełnia. Dzięki temu suma przychodu jest kompletna od pierwszego dnia. Brak opisu widać w raporcie, zamiast chować go w odrzuconych wierszach.'
     }
   ],
   correctionsTitle: 'Poprawki wstecz i ponowne przeliczenie',
   corrections: [
-    '<b>Poprawka faktu.</b> Zwrot T-10 nie kasuje wpłaty T-9. Jest osobnym wierszem z ujemną kwotą. W tym projekcie tabela transakcyjna jest wtedy tylko dopisywana, a suma po dowolnym okresie pozostaje prawdziwa: marzec pokazuje i wpłatę, i zwrot.',
+    '<b>Poprawka faktu.</b> Zwrot T-10 nie kasuje wpłaty T-9. Jest osobnym wierszem z ujemną kwotą. W tym projekcie do tabeli transakcyjnej wiersze są wtedy tylko dopisywane (append-only). Suma za dowolny okres pozostaje prawdziwa: marzec pokazuje i wpłatę, i zwrot.',
     '<b>Poprawka wymiaru wstecz.</b> Okazuje się, że Ben przeprowadził się 1 lutego, a nie 10. Kimball opisuje to wprost: trzeba wstawić albo poprawić wiersz w historii wymiaru, a potem przepisać klucze w wierszach faktów, których to dotyczy. Tu: transakcja T-4 z 1 lutego przechodzi z wersji niemieckiej na polską.',
-    '<b>Backfill.</b> Ponowne przeliczenie historii musi dawać ten sam wynik co ładowanie na bieżąco. To wymaga dwóch rzeczy: ładowanie dobiera wersję wymiaru po dacie zdarzenia, a zapis jest idempotentny: stabilny klucz, deterministyczna deduplikacja źródła, kolejność spóźnionych zmian i deterministyczne wartości przy <code>MERGE</code>; przy nadpisaniu partycji potrzebny jest kompletny zbiór wejściowy.',
+    '<b>Backfill</b>, czyli ponowne przeliczenie historii. Musi dać ten sam wynik co ładowanie na bieżąco. To wymaga dwóch rzeczy. Po pierwsze ładowanie dobiera wersję wymiaru po dacie zdarzenia. Po drugie zapis jest <b>idempotentny</b>: uruchomiony drugi raz zostawia ten sam stan. Przy <code>MERGE</code> potrzeba do tego stabilnego klucza, usuwania duplikatów ze źródła zawsze w ten sam sposób, ustalonej kolejności spóźnionych zmian i wartości, które przy każdym uruchomieniu wychodzą takie same. Przy nadpisaniu partycji potrzebny jest kompletny zbiór wejściowy.',
     '<b>Migawki.</b> Okresowej migawki nie da się uczciwie odtworzyć, jeśli źródło trzyma tylko stan bieżący. Stan z 31 stycznia trzeba było zapisać 31 stycznia. To argument za tym, żeby migawkę zacząć zbierać, zanim ktoś o nią zapyta.'
   ],
-  takeaway: '<b>Wniosek.</b> Model historyczny ma dwie osie czasu: kiedy coś się wydarzyło i kiedy hurtownia się o tym dowiedziała. Dopóki dane przychodzą na czas, obie się pokrywają i błąd w ładowaniu jest niewidoczny. Dobre pytanie kontrolne do każdego projektu: „co się stanie, gdy ten wiersz przyjdzie tydzień później?”.'
+  takeaway: '<b>Wniosek.</b> Model z historią ma dwa czasy: kiedy coś się wydarzyło i kiedy hurtownia się o tym dowiedziała. Dopóki dane przychodzą na czas, oba są takie same i błędu w ładowaniu nie widać. Dobre pytanie kontrolne do każdego projektu: „co się stanie, gdy ten wiersz przyjdzie tydzień później?”.'
 };
 
 /* ------------------------------------------------------------------ etap 4: Warstwa BI */
@@ -639,8 +639,8 @@ export const semantic = {
   ] as { id: string; label: string; trial: boolean; pastDue: boolean; unit: 'subscriptions' | 'customers'; why: string }[],
   resultLabel: 'aktywnych subskrybentów według tej definicji',
   takeaway: [
-    '<b>Wniosek.</b> Żadna z trzech liczb nie jest błędna, ale razem są bezużyteczne, bo nazywają się tak samo. <b>Warstwa semantyczna</b> to miejsce między hurtownią a raportami, w którym miarę definiuje się raz: nazwa, wzór, filtr, sposób agregacji. Raporty nie piszą własnego SQL-a, tylko proszą o miarę po nazwie.',
-    'Rozwiązaniem nie jest wybranie jednej definicji, tylko trzy miary o trzech różnych nazwach: opłacone subskrypcje, klienci z okresem próbnym, subskrypcje z dostępem. Spór o to, która jest „tą właściwą”, jest sporem biznesowym i model go nie rozstrzygnie.'
+    '<b>Wniosek.</b> Żadna z trzech liczb nie jest błędna, ale razem są bezużyteczne, bo nazywają się tak samo. <b>Warstwa semantyczna</b> (semantic layer) to miejsce między hurtownią a raportami, w którym miarę definiuje się raz: nazwa, wzór, filtr, sposób agregacji. Raport nie pisze własnego SQL-a. Prosi o miarę po nazwie.',
+    'Rozwiązaniem nie jest wybranie jednej definicji. Lepsze są trzy miary o trzech różnych nazwach: opłacone subskrypcje, klienci z okresem próbnym, subskrypcje z dostępem. Która z nich jest „tą właściwą”, to spór biznesowy. Model go nie rozstrzygnie.'
   ],
   sketchTitle: 'Jak wygląda definicja zapisana raz',
   sketchIntro: 'Ta sama miara w dwóch narzędziach. To szkice pokazujące kształt definicji, nie kod uruchomiony w ramach tej lekcji.',
@@ -657,7 +657,7 @@ CALCULATE (
   ],
   toolsTitle: 'Gdzie żyje definicja miary',
   tools: [
-    '<b>Power BI.</b> Model semantyczny zawiera tabele, relacje i miary zapisane w języku DAX. Miara jest liczona w chwili zapytania, w kontekście filtrów raportu.',
+    '<b>Power BI.</b> Model semantyczny zawiera tabele, relacje i miary zapisane w języku DAX. Miara jest liczona w chwili zapytania, dla filtrów ustawionych akurat w raporcie.',
     '<b>Looker.</b> Wymiary i miary opisuje się w języku LookML, a Looker generuje z nich SQL. Dokumentacja podkreśla zasadę pisania wyrażenia raz, w jednym miejscu.',
     '<b>dbt.</b> MetricFlow, silnik warstwy semantycznej dbt, przyjmuje definicje w YAML i sam buduje SQL ze złączeniami. Dokumentacja deklaruje, że na podstawie typów kluczy unika złączeń powielających wiersze.'
   ]
@@ -665,7 +665,7 @@ CALCULATE (
 
 export const cardinality = {
   title: 'Kardynalność: obietnica, którą składasz narzędziu',
-  intro: 'Fan-out z etapu Intuicja wraca w warstwie BI pod inną nazwą. Narzędzie nie zna Twoich danych. Wie o złączeniu tyle, ile mu zadeklarujesz: ile wierszy po jednej stronie odpowiada jednemu wierszowi po drugiej. To jest <b>kardynalność relacji</b>.',
+  intro: 'Fan-out z etapu Intuicja wraca w warstwie BI. Narzędzie nie zna Twoich danych. O złączeniu wie tyle, ile mu zadeklarujesz: ile wierszy po jednej stronie pasuje do jednego wiersza po drugiej. Na przykład jeden klient ma wiele transakcji. Ta informacja to <b>kardynalność relacji</b> (cardinality).',
   table: {
     name: 'relacje w modelu subskrypcji',
     columns: ['relacja', 'kardynalność', 'co z niej wynika'],
@@ -677,11 +677,11 @@ export const cardinality = {
     ]
   } as SampleTable,
   points: [
-    '<b>Power BI.</b> Relacja łączy jedną kolumnę jednej tabeli z jedną kolumną drugiej. Strona „jeden” musi mieć unikalne wartości: jeśli odświeżenie załaduje duplikat, odświeżenie kończy się błędem. Filtr zawsze przechodzi ze strony „jeden” na stronę „wiele”, a opcjonalnie w obie strony.',
+    '<b>Power BI.</b> Relacja łączy jedną kolumnę jednej tabeli z jedną kolumną drugiej. Strona „jeden” musi mieć unikalne wartości. Jeśli odświeżenie załaduje duplikat, kończy się błędem. Filtr zawsze przechodzi ze strony „jeden” na stronę „wiele”, a opcjonalnie w obie strony.',
     '<b>Filtrowanie w obie strony.</b> Microsoft zaleca ograniczać je do minimum: pogarsza wydajność i tworzy niejednoznaczne ścieżki filtrów. Wyjątkiem jest tabela pomostowa między dwoma wymiarami, gdzie jedna relacja dwukierunkowa jest potrzebna, żeby filtr dotarł do faktu.',
-    '<b>Looker.</b> Złączenie ma parametr <code>relationship</code> z wartościami <code>many_to_one</code> (domyślna), <code>one_to_one</code>, <code>one_to_many</code> i <code>many_to_many</code>. Mechanizm symmetric aggregates chroni sumy i liczniki przed fan-outem, ale zależy od dwóch rzeczy: unikalnego klucza głównego w każdym widoku i poprawnie podanej relacji.'
+    '<b>Looker.</b> Złączenie ma parametr <code>relationship</code> z wartościami <code>many_to_one</code> (domyślna), <code>one_to_one</code>, <code>one_to_many</code> i <code>many_to_many</code>. Mechanizm symmetric aggregates chroni sumy i liczniki przed fan-outem. Działa pod dwoma warunkami: każdy widok ma unikalny klucz główny, a relacja jest podana poprawnie.'
   ],
-  takeaway: '<b>Wniosek.</b> Kardynalność w narzędziu BI jest deklaracją, na której narzędzie opiera sposób liczenia. Zabezpieczenia przed podwójnym liczeniem działają tylko wtedy, gdy deklaracja zgadza się z danymi, a klucze naprawdę są unikalne. Dlatego unikalność klucza wymiaru testuje się w hurtowni, zanim model trafi do BI.',
+  takeaway: '<b>Wniosek.</b> Kardynalność w narzędziu BI to Twoja deklaracja. Narzędzie jej ufa i według niej liczy. Zabezpieczenia przed podwójnym liczeniem działają tylko wtedy, gdy deklaracja zgadza się z danymi, a klucze naprawdę są unikalne. Dlatego unikalność klucza wymiaru testuje się w hurtowni, zanim model trafi do BI.',
   bridge: {
     from: 'dbt',
     known: 'Testy <code>unique</code> i <code>not_null</code> na kluczu głównym oraz <code>relationships</code> między modelami sprawdzają dane przy każdym uruchomieniu.',
@@ -702,7 +702,7 @@ export const rls = {
   mapTitle: 'user_publisher (tabela uprawnień)',
   factTitle: 'fact_transaction widziany przez tę osobę',
   says: 'Widzi {rows} z 10 transakcji, przychód {revenue} EUR. Reguła nie jest wpisana w raport: ten sam raport pokazuje każdemu jego wycinek.',
-  takeaway: '<b>Wniosek.</b> <b>Row-level security</b> (RLS) to reguła, która dla danego użytkownika odcina wiersze, zanim policzy się cokolwiek. W tym modelu regułę nakłada się na wymiar wydawcy, a aktywne relacje z właściwym kierunkiem filtra przenoszą ją na fakty. Brak przypisania użytkownika oznacza brak dostępu. Dlatego klucz wydawcy musi być w każdym fakcie i musi to być ten sam, wspólny wymiar.',
+  takeaway: '<b>Wniosek.</b> <b>Row-level security</b> (RLS) to reguła, która danemu użytkownikowi odcina wiersze, zanim cokolwiek się policzy. W tym modelu regułę nakłada się na wymiar wydawcy. Na fakty przenoszą ją relacje, o ile są aktywne i mają właściwy kierunek filtra. Użytkownik bez przypisanego wydawcy nie ma dostępu. Dlatego klucz wydawcy musi być w każdym fakcie i musi to być ten sam, wspólny wymiar.',
   sketches: [
     { tool: 'Power BI: filtr roli na tabeli uprawnień (DAX)', code: '[email] = USERPRINCIPALNAME()' },
     { tool: 'Looker: filtr na eksploracji (LookML)', code: `access_filter: {
@@ -726,18 +726,18 @@ export const preagg = {
   table: { name: 'agg_revenue_daily_publisher', columns: ['date_key', 'publisher_key', 'revenue_eur', 'txn_count'], rows: [[20260105, 1, '10.00', 1], [20260115, 1, '10.00', 1], [20260120, 1, '96.00', 1], [20260201, 2, '8.00', 1]] } as SampleTable,
   points: [
     '<b>Agregat ma własne ziarno.</b> Tu: dzień × wydawca. Odpowie na pytanie o miesiąc i wydawcę. Na pytanie o produkt nie odpowie, bo produktu w nim nie ma.',
-    '<b>Narzędzie powinno wybierać samo.</b> W Power BI agregacje zdefiniowane przez użytkownika przekierowują zapytanie do tabeli agregatów, a gdy ta nie wystarcza, zapytanie wraca do tabeli szczegółowej. Tabela szczegółowa musi być w trybie DirectQuery. W Looker aggregate awareness wybiera najmniejszą tabelę, która odpowie poprawnie, a w razie braku używa tabeli bazowej.',
-    '<b>Nie każda miara się zwija.</b> Sumę dzienną można dodać do miesięcznej. Liczby unikalnych klientów nie: klient aktywny w dwóch dniach zostałby policzony dwa razy. Dokumentacja Looker wymienia jako obsługiwane sumę, licznik, minimum, maksimum i średnią, a licznik unikalnych wartości tylko przy dokładnym dopasowaniu tabeli albo w wersji przybliżonej.',
+    '<b>Narzędzie powinno wybierać samo.</b> W Power BI agregacje zdefiniowane przez użytkownika przekierowują zapytanie do tabeli agregatów. Gdy ta nie wystarcza, zapytanie wraca do tabeli szczegółowej. Tabela szczegółowa musi być w trybie DirectQuery. To tryb Power BI, w którym raport pyta źródło w chwili wyświetlenia, zamiast korzystać z zaimportowanych danych. W Looker aggregate awareness wybiera najmniejszą tabelę, która odpowie poprawnie. Gdy takiej nie ma, używa tabeli bazowej.',
+    '<b>Nie każda miara się zwija.</b> Sumy dzienne dodasz do sumy miesięcznej. Liczby unikalnych klientów nie dodasz: klient aktywny w dwóch dniach zostałby policzony dwa razy. Dokumentacja Looker wymienia jako obsługiwane sumę, licznik, minimum, maksimum i średnią. Licznik unikalnych wartości obsługuje tylko przy dokładnym dopasowaniu tabeli albo w wersji przybliżonej.',
     '<b>Agregat musi być świeży i spójny.</b> Spóźniony fakt albo poprawka wymiaru wstecz wymagają przeliczenia agregatu. Kimball ostrzega przed tym przy typie 1: po nadpisaniu atrybutu trzeba zadbać o przeliczenie tabel zagregowanych, których dotyczy zmiana.'
   ],
-  takeaway: '<b>Wniosek.</b> Pre-agregacja to optymalizacja nałożona na model atomowy, nie jego zamiennik. Jeśli użytkownik musi wiedzieć, której tabeli użyć, prędzej czy później ktoś zsumuje agregat, który się nie sumuje.'
+  takeaway: '<b>Wniosek.</b> Pre-agregacja to optymalizacja dołożona do modelu atomowego, a nie jego zamiennik. Jeśli użytkownik musi wiedzieć, której tabeli użyć, prędzej czy później ktoś zsumuje agregat, który się nie sumuje.'
 };
 
 export interface PlacementCase { setup: string; options: string[]; correct: number; why: string; scope: string }
 
 export const placement = {
   title: 'Hurtownia czy warstwa BI: gdzie umieścić logikę',
-  intro: 'Nie ma jednej odpowiedzi „zawsze w hurtowni”. Jest zasada: logika trafia tam, gdzie będzie użyta przez wszystkich odbiorców i gdzie da się ją przetestować. Zdecyduj dla czterech przypadków.',
+  intro: 'Nie ma jednej odpowiedzi „zawsze w hurtowni”. Jest zasada: logikę umieszczasz tam, gdzie skorzystają z niej wszyscy odbiorcy i gdzie da się ją przetestować. Zdecyduj dla czterech przypadków.',
   ask: 'Gdzie to umieścisz?',
   options: ['W hurtowni (model dbt)', 'W warstwie semantycznej (miara)', 'W pojedynczym raporcie'],
   cases: [
@@ -750,13 +750,13 @@ export const placement = {
     {
       setup: 'Odsetek zwrotów: liczba zwrotów podzielona przez liczbę wpłat, dla dowolnego wycinka wybranego przez użytkownika.',
       options: [], correct: 1,
-      why: 'Odsetek jest nieaddytywny. Policzony w hurtowni dla jednego ziarna będzie błędny w każdym innym. Hurtownia dostarcza oba liczniki, a warstwa semantyczna dzieli je w kontekście bieżącego filtra.',
+      why: 'Odsetek jest nieaddytywny, czyli nie wolno go sumować ani uśredniać. Policzony w hurtowni dla jednego ziarna będzie błędny w każdym innym. Hurtownia dostarcza oba liczniki, a warstwa semantyczna dzieli je dla wycinka, który akurat wybrał użytkownik.',
       scope: 'Gdy odbiorcą jest tylko jeden raport o stałym ziarnie, wynik w hurtowni też jest poprawny. Problem zaczyna się przy dowolnym krojeniu.'
     },
     {
       setup: 'Przypisanie kraju do regionu sprzedaży (DACH, CEE, Nordics). Regiony zmieniają się raz na rok i używa ich każdy raport.',
       options: [], correct: 0,
-      why: 'To atrybut wymiaru: opis, po którym się grupuje. Powinien być kolumną w <code>dim_customer</code> albo osobnym wymiarem, z decyzją o typie historii. Instrukcja warunkowa powtórzona w dziesięciu raportach rozjedzie się przy pierwszej zmianie.',
+      why: 'To atrybut wymiaru: opis, po którym się grupuje. Powinien być kolumną w <code>dim_customer</code> albo osobnym wymiarem, z decyzją o typie historii. Ten sam <code>CASE WHEN</code> skopiowany do dziesięciu raportów rozjedzie się przy pierwszej zmianie.',
       scope: 'Jeśli region ma być raportowany tak, jak obowiązywał w chwili sprzedaży, staje się atrybutem typu 2.'
     },
     {
@@ -786,7 +786,7 @@ export const tools = {
   } as SampleTable,
   breaksTitle: 'Gdzie analogia się kończy',
   breaks: [
-    'Power BI w trybie importu trzyma kopię danych we własnym silniku i liczy miary na niej. Looker wykonuje SQL w hurtowni przy braku trafienia w cache; może ponownie użyć zapisanego wyniku, a PDT przechowuje w bazie. To zmienia rozmowę o świeżości danych, koszcie zapytań i miejscu optymalizacji.',
+    'Power BI w trybie importu trzyma kopię danych we własnym silniku i na niej liczy miary. Looker wykonuje SQL w hurtowni, gdy nie znajdzie wyniku w cache. Zapisany wynik może użyć ponownie. Tabele PDT (persistent derived tables) przechowuje w bazie. Od tego zależy rozmowa o świeżości danych, koszcie zapytań i miejscu optymalizacji.',
     'W Power BI relacje są częścią modelu i działają stale. W Looker złączenia są zdefiniowane w eksploracji i trafiają do zapytania wtedy, gdy są potrzebne.',
     'Wymiar typu 2 w obu przypadkach przygotowuje się wcześniej. Microsoft pisze wprost, że Power Query nie wykona wyszukania wersji po dacie, a model semantyczny może jedynie załadować gotową tabelę typu 2.'
   ]
@@ -796,11 +796,11 @@ export const methods = {
   title: 'Kimball, Inmon i Data Vault w trzech akapitach',
   intro: 'Te nazwy padają na rozmowach z architektami. Wystarczy wiedzieć, na jakie pytanie każda odpowiada i gdzie w niej jest model wymiarowy.',
   items: [
-    '<b>Kimball.</b> Warstwa prezentacji jest wymiarowa i zawiera dane atomowe. Całość spina się wspólnymi wymiarami używanymi przez wiele tabel faktów. Buduje się proces po procesie.',
-    '<b>Inmon.</b> Dane atomowe trafiają najpierw do znormalizowanej hurtowni korporacyjnej, a z niej zasilane są wymiarowe data marty dla działów. Ten opis pochodzi z artykułu Kimball Group, czyli od strony sporu, która woli własne podejście.',
-    '<b>Data Vault.</b> Trzy rodzaje tabel: <b>hub</b> z kluczem biznesowym, <b>link</b> z relacją między hubami i <b>satellite</b> z atrybutami opisowymi i ich historią. Glosariusz Databricks podkreśla śledzenie historii i audytowalność, umieszcza Data Vault w warstwie pośredniej, a marty wymiarowe do raportowania buduje nad nią.'
+    '<b>Kimball.</b> Warstwa, z której czytają raporty, jest wymiarowa i zawiera dane atomowe, czyli najbardziej szczegółowe. Całość spinają wspólne wymiary używane przez wiele tabel faktów. Model buduje się proces po procesie.',
+    '<b>Inmon.</b> Dane atomowe trafiają najpierw do znormalizowanej hurtowni całej firmy (enterprise data warehouse). Z niej zasila się wymiarowe data marty dla działów. Ten opis pochodzi z artykułu Kimball Group, czyli od tej strony sporu, która woli własne podejście.',
+    '<b>Data Vault.</b> Trzy rodzaje tabel: <b>hub</b> z kluczem biznesowym, <b>link</b> z relacją między hubami i <b>satellite</b> z atrybutami opisowymi i ich historią. Glosariusz Databricks podkreśla śledzenie historii i audytowalność. Umieszcza Data Vault w warstwie pośredniej, a marty wymiarowe do raportowania buduje nad nią.'
   ],
-  takeaway: '<b>Wniosek.</b> To nie są trzy konkurencyjne kształty tabel dla raportu. Różnią się tym, jak wygląda warstwa integracji danych. Na końcu, tam gdzie czyta narzędzie BI, w każdym z tych podejść zwykle stoi model wymiarowy. Dobra odpowiedź na rozmowie mówi, jaki problem integracji rozwiązujesz, a nie która szkoła jest lepsza.'
+  takeaway: '<b>Wniosek.</b> To nie są trzy konkurencyjne kształty tabel dla raportu. Różnią się tym, jak wygląda warstwa integracji, czyli miejsce, w którym dane z wielu źródeł łączy się w całość. Na końcu, tam gdzie czyta narzędzie BI, w każdym z tych podejść zwykle stoi model wymiarowy. Dobra odpowiedź na rozmowie mówi, jaki problem integracji rozwiązujesz, a nie która szkoła jest lepsza.'
 };
 
 /* ------------------------------------------------------------------ etap 5: Projekt */
@@ -863,7 +863,7 @@ export const design = {
           ask: 'Subskrypcja jeszcze nie zapłaciła. Co wpisujesz w kolumnę daty pierwszej wpłaty?',
           options: ['Datę rejestracji', 'Datę dzisiejszą', 'Wartość pustą albo klucz wiersza „jeszcze nie nastąpiło” w wymiarze daty'],
           correct: 2,
-          why: 'Etap, który nie nastąpił, musi być odróżnialny od tego, który nastąpił. Data rejestracji albo dzisiejsza dałyby zero dni do płatności i stuprocentową konwersję. Po pustej wartości albo specjalnym wierszu wymiaru daty widać dokładnie, ile subskrypcji utknęło.'
+          why: 'Etap, którego jeszcze nie było, musi się dać odróżnić od etapu, który już był. Data rejestracji albo dzisiejsza dałyby zero dni do płatności i stuprocentową konwersję. Po pustej wartości albo specjalnym wierszu wymiaru daty widać dokładnie, ile subskrypcji utknęło.'
         },
         {
           ask: 'Zespół chce też widzieć konwersję według kraju klienta z dnia rejestracji. Co robisz?',
@@ -927,8 +927,8 @@ export const design = {
 export const interview = {
   frameTitle: 'Jak bronić decyzji projektowej',
   frameIntro: 'Rozmówca od BI i architektury rzadko pyta o definicję. Pyta „dlaczego tak”. Odpowiedź, która się broni, ma cztery części: pytanie biznesowe, decyzja, alternatywa, koszt.',
-  frameEn: 'The business needs month-end MRR by publisher, so the grain is one row per subscription per month-end. I considered deriving it from payments, but an annual plan has no payment in most months, so the state would be wrong. The trade-off is one more table to load and a measure that must not be summed across time, which I would enforce in the semantic layer.',
-  framePl: 'Biznes potrzebuje MRR na koniec miesiąca per wydawca, więc ziarno to jedna subskrypcja na koniec miesiąca. Rozważałem liczenie tego z wpłat, ale plan roczny w większości miesięcy nie ma wpłaty, więc stan byłby błędny. Kosztem jest dodatkowa tabela do ładowania i miara, której nie wolno sumować po czasie, co wymusiłbym w warstwie semantycznej.',
+  frameEn: 'The business needs month-end MRR by publisher. So the grain is one row per subscription per month-end. I considered deriving it from payments. But an annual plan has no payment in most months, so the state would be wrong. The trade-off is one more table to load, and a measure that must not be summed across time. I’d enforce that in the semantic layer.',
+  framePl: 'Biznes potrzebuje MRR na koniec miesiąca per wydawca. Dlatego ziarno to jedna subskrypcja na koniec miesiąca. Rozważałem liczenie tego z wpłat. Ale plan roczny w większości miesięcy nie ma wpłaty, więc stan byłby błędny. Koszt to dodatkowa tabela do ładowania i miara, której nie wolno sumować po czasie. Tego ostatniego pilnowałbym w warstwie semantycznej.',
   relatedTitle: 'Te same pytania w Interview Banku',
   relatedIntro: 'W banku każde z nich ma też wyjaśnienie mechanizmu i listę typowych błędów.'
 };
