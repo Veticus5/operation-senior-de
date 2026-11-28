@@ -72,7 +72,7 @@ export const beats: Beat[] = [
     next: 'Jakie ma na to sposoby?'
   },
   {
-    html: '<h2>Trzy strategie, ten sam wynik</h2>\n<p>Spark składa je z dwóch klocków. Pierwszy już znasz: przenoszenie wierszy tak, żeby ten sam klucz trafił do tej samej partycji, to <term id="shuffle">shuffle</term> z poprzednich lekcji. Drugi to <b>tablica hashująca</b> (hash table). To słownik w pamięci: podajesz klucz i od razu dostajesz wiersz, tak jak w <code>dict</code> w Pythonie.</p>\n<ul>\n<li><b>Broadcast hash join.</b> Mała tabela trafia w całości do każdego executora jako tablica hashująca. Duża tabela zostaje na miejscu.</li>\n<li><b>Sort merge join.</b> Najpierw shuffle obu tabel po kluczu. Potem sortowanie i przejście przez dwa posortowane ciągi naraz.</li>\n<li><b>Shuffled hash join.</b> Też shuffle obu tabel po kluczu. Ale zamiast sortować, Spark w każdej partycji buduje tablicę hashującą z jednej tabeli, zwykle mniejszej.</li>\n</ul>\n<p>Wynik jest za każdym razem ten sam. Różni się koszt: ile danych jedzie po sieci, czy trzeba sortować i ile musi zmieścić się w pamięci.</p>',
+    html: '<h2>Trzy strategie, ten sam wynik</h2>\n<p>Spark składa je z dwóch klocków. Pierwszy już znasz: przenoszenie wierszy tak, żeby ten sam klucz trafił do tej samej partycji, to <term id="shuffle">shuffle</term> z poprzednich lekcji. Drugi to <b>tablica hashująca</b> (hash table). To słownik w pamięci: podajesz klucz i od razu dostajesz wiersz, tak jak w <code>dict</code> w Pythonie.</p>\n<ul>\n<li><b>Broadcast hash join.</b> Mała tabela trafia w całości do każdego executora jako tablica hashująca. Ten join nie wymaga wtedy shuffle\'u ani sortowania dużej tabeli.</li>\n<li><b>Sort merge join.</b> Shuffle i sortowanie obu tabel po kluczu, ale tylko tam, gdzie dane nie są już odpowiednio podzielone lub posortowane. Potem przejście przez dwa posortowane ciągi naraz.</li>\n<li><b>Shuffled hash join.</b> Też shuffle obu tabel po kluczu. Ale zamiast sortować, Spark w każdej partycji buduje tablicę hashującą z jednej tabeli, zwykle mniejszej.</li>\n</ul>\n<p>Wynik jest za każdym razem ten sam. Różni się koszt: ile danych jedzie po sieci, czy trzeba sortować i ile musi zmieścić się w pamięci.</p>',
     bridge: {
       from: 'Snowflake',
       known: 'Piszesz JOIN, a hurtownia sama decyduje, jak połączyć tabele i jak rozłożyć dane. Zwykle w ogóle o tym nie myślisz.',
@@ -135,7 +135,7 @@ export const sim = {
     } as Record<StrategyId, string>
   },
   takeaway: [
-    '<b>Wniosek.</b> Każda strategia płaci czym innym. <b>Broadcast hash join</b> nie rusza dużej tabeli. Za to mała musi w całości zmieścić się w pamięci: na driverze i na każdym executorze. <b>Sort merge join</b> przenosi i sortuje obie strony. Za to żadnej z nich nie potrzebuje w pamięci w całości. <b>Shuffled hash join</b> przenosi obie strony i nie sortuje. Ale każdy task trzyma w pamięci swój kawałek tej strony, z której buduje tablicę.',
+    '<b>Wniosek.</b> Każda strategia płaci czym innym. <b>Broadcast hash join</b> nie wymaga shuffle\'u ani sortowania dużej tabeli na potrzeby tego joina. Za to mała musi w całości zmieścić się w pamięci: na driverze i na każdym executorze. <b>Sort merge join</b> przenosi i sortuje obie strony tam, gdzie jest to potrzebne. Za to żadnej z nich nie potrzebuje w pamięci w całości. <b>Shuffled hash join</b> przenosi obie strony i nie sortuje. Ale każdy task trzyma w pamięci swój kawałek tej strony, z której buduje tablicę.',
     'Ta strona, z której powstaje tablica hashująca, ma w planach Sparka nazwę <b>build side</b>. Zobaczysz ją jako <code>BuildRight</code> albo <code>BuildLeft</code>. Spark wybiera ją spośród stron, na które pozwala typ joina. Zwykle jest to strona mniejsza, ale nie zawsze. Czasem to strona wskazana hintem, a czasem jedyna dozwolona.'
   ],
   notesTitle: 'Co tu jest uproszczeniem',
@@ -175,7 +175,7 @@ export const sizes = {
     memory: 'cała tabela customers, {customers}, na driverze i na każdym executorze',
     /** Werdykt dla kolejnych rozmiarów customers. */
     verdicts: [
-      { state: 'ok', text: 'Apache Spark ma próg rozmiaru, poniżej którego sam sięga po broadcast: domyślnie 10 MB. 8 MB to mniej. Jeśli szacunek Sparka zgadza się z rzeczywistością i typ joina na to pozwala, Apache Spark wybierze tę strategię sam. Duża tabela zostaje na miejscu.' },
+      { state: 'ok', text: 'Apache Spark ma próg rozmiaru, do którego sam sięga po broadcast: domyślnie 10 MB. 8 MB mieści się w progu. Jeśli szacunek Sparka zgadza się z rzeczywistością i typ joina na to pozwala, Apache Spark wybierze tę strategię sam. Ten join nie wymaga wtedy shuffle\'u ani sortowania dużej tabeli.' },
       { state: 'risk', text: '300 MB to więcej niż domyślny próg 10 MB, więc Spark sam tej strategii nie zaplanuje. Trzeba by go o nią poprosić wskazówką w kodzie (hint) albo podnieść próg. Zadziała, jeśli driver i każdy executor mają na tę tabelę zapas pamięci.' },
       { state: 'risk', text: 'Do rozesłania jest łącznie ok. 80 GB kopii. Do tego ok. 4 GB musi zmieścić się w pamięci drivera i każdego z 20 executorów. Jeśli pomylisz się w ocenie rozmiaru, grozi brak pamięci, a nie tylko wolniejsze zapytanie.' },
       { state: 'no', text: 'Tabelę przygotowaną do rozesłania kod Sparka nazywa relacją. Zakładamy, że ma ona tu 40 GB. W sprawdzonej implementacji Apache Spark 4.0 relacja, która po zbudowaniu ma 8 GB albo więcej, kończy zapytanie błędem, także z hintem. Limit dotyczy zbudowanej relacji, a nie rozmiaru plików ani tabeli na dysku.' }
@@ -260,7 +260,7 @@ export const plans = {
     {
       id: 'bhj',
       label: 'Broadcast hash',
-      how: 'Ustawienia domyślne. Spark wybrał tę strategię sam, bo szacowany rozmiar strony customers jest poniżej progu.',
+      how: 'Ustawienia domyślne. Spark wybrał tę strategię sam, bo szacowany rozmiar strony customers mieści się w progu.',
       shuffle: 'Rekordy zapisane do shuffle\'u: brak.',
       lines: [
         project(2),
@@ -275,7 +275,7 @@ export const plans = {
         {
           code: '   +- BroadcastExchange HashedRelationBroadcastMode(List(input[0, bigint, false]),false)',
           label: 'rozesłanie małej tabeli',
-          text: 'Tu mała strona jest zbierana, zamieniana na tablicę hashującą i rozsyłana do executorów. To <code>Exchange</code>, ale nie shuffle. Zwróć uwagę, że po stronie transactions nie ma żadnego <code>Exchange</code>: duża tabela zostaje na miejscu.'
+          text: 'Tu mała strona jest zbierana, zamieniana na tablicę hashującą i rozsyłana do executorów. To <code>Exchange</code>, ale nie shuffle. Zwróć uwagę, że po stronie transactions nie ma żadnego <code>Exchange</code>: ten join nie wymaga shuffle\'u dużej tabeli.'
         },
         filterLine('      ', 1, '8L'),
         c2r('         ', 1),
@@ -310,7 +310,7 @@ export const plans = {
         {
           code: '   +- *(4) Sort [customer_id#8L ASC NULLS FIRST], false, 0',
           label: 'ORDER BY customer_id, w każdej partycji',
-          text: 'To samo po stronie customers. Sort merge sortuje obie strony, także tę małą.'
+          text: 'To samo po stronie customers. W tym planie sort merge sortuje obie strony, także tę małą.'
         },
         {
           code: '      +- Exchange hashpartitioning(customer_id#8L, 200), ENSURE_REQUIREMENTS',
@@ -450,7 +450,7 @@ export const choosing = {
         'Shuffled hash join obsługuje wszystkie typy joina: hint <code>SHUFFLE_HASH</code> zadziałał także dla full outer. Gdy hinty są ze sobą sprzeczne, decyduje kolejność z dokumentacji: najpierw BROADCAST, potem MERGE, potem SHUFFLE_HASH.',
         'Hint działa też w drugą stronę: <code>MERGE</code> dał sort merge, choć tabela była poniżej progu. A <code>BROADCAST</code> Spark uwzględnia nawet wtedy, gdy szacunek przekracza próg. Dlatego hint na tabeli, która rośnie, to dług techniczny. Tabela przestanie być mała, a hint zostanie w kodzie i dalej będzie działał.'
       ],
-      scope: 'Wynik dla joinów z warunkiem równości w PySpark 4.0.1 i 4.3.0. Bez warunku równości Spark sięga po inne strategie, np. broadcast nested loop join, których ta lekcja nie omawia.'
+      scope: 'Wynik dla joinów z warunkiem równości w PySpark 4.0.1 i 4.3.0. Bez warunku równości Spark wybiera spośród innych strategii, np. broadcast nested loop join albo iloczyn kartezjański, zależnie od typu joina, rozmiarów i hintów. Tych strategii ta lekcja nie omawia.'
     }
   ] as Experiment[],
   orderTitle: 'Kolejność decyzji w Apache Spark',
@@ -493,7 +493,7 @@ export const scenarios = {
       ask: 'Co robisz najpierw?',
       options: ['Zdejmuję hint i sprawdzam plan bez niego', 'Zwiększam pamięć drivera', 'Zwiększam liczbę partycji shuffle\'u'],
       correct: 0,
-      why: 'Spark uwzględnia hint broadcast nawet wtedy, gdy szacunek przekracza próg. Dlatego dalej zbiera 6 GB i rozsyła kopię do każdego executora. Bez hintu wybierze strategię na podstawie szacunku, przy tym rozmiarze sort merge. Liczba partycji shuffle\'u nie ma tu znaczenia, bo broadcast nie robi shuffle\'u.',
+      why: 'Spark uwzględnia hint broadcast nawet wtedy, gdy szacunek przekracza próg. Dlatego dalej zbiera 6 GB i rozsyła kopię do każdego executora. Bez hintu wybierze strategię na podstawie szacunku, przy tym rozmiarze sort merge. Liczba partycji shuffle\'u nie ma tu znaczenia, bo broadcast hash join nie wymaga shuffle\'u dużej tabeli.',
       scope: 'Większa pamięć drivera usuwa objaw tylko do następnego wzrostu tabeli. Poza tym w sprawdzonym kodzie Apache Spark 4.0 zbudowana relacja od 8 GB wzwyż i tak kończy zapytanie błędem. Jeśli join potrzebuje z tej tabeli dwóch kolumn i części wierszy, wybierz je przed joinem. Może się okazać, że to, co naprawdę trzeba rozesłać, znowu jest małe.'
     },
     {
@@ -550,7 +550,7 @@ export const quiz: QuizItem[] = [
     q: 'Tabela wymiarów ma 6 GB, a klaster 50 executorów. Co jest głównym kosztem broadcast hash joina?',
     options: ['Sortowanie dużej tabeli', 'Cała tabela wymiarów w pamięci drivera i każdego executora', 'Shuffle obu tabel'],
     correct: 1,
-    why: 'Broadcast nie sortuje i nie robi shuffle\'u dużej tabeli. Płaci za to pamięcią. W Apache Spark małą stronę zbiera driver, a kopia trafia do każdego executora. Przy 6 GB i 50 executorach to już duże ryzyko braku pamięci. Do tego zbudowana relacja zbliża się do limitu 8 GB z kodu Apache Spark 4.0.'
+    why: 'Broadcast hash join nie wymaga sortowania ani shuffle\'u dużej tabeli na potrzeby tego joina. Płaci za to pamięcią. W Apache Spark małą stronę zbiera driver, a kopia trafia do każdego executora. Przy 6 GB i 50 executorach to już duże ryzyko braku pamięci. Do tego zbudowana relacja zbliża się do limitu 8 GB z kodu Apache Spark 4.0.'
   },
   {
     q: 'Z czym Spark porównuje <code>autoBroadcastJoinThreshold</code>, gdy planuje join przed wykonaniem?',
