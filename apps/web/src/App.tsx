@@ -17,6 +17,8 @@ import { PlatformLesson } from './academy/production-platform-design/PlatformLes
 import { BankHome } from './interview-bank/BankHome';
 import { QuestionView } from './interview-bank/QuestionView';
 import { Review } from './interview-bank/Review';
+import { Chapter, KbHome } from './knowledge-base/KnowledgeBase';
+import { chapterById } from '@content/knowledge-base/index';
 import { meta as lazyMeta } from '@content/spark/lazy-evaluation/lesson';
 import { meta as fundamentalsMeta } from '@content/spark/fundamentals/lesson';
 import { meta as executionMeta } from '@content/spark/execution-architecture/lesson';
@@ -58,6 +60,10 @@ export function App() {
         {a === 'review' ? <Review /> : a === 'q' && b ? <QuestionView id={b} /> : <BankHome />}
       </Shell>
     );
+  }
+  if (section === 'kb') {
+    const chapter = a ? chapterById(a) : undefined;
+    return <Shell section="kb">{chapter ? <Chapter chapter={chapter} sectionId={b} /> : <KbHome />}</Shell>;
   }
   return (
     <Shell section="home">

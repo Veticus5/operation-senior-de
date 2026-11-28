@@ -428,6 +428,15 @@ Lekcja nie ma labu. Wszystkie liczby w jej interakcjach (strony, wartości, mikr
 | HOT update: nowe wpisy w indeksach nie są potrzebne, gdy zmiana nie dotyka kolumn używanych przez indeksy (poza indeksami podsumowującymi, czyli BRIN) i na stronie ze starym wierszem jest dość miejsca | [PostgreSQL: Heap-Only Tuples](https://www.postgresql.org/docs/current/storage-hot.html) |
 | `EXPLAIN ANALYZE` „actually executes the query", skutki uboczne zachodzą jak zwykle (instrukcję zmieniającą dane można objąć `BEGIN … ROLLBACK`). Koszty: „measured in arbitrary units"; czasy `actual time` są w milisekundach | [PostgreSQL: Using EXPLAIN](https://www.postgresql.org/docs/current/using-explain.html) |
 
+### Knowledge Base, rozdział Database & Data Architecture (2026-11-28)
+
+Rozdział `content/knowledge-base/database-architecture.ts` nie wprowadza nowych faktów. Opiera się na tabeli „Lekcja 06" powyżej, a jego pole `sources` zawiera wyłącznie adresy z tej tabeli (pilnuje tego test `apps/web/src/knowledge-base/chapter.test.ts`).
+Dane przykładów (zamówienia, kroki normalizacji, mikropartycje, warstwy architektur, tabele porównawcze, wydruki `EXPLAIN`) są importowane z lekcji 06, więc oba materiały pokazują te same liczby.
+
+Ilustracje rozdziału są statyczne i podpisane jako ilustracje. Zakresy wartości w ilustracji indeksu B-tree (np. „1 – 400 000", „40 001 – 80 000") są wymyślone na potrzeby rysunku: pokazują zawężanie zakresu na kolejnych poziomach i zgadzają się z modelem lekcji (trzy poziomy drzewa, 1 000 000 wierszy na 10 000 stron). To nie pomiar ani opis rzeczywistego indeksu.
+
+Dwa objaśnienia pojęć dopisane w rozdziale, żeby dało się go czytać bez lekcji, pochodzą z faktów spisanych przy lekcji 10: warehouse jako klaster obliczeniowy oraz kredyty jako jednostka rozliczania zużycia mocy obliczeniowej.
+
 ### Lekcja 07: Enterprise SDLC & AI-Assisted Engineering (sprawdzone 2026-11-27)
 
 Strony dbt, Snowflake, GitHub, Claude Code i OWASP nie mają numeru wersji: obowiązuje data sprawdzenia. Specyfikacja MCP: wersja **2025-06-18**. pandas: dokumentacja wersji **3.1.1**. Terraform: strona wprowadzająca wersji 1.17.x. OWASP: wydanie **2025** (na stronie jest już zapowiedź wydania 2026, nie była otwierana).

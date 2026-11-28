@@ -9,12 +9,14 @@ npm install          # raz
 npm run dev          # serwer deweloperski
 npm run dev:labs     # serwer deweloperski + lokalny runner labów (przycisk „Uruchom lab")
 npm run check        # typecheck + testy + build, uruchom przed każdym commitem
+npm run kb:pdf       # PDF rozdziałów Knowledge Base, uruchom po każdej zmianie treści rozdziału
 cd labs && uv run lazy_evaluation/lazy_lab.py   # lab PySpark, wymaga Javy 17+ (pozostałe laby: labs/README.md)
 ```
 
 ## Gdzie co jest
 
 - Pytania: `content/<obszar>/questions.ts`. Model: `content/types.ts`. Rejestr: `content/index.ts`. Słownik pojęć: `content/glossary.ts`.
+- Knowledge Base: rozdziały w `content/knowledge-base/` (model: `types.ts`, rejestr: `index.ts`), widok i ilustracje w `apps/web/src/knowledge-base/`. Strona i PDF renderują ten sam `ChapterBody`. Style treści wspólne dla obu: `kb-content.css`. Generator PDF: `apps/web/scripts/kb-pdf.mjs`, wynik w `apps/web/public/kb/`.
 - Elementy wspólne: `apps/web/src/components/` (`TermTooltip`, `CodeExplainer`, `ConceptBridge`, `Html`, `LabRunner`). Parser fragmentów treści: `apps/web/src/lib/richText.ts`.
 - Lekcja wzorcowa: treść w `content/spark/lazy-evaluation/`, widok w `apps/web/src/academy/lazy-evaluation/`.
 - Runner labów: serwer w `apps/lab-runner/server.mjs` (Node bez zależności, testy `node --test`), allowlista w `labs/registry.json`, klient w `apps/web/src/lib/labRunner.ts`, kod labów dla interfejsu w `apps/web/src/lib/labSources.ts`.
@@ -32,4 +34,5 @@ cd labs && uv run lazy_evaluation/lazy_lab.py   # lab PySpark, wymaga Javy 17+ (
 - Nie zmieniaj istniejących `id` ani `topicId`. To samo dotyczy `id` labów w `labs/registry.json`.
 - Etapy lekcji pozostają zamontowane i są przełączane atrybutem `hidden`, żeby stan symulatora i odpowiedzi przetrwał przejście między etapami. Nie zamieniaj tego na renderowanie warunkowe.
 - Symulator skaluje scenę 980×372 do szerokości kontenera (`LazySim.tsx`). Jeśli zmieniasz rozmiar sceny, zmień go w obu miejscach: w silniku i w komponencie.
+- Knowledge Base nie ma quizów, symulatorów ani postępu. Ilustracje są statyczne (HTML i CSS bez stanu), bo ten sam kod trafia do PDF. Rozdział nie wprowadza faktów spoza `docs/verified-facts.md`.
 - Po zmianie interfejsu sprawdź build produkcyjny w przeglądarce (Playwright albo ręcznie) na szerokim ekranie i na 390 px.
