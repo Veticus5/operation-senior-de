@@ -332,7 +332,7 @@ export const advancedDataModeling: KbChapter = {
           p(
             [
               `Kwotę wolno sumować po każdym wymiarze: po dniach, klientach, produktach i wydawcach. 162 EUR to rzeczywisty przychód kwartału. Teraz MRR z okresowej migawki.`,
-              `MRR wolno sumować po subskrypcjach, produktach i wydawcach, ale tylko w ramach jednego dnia. Po czasie nie: 90 EUR nic nie znaczy, bo te same subskrypcje policzyły się trzy razy. Dla kwartału bierze się stan z ostatniego dnia (26) albo średnią (30) i nazywa ten wybór w definicji miary. Trzeci przypadek to odsetek zwrotów.`,
+              `MRR wolno sumować po subskrypcjach, produktach i wydawcach, ale tylko w ramach jednego dnia. Po czasie nie: 90 EUR nic nie znaczy, bo te same subskrypcje policzyły się trzy razy. Dla kwartału są dwie różne miary: MRR na koniec kwartału (26) i średni miesięczny MRR (30). Jedna nie zastępuje drugiej, więc każda dostaje własną nazwę. Trzeci przypadek to odsetek zwrotów.`,
               `Odsetka nie wolno ani sumować, ani uśredniać. Średnia z trzech odsetków daje 5,6%, a poprawny wynik dla całości to 1 zwrot na 9 wpłat, czyli 11,1%. Dlatego w tabeli faktów trzyma się składniki, czyli liczbę zwrotów i liczbę wpłat, a dzieli się na końcu. Kimball opisuje to jako praktykę stosowaną „tam, gdzie to możliwe”, a dzielenie często zostawia warstwie BI.`
             ][i]
           )
@@ -469,8 +469,8 @@ export const advancedDataModeling: KbChapter = {
         ),
         p(`Dobieranie wersji po dacie zdarzenia to <b>złączenie punkt-w-czasie</b> (point-in-time join). Warunek ma postać „data zdarzenia jest w przedziale ważności wersji”, a sam przedział ma jeden koniec otwarty: dzień <code>valid_from</code> należy do wersji, a dzień <code>valid_to</code> już do następnej.`),
         warn(
-          'Przedziały ważności nie mogą na siebie zachodzić',
-          `Gdyby przedział był domknięty z obu stron, wpłata z 10 lutego pasowałaby do obu wersji Bena i znów policzyłaby się dwa razy. Stąd warunek <code>&gt;= valid_from</code> i <code>&lt; valid_to</code>.`,
+          'Przedziały ważności jednego klienta nie mogą na siebie zachodzić',
+          `Dla jednego klucza naturalnego każdy dzień należy do najwyżej jednej wersji. Gdyby przedział był domknięty z obu stron, wpłata z 10 lutego pasowałaby do obu wersji Bena i znów policzyłaby się dwa razy. Stąd warunek <code>&gt;= valid_from</code> i <code>&lt; valid_to</code>.`,
           `Luki w historii bywają uzasadnione. Fakt, który nie trafia w żadną wersję, dostaje wtedy jawny wiersz „nieznany”, a nigdy wersję, która już wygasła.`
         ),
         p(`W modelu wymiarowym to złączenie robi się <b>raz, przy ładowaniu faktu</b>. Ładowanie znajduje klucz zastępczy właściwej wersji i zapisuje go w wierszu faktu. Zapytania analityczne łączą potem fakt z wymiarem zwykłym warunkiem równości po <code>customer_key</code>, bez dat.`),
@@ -488,7 +488,7 @@ export const advancedDataModeling: KbChapter = {
       id: 'spoznione-dane',
       title: 'Spóźnione dane, korekty i backfill',
       blocks: [
-        p(`Dotąd każda transakcja docierała do hurtowni od razu i w kolejności. W praktyce tak nie jest. Model z historią ma dwa czasy: kiedy coś się wydarzyło i kiedy hurtownia się o tym dowiedziała. Dopóki dane przychodzą na czas, oba są takie same i błędu w ładowaniu nie widać.`),
+        p(`Dotąd każda transakcja docierała do hurtowni od razu i w kolejności. W praktyce tak nie jest. Model z historią ma dwa czasy: kiedy coś się wydarzyło i kiedy hurtownia się o tym dowiedziała. Dopóki wymiar nie zmienia się między zdarzeniem a ładowaniem, błędu w ładowaniu nie widać.`),
         h3('Spóźniony fakt'),
         p(`25 marca dociera transakcja T-11 Bena z datą wpłaty <b>8 lutego</b>. Operator płatności przesłał ją z opóźnieniem. Bieżąca wersja Bena to Polska, klucz 4. Ładowanie, które bierze „aktualnego klienta”, zapisałoby właśnie ten klucz.`),
         p(`Poprawne ładowanie szuka klucza w całej historii klienta, po dacie wpłaty.`),
@@ -502,7 +502,7 @@ export const advancedDataModeling: KbChapter = {
           ],
           total: `Liczy się data wpłaty, a nie data załadowania: klucz ${ben[latePick].key} (${ben[latePick].country}), a nie bieżący klucz ${ben.find(v => v.current)!.key} (${ben.find(v => v.current)!.country}).`
         }),
-        p(`<b>Spóźniony fakt</b> (late-arriving fact) dostaje klucz tej wersji wymiaru, która obowiązywała w chwili zdarzenia. Ładowanie, które zawsze bierze wersję bieżącą, działa poprawnie tylko dla danych przychodzących na czas. Błąd wychodzi dopiero przy opóźnieniu albo ponownym przeliczeniu.`),
+        p(`<b>Spóźniony fakt</b> (late-arriving fact) dostaje klucz tej wersji wymiaru, która obowiązywała w chwili zdarzenia. Ładowanie, które zawsze bierze wersję bieżącą, daje poprawny klucz tylko wtedy, gdy ta wersja obowiązywała już w chwili zdarzenia. Samo ładowanie na czas tego nie gwarantuje: wystarczy, że klient zmieni kraj między wpłatą a ładowaniem. Przy opóźnieniu i ponownym przeliczeniu błąd jest po prostu częstszy.`),
         h3('Spóźniony wymiar'),
         p(`Sytuacja odwrotna: dociera wpłata klienta <b>C-107</b>, ale system klientów jeszcze go nie przesłał. W <code>dim_customer</code> nie ma takiego wiersza. Odrzucenie wpłaty albo zapisanie jej z pustym kluczem zaniżyłoby przychód albo schowało problem.`),
         sql(`-- 1. Jest wpłata, nie ma jeszcze klienta\nINSERT INTO dim_customer\n  (customer_id, name, country)\nVALUES ('C-107', 'Unknown', 'Unknown');\n\n-- 2. Dane klienta dotarły: typ 1\nUPDATE dim_customer\nSET name = 'Greta', country = 'SE'\nWHERE customer_id = 'C-107';`),
@@ -513,7 +513,7 @@ export const advancedDataModeling: KbChapter = {
           `<b>Poprawka wymiaru.</b> Okazuje się, że Ben przeprowadził się 1 lutego, a nie 10. Kimball opisuje to wprost: trzeba wstawić albo poprawić wiersz w historii wymiaru, a potem przepisać klucze w wierszach faktów, których to dotyczy. Tutaj transakcja T-4 z 1 lutego przechodzi z wersji niemieckiej na polską.`
         ),
         h3('Backfill i idempotencja'),
-        p(`<b>Backfill</b> to ponowne przeliczenie historii. Musi dać ten sam wynik co ładowanie na bieżąco. Wymaga to dwóch rzeczy. Po pierwsze ładowanie dobiera wersję wymiaru po dacie zdarzenia. Po drugie zapis jest <b>idempotentny</b>: uruchomiony drugi raz zostawia ten sam stan. Zwykły <code>INSERT</code> przy powtórzeniu tworzy duplikaty.`),
+        p(`<b>Backfill</b> to ponowne przeliczenie historii. Przy tych samych danych wejściowych i regułach musi dać ten sam wynik co ładowanie na bieżąco. Wymaga to dwóch rzeczy. Po pierwsze ładowanie dobiera wersję wymiaru po dacie zdarzenia. Po drugie zapis jest <b>idempotentny</b>: uruchomiony drugi raz zostawia ten sam stan. Zwykły <code>INSERT</code> przy powtórzeniu tworzy duplikaty. Inaczej jest, gdy backfill ma poprawić historię, bo zmieniły się dane albo reguła: wtedy wynik celowo różni się od wcześniej opublikowanego.`),
         list(
           `Przy <code>MERGE</code> potrzeba stabilnego klucza, usuwania duplikatów ze źródła zawsze w ten sam sposób, ustalonej kolejności spóźnionych zmian i wartości, które przy każdym uruchomieniu wychodzą takie same.`,
           `Przy nadpisaniu partycji potrzebny jest kompletny zbiór wejściowy.`
@@ -589,13 +589,14 @@ export const advancedDataModeling: KbChapter = {
         h3('Zastrzeżenia, o które pyta architekt'),
         list(
           `<b>Power BI: gdzie filtrować.</b> Microsoft pisze, że często wydajniej jest nakładać filtr na tabele wymiarów i pozwolić relacjom przenieść go na fakty. Filtry RLS są doklejane do każdego zapytania i mogą je spowolnić.`,
-          `<b>Looker: domyślnie otwarte.</b> <code>access_filter</code> trzeba dodać do każdej eksploracji, która ma być ograniczona. Eksploracja bez niego pokazuje wszystko. Każdy użytkownik, także administrator, musi mieć ustawioną wartość atrybutu.`,
+          `<b>Looker: domyślnie otwarte.</b> <code>access_filter</code> trzeba dodać do każdej eksploracji, która ma być ograniczona. W eksploracji bez niego ten filtr niczego nie ogranicza. Inne ustawienia dostępu, jeśli są, działają dalej. Każdy użytkownik, także administrator, musi mieć ustawioną wartość atrybutu.`,
           `<b>Agregaty.</b> Reguła musi obejmować także tabele zagregowane. W Power BI filtr tylko na tabeli szczegółowej sprawia, że agregaty przestają być używane, a filtr tylko na tabeli agregatów jest niedozwolony.`,
-          `<b>Warstwy.</b> RLS w narzędziu BI chroni tylko ten kanał. Kto ma dostęp do hurtowni, omija go. Przy danych wielu najemców izolację projektuje się też w hurtowni, na przykład politykami dostępu do wierszy.`
+          `<b>Warstwy.</b> RLS w narzędziu BI chroni tylko ten kanał. Kto ma bezpośredni dostęp do hurtowni, omija go. Zabezpieczenia dobiera się więc do ścieżek dostępu: jeśli dane wielu najemców da się czytać także z hurtowni, izolację projektuje się i tam, na przykład politykami dostępu do wierszy.`
         ),
         warn(
           'Power BI: RLS nie dotyczy każdego',
-          `Według dokumentacji Microsoft RLS ogranicza dane tylko użytkownikom z uprawnieniem Viewer. Nie dotyczy ról Admin, Member i Contributor w obszarze roboczym. Kto może edytować model, widzi wszystko. Dlatego wydawcom nadaje się wyłącznie Viewer.`
+          `Według dokumentacji Microsoft w obszarze roboczym RLS ogranicza dane tylko użytkownikom z rolą Viewer. Nie dotyczy ról Admin, Member i Contributor, bo mają one prawo edycji modelu.`,
+          `Raport można też oglądać w aplikacji, bez roli w obszarze roboczym. Wtedy decyduje uprawnienie do modelu: RLS działa, gdy odbiorca ma do niego wyłącznie prawo odczytu (Read). Dlatego wydawcy nie dostają żadnej roli ani uprawnienia z prawem edycji.`
         )
       ]
     },
@@ -754,7 +755,7 @@ export const advancedDataModeling: KbChapter = {
     `<b>Model z historią ma dwa czasy:</b> kiedy coś się wydarzyło i kiedy hurtownia się dowiedziała. Spóźniony fakt szuka wersji po dacie zdarzenia. Spóźniony wymiar dostaje wiersz zastępczy. Backfill wymaga zapisu idempotentnego.`,
     `<b>Miarę definiuje się raz, w warstwie semantycznej.</b> Różne znaczenia dostają różne nazwy. Poprawna hurtownia nie gwarantuje spójnych liczb na dashboardach.`,
     `<b>Kardynalność w narzędziu BI to deklaracja.</b> Zabezpieczenia przed podwójnym liczeniem działają tylko przy unikalnych kluczach i poprawnie podanej relacji, więc unikalność testuje się w hurtowni.`,
-    `<b>RLS nakłada się na wspólny wymiar najemcy</b> i chroni tylko kanał BI. W Power BI dotyczy wyłącznie uprawnienia Viewer. Izolacja musi istnieć też w hurtowni.`,
+    `<b>RLS nakłada się na wspólny wymiar najemcy</b> i chroni tylko kanał BI. W Power BI nie obejmuje nikogo, kto ma prawo edycji modelu. Izolacja musi istnieć na każdej ścieżce dostępu, także w hurtowni.`,
     `<b>Pre-agregacja jest optymalizacją schowaną za modelem.</b> Ma własne ziarno, nie każda miara się w niej zwija i trzeba ją przeliczać po spóźnionych danych.`,
     `<b>Logika idzie tam, gdzie skorzystają z niej wszyscy odbiorcy.</b> Hurtownia: to, co ma być prawdą dla każdego. Warstwa semantyczna: miary zależne od kontekstu i reguły dostępu. Raport: prezentacja.`,
     `<b>Kimball, Inmon i Data Vault różnią się warstwą integracji.</b> Tam, gdzie czyta narzędzie BI, zwykle i tak stoi model wymiarowy.`
@@ -762,7 +763,7 @@ export const advancedDataModeling: KbChapter = {
   glossary: [
     { term: 'Aggregate awareness', def: 'Mechanizm Looker, który dla zapytania wybiera najmniejszą tabelę zagregowaną dającą poprawny wynik, a gdy takiej nie ma, używa tabeli bazowej.' },
     { term: 'ASOF JOIN', def: 'Złączenie w Snowflake, które dla każdego wiersza z lewej strony zwraca jeden wiersz z prawej: najbliższy w czasie według warunku z MATCH_CONDITION.' },
-    { term: 'Backfill', def: 'Ponowne przeliczenie historii. Powinno dać ten sam wynik co ładowanie na bieżąco.' },
+    { term: 'Backfill', def: 'Ponowne przeliczenie historii. Przy tych samych danych i regułach daje ten sam wynik co ładowanie na bieżąco. Gdy poprawia historię, wynik celowo się zmienia.' },
     { term: 'Data mart', def: 'Zbiór tabel przygotowany dla jednego działu albo obszaru raportowania.' },
     { term: 'Data Vault', def: 'Podejście do warstwy integracji z trzema rodzajami tabel: hub (klucz biznesowy), link (relacja między hubami) i satellite (atrybuty opisowe i ich historia).' },
     { term: 'DAX', def: 'Język formuł Power BI. Zapisuje się w nim miary i filtry ról.' },
@@ -776,7 +777,7 @@ export const advancedDataModeling: KbChapter = {
     { term: 'Klucz zastępczy (surrogate key)', def: 'Liczba bez znaczenia biznesowego, nadana wierszowi wymiaru przy ładowaniu do hurtowni. To ją przechowuje tabela faktów.' },
     { term: 'LookML', def: 'Język, w którym w Looker opisuje się widoki, wymiary, miary i złączenia. Looker generuje z tego opisu SQL.' },
     { term: 'Miara (measure)', def: 'Liczba, którą się analizuje, na przykład kwota transakcji. W warstwie semantycznej: nazwana definicja z wzorem, filtrem i sposobem agregacji.' },
-    { term: 'Miara addytywna', def: 'Miara, którą wolno sumować po każdym wymiarze. Przykład: kwota transakcji.' },
+    { term: 'Miara addytywna', def: 'Miara, którą wolno sumować po każdym wymiarze, o ile kwoty są w zgodnej walucie, a grupy na siebie nie zachodzą. Przykład: kwota transakcji.' },
     { term: 'Miara nieaddytywna', def: 'Miara, której nie wolno sumować po żadnym wymiarze, na przykład odsetek. Trzyma się jej składniki i dzieli na końcu.' },
     { term: 'Miara póładdytywna', def: 'Miara, którą wolno sumować tylko po niektórych wymiarach, typowo po wszystkich oprócz czasu. Przykłady: MRR, saldo.' },
     { term: 'MRR', def: 'Monthly recurring revenue. Suma miesięcznych opłat aktywnych subskrypcji. Subskrypcja roczna za 96 EUR wnosi 8 EUR.' },
@@ -784,7 +785,7 @@ export const advancedDataModeling: KbChapter = {
     { term: 'Narastająca migawka (accumulating snapshot)', def: 'Tabela faktów z jednym wierszem na przebieg procesu. Wiersz ma datę każdego etapu i jest uzupełniany, gdy proces do niego dochodzi.' },
     { term: 'Okresowa migawka (periodic snapshot)', def: 'Tabela faktów z jednym wierszem na obiekt na okres, także wtedy, gdy nic się nie wydarzyło. Odpowiada na pytania o stan.' },
     { term: 'Pre-agregacja', def: 'Tabela z wynikiem policzonym z góry dla często zadawanego pytania, na przykład przychód per dzień i wydawca.' },
-    { term: 'Przedział ważności', def: 'Okres, w którym obowiązuje wersja wiersza wymiaru: od valid_from włącznie do valid_to bez tego dnia.' },
+    { term: 'Przedział ważności', def: 'Okres, w którym obowiązuje wersja wiersza wymiaru: od valid_from włącznie do valid_to bez tego dnia. Przedziały jednego klucza naturalnego nie zachodzą na siebie, luki są dopuszczalne.' },
     { term: 'Row-level security (RLS)', def: 'Reguła, która danemu użytkownikowi odcina wiersze, zanim cokolwiek się policzy.' },
     { term: 'SCD (slowly changing dimension)', def: 'Wymiar, którego atrybuty zmieniają się rzadko i nieregularnie. Typ SCD to sposób zapisu takiej zmiany.' },
     { term: 'Snowflake schema', def: 'Model, w którym wymiar wskazuje kolejny wymiar, na przykład produkt wskazuje wydawcę. Nazwa opisuje kształt, nie hurtownię Snowflake.' },
@@ -815,12 +816,12 @@ export const advancedDataModeling: KbChapter = {
     { myth: 'Dwie tabele faktów łączy się po wspólnym kluczu.', fact: 'Łączy się je przez wspólne wymiary: każdą agreguje się osobno do tego samego poziomu i zestawia wyniki.' },
     { myth: 'Tabela pomostowa rozwiązuje podwójne liczenie.', fact: 'Rozwiązuje strukturę relacji wiele do wielu. Suma po kategoriach nadal przekracza całość, dopóki nie dodasz wag albo nie przyjmiesz, że wyniki się nie sumują.' },
     { myth: 'Tabela transakcyjna, okresowa migawka i narastająca migawka to trzy warianty do wyboru.', fact: 'Każda odpowiada na inny rodzaj pytania. Tabela transakcyjna i migawka zwykle istnieją obok siebie.' },
-    { myth: 'MRR kwartału to suma MRR z trzech miesięcy.', fact: 'MRR jest miarą póładdytywną. Dla okresu podaje się stan z ostatniego dnia albo średnią i nazywa ten wybór w definicji miary.' },
+    { myth: 'MRR kwartału to suma MRR z trzech miesięcy.', fact: 'MRR jest miarą póładdytywną. Dla kwartału podaje się MRR na koniec kwartału albo średni miesięczny MRR. To dwie różne miary, każda z własną nazwą.' },
     { myth: 'Odsetek dla całości to średnia odsetków z grup.', fact: 'W przykładzie średnia z trzech produktów daje 5,6%, a poprawny wynik to 11,1%. Odsetek liczy się na końcu, z licznika i mianownika.' },
     { myth: 'Typ 2 jest lepszy niż typ 1.', fact: 'To odpowiedź na inne pytanie biznesowe. Ma koszt: większy wymiar, wykrywanie zmian przy ładowaniu i ryzyko fan-outu przy złączeniu bez dat.' },
     { myth: 'Typ SCD wybiera się dla całej tabeli wymiaru.', fact: 'Ustala się go dla atrybutu. W jednym wymiarze literówka w nazwisku może być typem 1, a kraj typem 2.' },
     { myth: 'Skoro wymiar ma historię, raport sam pokaże stan historyczny.', fact: 'Zależy od złączenia. Po samym kluczu naturalnym wiersze się powielają, a z filtrem na bieżący wiersz wychodzi wynik jak w typie 1.' },
-    { myth: 'Fakt dostaje wersję wymiaru aktualną w chwili ładowania.', fact: 'Dostaje wersję z chwili zdarzenia. Różnicę widać dopiero przy spóźnionych danych i przy ponownym przeliczeniu historii.' },
+    { myth: 'Fakt dostaje wersję wymiaru aktualną w chwili ładowania.', fact: 'Dostaje wersję z chwili zdarzenia. Różnicę widać, gdy wymiar zmieni się między zdarzeniem a ładowaniem, najczęściej przy spóźnionych danych i ponownym przeliczeniu historii.' },
     { myth: 'Fakt bez wiersza w wymiarze trzeba odrzucić albo zapisać z pustym kluczem.', fact: 'Tworzy się wiersz zastępczy z kluczem naturalnym i wartościami „nieznane”, a później się go uzupełnia. Suma jest kompletna od pierwszego dnia.' },
     { myth: 'Błędną transakcję poprawia się przez jej skasowanie albo nadpisanie.', fact: 'W tabeli, do której wiersze się tylko dopisuje, poprawka jest osobnym wierszem korygującym, na przykład zwrotem z ujemną kwotą.' },
     { myth: 'Snapshot dbt zapisuje pełną historię zmian.', fact: 'Zapisuje stan widziany przy każdym uruchomieniu. Zmiany między uruchomieniami przepadają, jeśli źródło samo nie prowadzi historii.' },
