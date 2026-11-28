@@ -57,29 +57,29 @@ export interface Beat {
 export const beats: Beat[] = [
   {
     html: `<h1>Cztery linijki, 406 tasków.</h1>
-<p class="lede">Wiesz już, kto pracuje: driver planuje, executory liczą partycje. Wiesz też, że wiersze są liczone dopiero wtedy, gdy akcja zażąda wyniku. Brakuje środka: co dzieje się między wywołaniem akcji a pierwszym taskiem?</p>
+<p class="lede">Wiesz już, kto pracuje: driver planuje, executory liczą partycje. Wiesz też, że zwykłe transformacje tylko budują plan, a wiersze są liczone, gdy akcja zażąda wyniku. Brakuje środka: co dzieje się między wywołaniem akcji a pierwszym taskiem?</p>
 <p>Liczysz przychód per region z dwóch tabel:</p>
 <pre class="code">paid    = orders.filter(orders.status == <span class="k">"paid"</span>)
 joined  = paid.join(customers, <span class="k">"customer_id"</span>)
 revenue = joined.groupBy(<span class="k">"region"</span>).sum(<span class="k">"amount"</span>)
 revenue.write.parquet(<span class="k">"revenue_by_region/"</span>)</pre>
-<p>Uruchamiasz to i otwierasz <term id="spark-ui">Spark UI</term>. Zamiast jednego „zapytania” widzisz trzy poziomy liczb, których nigdzie nie wpisałeś. A po zmianie dwóch ustawień te same cztery linijki dają zupełnie inne liczby.</p>`,
+<p>Uruchamiasz to i otwierasz <term id="spark-ui">Spark UI</term>. Nie ma tam jednego „zapytania”. Są trzy poziomy: joby, stage'e i taski. Przy każdym stoi liczba, której nigdzie nie wpisałeś. Zmieniasz dwa ustawienia i te same cztery linijki dają zupełnie inne liczby.</p>`,
     visual: 'chain',
-    after: `<b>Wniosek.</b> Te liczby nie są cechą Twojego kodu. Są wynikiem tego, jak Spark go zaplanował. Żeby je czytać, a potem diagnozować wolne zapytania, trzeba wiedzieć, skąd bierze się każdy poziom: job, stage i task.`,
+    after: `<b>Wniosek.</b> Te liczby nie wynikają z samego kodu. Wynikają z tego, jak Spark zaplanował jego wykonanie. Jeśli wiesz, skąd bierze się job, stage i task, umiesz te liczby odczytać. A potem znaleźć powód, dla którego zapytanie jest wolne.`,
     next: 'Od czego zaczyna Spark?'
   },
   {
     html: `<h2>Wszystko wchodzi przez <code>spark</code></h2>
-<p>W każdym dotychczasowym przykładzie pisałeś <code>spark.read</code> albo <code>spark.sql</code> i nie pytałeś, czym jest <code>spark</code>. To <b>SparkSession</b>: obiekt, przez który Twój kod rozmawia z silnikiem. Przez niego tworzysz DataFrame'y, wysyłasz SQL i ustawiasz konfigurację zapytań.</p>
-<p>W klasycznym Sparku pod sesją jest drugi, starszy obiekt: <b>SparkContext</b>. On reprezentuje połączenie z klastrem. To przez niego driver dostaje executory i wysyła im taski. Kliknij kolejne linie.</p>`,
+<p>W każdym dotychczasowym przykładzie pisałeś <code>spark.read</code> albo <code>spark.sql</code> i nie pytałeś, czym jest <code>spark</code>. To obiekt, przez który Twój kod rozmawia ze Sparkiem. Przez niego tworzysz DataFrame'y, wysyłasz SQL i ustawiasz konfigurację zapytań. Nazywa się <b>SparkSession</b>.</p>
+<p>W klasycznym Sparku pod sesją jest drugi, starszy obiekt. To połączenie Twojej aplikacji z klastrem: przez nie driver dostaje executory i wysyła im taski. Ten obiekt to <b>SparkContext</b>. Kliknij kolejne linie.</p>`,
     visual: 'session',
-    after: `<b>Wniosek.</b> SparkSession to Twoje wejście do DataFrame'ów i SQL. W klasycznym Sparku pod sesją działa SparkContext: połączenie aplikacji z klastrem, jedno na aplikację. Sesji może być kilka i wszystkie go współdzielą. W Spark Connect klient ma tylko sesję.`,
+    after: `<b>Wniosek.</b> SparkSession to Twoje wejście do DataFrame'ów i SQL. W klasycznym Sparku pod sesją działa SparkContext: połączenie aplikacji z klastrem, jedno na aplikację. Sesji może być kilka. Wszystkie korzystają z tego samego SparkContext. W Spark Connect klient ma tylko sesję.`,
     more: {
       title: 'Skąd dwa obiekty i gdzie SparkContext nie istnieje',
       html: [
         `W Sparku 1.x wejściem do danych tabelarycznych był osobny obiekt <code>SQLContext</code>. Dokumentacja PySparka mówi, że od wersji 2.0 zastępuje go <code>SparkSession</code>, a stara klasa została dla zgodności wstecznej. SparkContext nie zniknął: w klasycznym trybie nadal istnieje pod każdą sesją.`,
-        `W <term id="spark-connect">Spark Connect</term> jest inaczej. Twój program jest klientem, który wysyła plan do serwera, i nie ma dostępu do SparkContext. Dokumentacja wymienia SparkContext i <term id="rdd">RDD</term> jako nieobsługiwane w tym trybie. Tak działa m.in. serverless w Databricks, więc kod, który woła <code>spark.sparkContext</code>, tam nie zadziała.`,
-        `W klasycznym Sparku to, gdzie działa driver, zależy od trybu uruchomienia aplikacji (<code>--deploy-mode</code>). W trybie <code>client</code> driver startuje w procesie, który wysłał aplikację, poza klastrem. W trybie <code>cluster</code> jest uruchamiany wewnątrz klastra.`
+        `W <term id="spark-connect">Spark Connect</term> jest inaczej. Twój program jest tylko klientem: wysyła plan do serwera. Do SparkContext nie ma dostępu. Dokumentacja wymienia SparkContext i <term id="rdd">RDD</term> jako nieobsługiwane w tym trybie. Tak działa m.in. serverless w Databricks, więc kod, który woła <code>spark.sparkContext</code>, tam nie zadziała.`,
+        `A gdzie działa driver? W klasycznym Sparku zależy to od trybu uruchomienia aplikacji (<code>--deploy-mode</code>). W trybie <code>client</code> driver startuje w procesie, który wysłał aplikację, poza klastrem. W trybie <code>cluster</code> jest uruchamiany wewnątrz klastra.`
       ]
     },
     next: 'Gdzie ja to już widziałem?'
@@ -87,12 +87,12 @@ revenue.write.parquet(<span class="k">"revenue_by_region/"</span>)</pre>
   {
     html: `<h2>W Snowflake też to widać, tylko płycej</h2>
 <p>Po zapytaniu w Snowflake możesz otworzyć Query Profile: drzewo operatorów z czasem i liczbą wierszy na każdym kroku. To plan wykonania pokazany po fakcie.</p>
-<p>Spark pokazuje podobne drzewo i dokłada poziomy, które hurtownia zostawia dla siebie: na jakie porcje pracy podzielił zapytanie i jak poszła każda z nich.</p>`,
+<p>Spark pokazuje podobne drzewo. Dokłada też to, co hurtownia zostawia dla siebie: na jakie porcje pracy podzielił zapytanie i jak poszła każda z nich.</p>`,
     bridge: {
       from: 'Snowflake',
       known: 'Query Profile: jedno zapytanie i jedno drzewo operatorów (skan, filtr, join, agregacja) ze statystykami każdego kroku.',
       fresh: `Zakładka SQL w Spark UI pokazuje plan zapytania. Zakładki Jobs i Stages mówią, jak ten plan został pocięty na joby, stage'e i taski.`,
-      breaks: `W Snowflake jednostką jest zapytanie, a podział pracy między maszyny jest sprawą usługi. W Sparku jedna akcja może dać kilka jobów, każdy stage ma własną liczbę tasków, a pojedynczy task może paść i zostać powtórzony. Te poziomy czytasz Ty, kiedy coś jest wolne.`
+      breaks: `W Snowflake patrzysz na całe zapytanie. Jak praca dzieli się między maszyny, to sprawa usługi. W Sparku jedna akcja może dać kilka jobów, każdy stage ma własną liczbę tasków, a pojedynczy task może paść i zostać powtórzony. Kiedy coś jest wolne, te poziomy czytasz Ty.`
     },
     next: 'Rozłóż zapytanie na części'
   }
@@ -105,22 +105,22 @@ export const session = {
     {
       code: 'spark = SparkSession.builder.appName("revenue").getOrCreate()',
       label: 'Otwórz sesję',
-      text: `Zwraca istniejącą sesję albo, gdy żadnej nie ma, tworzy nową. Istniejącej sesji nadaje przy tym opcje podane w builderze. W labie drugie wywołanie <code>getOrCreate()</code> oddało ten sam obiekt. W klasycznym Sparku razem z pierwszą sesją powstaje SparkContext, czyli połączenie z klastrem.`
+      text: `Jeśli sesja już istnieje, dostajesz właśnie ją. Jeśli żadnej nie ma, powstaje nowa. Istniejąca sesja dostaje przy tym opcje podane w builderze. W labie drugie wywołanie <code>getOrCreate()</code> oddało ten sam obiekt. W klasycznym Sparku razem z pierwszą sesją powstaje SparkContext, czyli połączenie z klastrem.`
     },
     {
       code: 'sc = spark.sparkContext',
       label: 'Połączenie z klastrem',
-      text: `Kontekst, na którym stoi sesja. Służy do rzeczy niskopoziomowych: starszego API <term id="rdd">RDD</term>, zmiennych broadcast i <term id="accumulator">akumulatorów</term>. W zwykłej pracy na DataFrame'ach rzadko po niego sięgasz.`
+      text: `Kontekst, na którym stoi sesja. Przydaje się do rzeczy niskopoziomowych: starszego API <term id="rdd">RDD</term>, zmiennych broadcast i <term id="accumulator">akumulatorów</term>. W zwykłej pracy na DataFrame'ach rzadko po niego sięgasz.`
     },
     {
       code: 'other = spark.newSession()',
       label: 'Druga sesja, ten sam kontekst',
-      text: `Nowa sesja ma własne ustawienia SQL i własne widoki tymczasowe, ale ten sam SparkContext i ten sam cache tabel. W labie widok utworzony w pierwszej sesji nie był widoczny w drugiej, a zmiana <code>spark.sql.shuffle.partitions</code> w drugiej nie zmieniła pierwszej.`
+      text: `Nowa sesja ma własne ustawienia SQL i własne widoki tymczasowe. SparkContext i cache tabel są wspólne. W labie widok utworzony w pierwszej sesji nie był widoczny w drugiej, a zmiana <code>spark.sql.shuffle.partitions</code> w drugiej nie zmieniła pierwszej.`
     },
     {
       code: 'spark.stop()',
       label: 'Koniec aplikacji',
-      text: `Zatrzymuje SparkContext, a z nim całą aplikację. Według dokumentacji w jednej <term id="jvm">JVM</term> powinien działać tylko jeden aktywny SparkContext: żeby utworzyć nowy, trzeba najpierw zatrzymać stary.`
+      text: `Zatrzymuje SparkContext, a z nim całą aplikację. Według dokumentacji w jednej <term id="jvm">JVM</term> powinien działać tylko jeden aktywny SparkContext. Żeby utworzyć nowy, trzeba najpierw zatrzymać stary.`
     }
   ] as ExplainedLine[]
 };
@@ -159,7 +159,7 @@ const SKIPPED = `Pominięty (skipped): jego pliki shuffle zapisał już wcześni
 
 export const flow = {
   question: 'Jak zapytanie staje się pracą dla executorów?',
-  intro: `Trzy poziomy, każdy odpowiada na inne pytanie. <b>Job</b> to porcja pracy, którą driver wysyła do wykonania, gdy akcja zażąda wyniku. <b>Stage</b> to część joba wyznaczona przez shuffle: zestaw tasków, które wykonują ten sam kod, każdy dla innej partycji. Granice stage'y są tam, gdzie plan wymaga shuffle'u. <b>Task</b> to praca jednego stage'a dla jednej jego partycji. Wybierz zapytanie, klikaj joby i stage'e, a potem przejdź wykonanie krok po kroku. Przełącznik <term id="aqe">AQE</term> zostaw na początku wyłączony: tak widać model podstawowy.`,
+  intro: `Akcja prosi o wynik. Żeby go dać, driver wysyła do wykonania porcję pracy, jedną albo kilka. Taka porcja to <b>job</b>. Część tej pracy da się zrobić w każdej partycji osobno, na przykład filtr. Ale suma per data wymaga, żeby wiersze z tą samą datą trafiły do jednej partycji. Takie przenoszenie danych między partycjami to <term id="shuffle">shuffle</term>. W miejscach, w których plan wymaga shuffle'u, job jest cięty na części. Taka część to <b>stage</b>. W stage'u każdą partycję liczy osobny <b>task</b>, a wszystkie jego taski wykonują ten sam kod. Wybierz zapytanie, klikaj joby i stage'e, a potem przejdź wykonanie krok po kroku. Przełącznik <term id="aqe">AQE</term> zostaw na początku wyłączony. Tak najłatwiej zobaczyć model podstawowy.`,
   assumptions: `Liczby jobów, stage'y, tasków i rekordów pochodzą z labu tej lekcji: PySpark 4.0.1, <term id="local-mode">local[3]</term>, <code>orders</code> w 4 partycjach, <code>customers</code> w 2, <code>spark.sql.shuffle.partitions</code> = 200 (wartość domyślna). W zapytaniu z joinem broadcast jest wyłączony. Przebieg krok po kroku to animacja. Zakłada 3 miejsca na taski naraz: tyle wątków ma <code>local[3]</code>, a jeden task zajmuje domyślnie jeden rdzeń.`,
   cores: 3,
   defaultQuery: 'b',
@@ -218,7 +218,7 @@ paid.write.parquet("paid_orders/")`,
       off: {
         jobs: [{ why: 'Akcja <code>write</code> zażądała wyniku, więc driver utworzył job.', stages: [{ id: 0, role: 'a-all', tasks: 4, tasksWhy: TASKS_INPUT_4 }] }],
         steps: [
-          { say: `Akcja <code>write</code>: driver zamienia plan na job 0. W planie nie ma shuffle'u, więc job ma jeden stage.`, run: [] },
+          { say: `Akcja <code>write</code>: driver wysyła do wykonania job 0. W planie nie ma shuffle'u, więc job ma jeden stage.`, run: [] },
           { say: 'Stage 0: 4 taski, po jednym na partycję. Rdzenie są 3, więc 3 taski liczą się od razu, a czwarty czeka na wolny rdzeń.', run: [0] },
           { say: 'Job 0 gotowy: 1 stage, 4 taski. Każdy task zapisał swoją część wyniku.', run: [] }
         ]
@@ -345,13 +345,13 @@ revenue.write.parquet("revenue_by_region/")`,
   },
   shuffle: 'shuffle · granica stage\'a',
   takeaway: [
-    `<b>Wniosek.</b> Akcja uruchamia wykonanie planu. Driver tnie plan na stage'e w miejscach shuffle'u, a każdy stage na taski: po jednym na partycję. W tych zapytaniach liczbę tasków w stage'u czytającym pliki wyznaczył podział wejścia na partycje, a po shuffle'u agregacji albo joina ustawienie <code>spark.sql.shuffle.partitions</code> (domyślnie 200) albo AQE. To nie jest reguła dla każdego stage'a: na przykład <code>repartition(n)</code> sam podaje liczbę partycji.`,
-    `„Jedna akcja to jeden job” jest przybliżeniem. W tym labie to samo zapytanie z włączonym AQE dało 2 albo 4 joby, a część stage'y została pominięta, bo ich wynik już istniał. Bezpieczne zdanie na rozmowę: akcja uruchamia jeden lub więcej jobów, a o ich liczbie decydują plan i konfiguracja.`
+    `<b>Wniosek.</b> Akcja uruchamia wykonanie planu. Driver tnie plan na stage'e w miejscach shuffle'u. Każdy stage dzieli na taski, po jednym na partycję. Skąd liczba tasków w tych zapytaniach? W stage'u, który czyta pliki: z tego, na ile partycji Spark podzielił wejście. Po shuffle'u agregacji albo joina: z ustawienia <code>spark.sql.shuffle.partitions</code> (domyślnie 200) albo z decyzji AQE. To nie jest reguła dla każdego stage'a. Na przykład <code>repartition(n)</code> sam podaje liczbę partycji.`,
+    `„Jedna akcja to jeden job” jest przybliżeniem. W tym labie to samo zapytanie z włączonym AQE dało 2 albo 4 joby. Część stage'y została pominięta, bo ich wynik już istniał. Bezpieczne zdanie na rozmowę: akcja uruchamia jeden lub więcej jobów, a o ich liczbie decydują plan i konfiguracja.`
   ],
   simTitle: 'Co tu jest uproszczeniem',
   simNotes: [
     `Przebieg krok po kroku to animacja w JavaScripcie. Liczby jobów, stage'y, tasków i rekordów w shuffle'u pochodzą z labu.`,
-    'To dane testowe: 1200 zamówień i 40 klientów. Na prawdziwych danych liczba partycji wejścia zależy od rozmiaru plików, a AQE rzadko sklei wszystko w jedną partycję.',
+    'To dane testowe: 1200 zamówień i 40 klientów. Na prawdziwych danych liczba partycji wejścia zależy od rozmiaru plików. AQE rzadko sklei tam wszystko w jedną partycję.',
     `Lab działa w trybie <term id="local-mode">local[3]</term>: trzy wątki w jednym procesie, bez sieci i bez osobnych executorów. „3 rdzenie” w opisach kroków odpowiadają tym trzem wątkom.`,
     `Numery jobów i stage'y w Spark UI rosną przez całe życie aplikacji. Tutaj są liczone od zera dla każdej akcji.`,
     `W zapytaniu z joinem broadcast jest wyłączony (<code>spark.sql.autoBroadcastJoinThreshold = -1</code>), żeby obie strony przeszły przez shuffle. Z ustawieniami domyślnymi tak mała tabela klientów zostałaby rozesłana w całości. Ten wariant jest w etapie Praktyka.`,
@@ -360,14 +360,14 @@ revenue.write.parquet("revenue_by_region/")`,
   ],
   boundaryTitle: `Dlaczego stage kończy się akurat na shuffle'u`,
   boundary: [
-    `W ramach stage'a task liczy jedną partycję wyniku i przepuszcza dane przez kolejne operatory, nie czekając na inne taski. Dlatego filtr, wybór kolumn i agregacja częściowa mieszczą się w jednym stage'u. Zwykle task czyta przy tym jedną partycję wejścia, ale nie zawsze: <code>coalesce</code> skleja kilka partycji w jednym tasku i nadal nie wymaga shuffle'u.`,
-    `Shuffle to zmienia. Partycja po shuffle'u zbiera dane od wszystkich tasków poprzedniego stage'a, więc trzeba poczekać, aż wszystkie skończą i zapiszą swoje pliki. Ta bariera jest granicą stage'a.`,
+    `W jednym stage'u task liczy jedną partycję wyniku. Bierze dane i przepuszcza je przez kolejne kroki, na przykład filtr, wybór kolumn i agregację częściową. Na inne taski nie czeka. Dlatego te kroki mieszczą się w jednym stage'u. Zwykle task czyta przy tym jedną partycję wejścia, ale nie zawsze: <code>coalesce</code> skleja kilka partycji w jednym tasku i nadal nie wymaga shuffle'u.`,
+    `Shuffle to zmienia. Partycja po shuffle'u zbiera dane od wszystkich tasków poprzedniego stage'a. Trzeba więc poczekać, aż wszystkie skończą i zapiszą swoje pliki. To miejsce, w którym trzeba poczekać, jest granicą stage'a.`,
     `Stąd dwa rodzaje stage'y. Jeden kończy się zapisem plików shuffle (w kodzie Sparka: ShuffleMapStage). Drugi jest ostatni w jobie i wykonuje akcję (ResultStage). Plików shuffle ostatni stage nie zapisuje.`,
     `Nie każdy join oznacza shuffle obu stron. Mała tabela może zostać rozesłana do executorów w całości (<term id="broadcast-join">broadcast join</term>), a wtedy duża strona zostaje na miejscu.`
   ],
   schedulingTitle: 'Kto decyduje, który task trafi na który executor',
   scheduling: [
-    `Driver. Przydziela taski wolnym miejscom na executorach. Ile ich jest, zależy od zasobów: domyślnie jeden task zajmuje jeden rdzeń (<code>spark.task.cpus</code> = 1), ale to ustawienie. Driver stara się też wysłać task tam, gdzie są jego dane, na przykład na executor, który trzyma tę partycję w cache albo ma potrzebne pliki shuffle.`,
+    `Driver. Przydziela taski wolnym miejscom na executorach. Ile jest takich miejsc, zależy od zasobów. Domyślnie jeden task zajmuje jeden rdzeń (<code>spark.task.cpus</code> = 1), ale to ustawienie. Driver stara się też wysłać task tam, gdzie są jego dane, na przykład na executor, który trzyma tę partycję w cache albo ma potrzebne pliki shuffle.`,
     `Jeśli takie miejsce jest zajęte, driver chwilę czeka (<code>spark.locality.wait</code>, w Apache Spark domyślnie 3 s), a potem wysyła task w mniej korzystne miejsce.`,
     `Joby w jednej aplikacji są domyślnie obsługiwane w kolejności zgłoszenia (FIFO). Kilka jobów naraz pojawia się wtedy, gdy akcje są wywoływane z osobnych wątków. Zamiast FIFO da się skonfigurować tryb fair, który dzieli zasoby między joby.`,
     `Spekulacyjne wykonywanie tasków (<code>spark.speculation</code>) też jest w Apache Spark domyślnie wyłączone.`
@@ -386,10 +386,10 @@ export const dag = {
     { id: 3, label: 'Stage 3', sub: 'suma i zapis', tasks: 200 }
   ],
   edge: 'shuffle',
-  takeaway: `<b>Wniosek.</b> DAG to directed acyclic graph: graf skierowany (zależność ma kierunek) i acykliczny (żaden krok nie zależy od samego siebie). Brak cykli gwarantuje, że istnieje kolejność, w której da się policzyć wszystko. Driver wyznacza ją sam: stage może ruszyć dopiero wtedy, gdy gotowe są wszystkie stage'e, na które czeka.`,
+  takeaway: `<b>Wniosek.</b> Taki rysunek to <b>DAG</b>, czyli directed acyclic graph. „Directed” (skierowany): każda zależność ma kierunek, od kroku wcześniejszego do późniejszego. „Acyclic” (bez cykli): żaden krok nie zależy od samego siebie. Skoro nie ma cykli, to na pewno istnieje kolejność, w której da się policzyć wszystko. Driver wyznacza ją sam: stage może ruszyć dopiero wtedy, gdy gotowe są wszystkie stage'e, na które czeka.`,
   moreTitle: 'Dwa znaczenia słowa DAG i gdzie go zobaczyć',
   more: [
-    `Na rozmowie „DAG” pada w dwóch znaczeniach. Pierwsze to graf operacji całego zapytania: odczyt, filtr, join, agregacja. Drugie to graf stage'y jednego joba, taki jak na rysunku. Drugi powstaje z pierwszego przez cięcie w miejscach shuffle'u.`,
+    `Na rozmowie „DAG” pada w dwóch znaczeniach. Pierwsze to graf operacji całego zapytania: odczyt, filtr, join, agregacja. Drugie to graf stage'y jednego joba, taki jak na rysunku. Drugi powstaje z pierwszego: Spark tnie go w miejscach shuffle'u.`,
     `W labie stage 0 i stage 1 działały w tym samym czasie: żaden nie czeka na drugi. To obserwacja z tego uruchomienia, a nie gwarancja. Graf mówi tylko, że wolno je liczyć jednocześnie. Czy tak będzie, zależy od wolnych zasobów i ustawień.`,
     `W Spark UI graf jest na stronie joba, w sekcji DAG Visualization. Dokumentacja opisuje go tak: wierzchołki to RDD albo DataFrame'y, krawędzie to operacje.`
   ]
@@ -407,7 +407,7 @@ export const plans = {
       id: 'parsed',
       label: '1. Parsed',
       title: 'Parsed Logical Plan',
-      text: `Zapis tego, co napisałeś, zanim Spark cokolwiek sprawdzi. Apostrof przed nazwą (<code>'order_date</code>) znaczy „jeszcze nierozwiązane”: nie wiadomo, czy taka kolumna istnieje i jaki ma typ.`,
+      text: `Zapis tego, co napisałeś, zanim Spark cokolwiek sprawdzi. Apostrof przed nazwą (<code>'order_date</code>) znaczy „jeszcze niesprawdzone” (unresolved). Spark nie wie jeszcze, czy taka kolumna istnieje i jaki ma typ.`,
       code: `'Aggregate ['order_date], ['order_date, 'sum('amount) AS revenue#32]
 +- Filter (status#12 = paid)
    +- Relation [order_id#9L,customer_id#10L,order_date#11,status#12,amount#13] parquet`
@@ -416,7 +416,7 @@ export const plans = {
       id: 'analyzed',
       label: '2. Analyzed',
       title: 'Analyzed Logical Plan',
-      text: `Nazwy sprawdzone ze <term id="schema">schematem</term>. Każda kolumna ma typ i wewnętrzny numer, np. <code>order_date#11</code>, a pierwsza linia podaje schemat wyniku. Na tym etapie wychodzi literówka w nazwie kolumny.`,
+      text: `Spark sprawdził nazwy ze <term id="schema">schematem</term>. Każda kolumna ma teraz typ i wewnętrzny numer, np. <code>order_date#11</code>. Pierwsza linia podaje schemat wyniku. Na tym etapie wychodzi literówka w nazwie kolumny.`,
       code: `order_date: date, revenue: double
 Aggregate [order_date#11], [order_date#11, sum(amount#13) AS revenue#32]
 +- Filter (status#12 = paid)
@@ -426,7 +426,7 @@ Aggregate [order_date#11], [order_date#11, sum(amount#13) AS revenue#32]
       id: 'optimized',
       label: '3. Optimized',
       title: 'Optimized Logical Plan',
-      text: `Ten sam wynik, mniej pracy. <term id="optimizer">Optymalizator</term> dopisał <code>Project</code>, żeby dalej szły tylko dwie potrzebne kolumny, i warunek <code>isnotnull</code>. To znasz z lekcji o lazy evaluation. Nadal nie ma tu ani słowa o partycjach.`,
+      text: `Ten sam wynik, mniej pracy. <term id="optimizer">Optymalizator</term> dopisał dwie rzeczy: <code>Project</code>, żeby dalej szły tylko dwie potrzebne kolumny, oraz warunek <code>isnotnull</code>. To znasz z lekcji o lazy evaluation. Nadal nie ma tu ani słowa o partycjach.`,
       code: `Aggregate [order_date#11], [order_date#11, sum(amount#13) AS revenue#32]
 +- Project [order_date#11, amount#13]
    +- Filter (isnotnull(status#12) AND (status#12 = paid))
@@ -436,7 +436,7 @@ Aggregate [order_date#11], [order_date#11, sum(amount#13) AS revenue#32]
       id: 'physical',
       label: '4. Physical',
       title: 'Physical Plan',
-      text: `Tu pierwszy raz pojawiają się konkretne algorytmy i ruch danych. Z tego planu driver robi job. Czytaj od dołu, od źródła.`
+      text: `Tu pierwszy raz pojawiają się konkretne algorytmy i ruch danych. Na podstawie tego planu driver wysyła joby. Czytaj od dołu, od źródła.`
     }
   ] as PlanView[],
   physicalTitle: 'Physical Plan (linie skrócone)',
@@ -449,7 +449,7 @@ Aggregate [order_date#11], [order_date#11, sum(amount#13) AS revenue#32]
     {
       code: '+- Exchange hashpartitioning(order_date#11, 200)',
       label: `Shuffle · granica stage'a`,
-      text: `Przenosi dane tak, żeby ta sama data trafiła do tej samej partycji. Liczba 200 to <code>spark.sql.shuffle.partitions</code>. W tym miejscu driver przetnie job na dwa stage'e. Uwaga: <code>BroadcastExchange</code> też ma „Exchange” w nazwie, ale shuffle'em nie jest.`
+      text: `Przenosi dane tak, żeby wiersze z tą samą datą trafiły do tej samej partycji. Liczba 200 to <code>spark.sql.shuffle.partitions</code>. W tym miejscu driver przetnie job na dwa stage'e. Uwaga: <code>BroadcastExchange</code> też ma „Exchange” w nazwie, ale shuffle'em nie jest.`
     },
     {
       code: '   +- *(1) HashAggregate(keys=[order_date#11], functions=[partial_sum(amount#13)])',
@@ -480,18 +480,18 @@ Aggregate [order_date#11], [order_date#11, sum(amount#13) AS revenue#32]
   takeaway: `<b>Wniosek.</b> Plan logiczny mówi, co policzyć. Plan fizyczny mówi, jak. Liczbę stage'y przewidzisz z planu fizycznego: każdy <code>Exchange</code> z podziałem na partycje to shuffle i granica stage'a, więc jeden taki węzeł daje tu 2 stage'e. To przewidywanie dotyczy planu sprzed wykonania, bo AQE może go jeszcze zmienić.`,
   starTitle: 'Co znaczy *(1) i *(2) przed operatorem',
   star: [
-    `Gwiazdka z numerem oznacza operatory, które Spark skleił w jeden wygenerowany fragment kodu (whole-stage code generation). Numer to identyfikator takiej grupy.`,
+    `Spark potrafi skleić kilka operatorów w jeden fragment kodu, który sam generuje. To whole-stage code generation. Gwiazdka z numerem oznacza operatory z jednej takiej grupy. Numer to identyfikator grupy.`,
     `To nie jest numer stage'a ze Spark UI. W tym planie grupy pokrywają się ze stage'ami, ale nie musi tak być: UI numeruje stage'e od zera i przez całe życie aplikacji.`
   ],
   catalystTitle: 'Co dzieje się między kolejnymi planami',
   catalyst: [
-    `<b>Analiza</b> zamienia nierozwiązane nazwy kolumn i tabel na konkretne obiekty z typami. W klasycznym Sparku dzieje się to od razu przy definicji DataFrame, dlatego literówka w nazwie kolumny wychodzi przed akcją. W <term id="spark-connect">Spark Connect</term> analiza jest odłożona do pierwszej operacji, która potrzebuje sprawdzonego planu: akcji, odczytu schematu, <code>explain</code> albo <code>persist</code>.`,
-    `<b>Optymalizacja logiczna</b> stosuje zestaw reguł: przesuwa filtry bliżej źródła, wycina niepotrzebne kolumny, upraszcza wyrażenia. Wynik jest równoważny, ale tańszy.`,
+    `<b>Analiza</b> bierze nazwy kolumn i tabel, których Spark jeszcze nie sprawdził, i zamienia je na konkretne obiekty z typami. W klasycznym Sparku dzieje się to od razu przy definicji DataFrame. Dlatego literówka w nazwie kolumny wychodzi przed akcją. W <term id="spark-connect">Spark Connect</term> analiza jest odłożona do pierwszej operacji, która potrzebuje sprawdzonego planu: akcji, odczytu schematu, <code>explain</code> albo <code>persist</code>.`,
+    `<b>Optymalizacja logiczna</b> stosuje zestaw reguł: przesuwa filtry bliżej źródła, wycina niepotrzebne kolumny, upraszcza wyrażenia. Nowy plan daje ten sam wynik, ale mniejszym kosztem.`,
     `<b>Planowanie fizyczne</b> wybiera konkretne algorytmy, na przykład rodzaj joina, i dokłada <term id="exchange">Exchange</term> tam, gdzie operator potrzebuje danych ułożonych po kluczu.`
   ],
   aqeTitle: 'Z AQE plan fizyczny nie jest ostateczny',
   aqe: [
-    `Z włączonym AQE wydruk planu fizycznego zaczyna się od <code>AdaptiveSparkPlan isFinalPlan=false</code>. To plan początkowy. Spark może go zmieniać w trakcie, gdy część planu jest już policzona i znane są jej prawdziwe rozmiary. Najczęściej chodzi o wynik shuffle'u.`,
+    `Z włączonym AQE wydruk planu fizycznego zaczyna się od <code>AdaptiveSparkPlan isFinalPlan=false</code>. To plan początkowy. Spark może go zmieniać w trakcie wykonania. Robi to, gdy część planu jest już policzona i znane są jej prawdziwe rozmiary. Najczęściej chodzi o wynik shuffle'u.`,
     `W labie po wykonaniu <code>collect()</code> na tym samym DataFrame pierwsza linia zmieniła się na <code>isFinalPlan=true</code>. Dotyczy to planu tego jednego, w pełni wykonanego zapytania. Inny DataFrame, także zbudowany z tego samego, ma własny plan. Dlatego przy diagnozie patrz na plan konkretnego wykonania, najlepiej w zakładce SQL w Spark UI.`
   ]
 };
@@ -530,7 +530,7 @@ job 1: stage'y 2 wykonane, 0 pominięte
    stage 2: wykonany  tasków 200   shuffle: zapisane    0, odczytane   16 rekordów`,
       notes: [
         `Mała tabela nie przechodzi już przez shuffle. Spark czyta ją osobnym jobem (2 taski), a potem rozsyła w całości do executorów. To <term id="broadcast-join">broadcast join</term>: w planie zamiast <code>SortMergeJoin</code> jest <code>BroadcastHashJoin</code>.`,
-        `Duża strona też nie jest tasowana przed joinem. Join dzieje się od razu w stage'u, który czyta zamówienia. Został jeden shuffle, przed sumą po regionie: 16 rekordów, czyli 4 regiony × 4 partycje.`,
+        `Duża strona też nie przechodzi przed joinem przez shuffle. Join dzieje się od razu w stage'u, który czyta zamówienia. Został jeden shuffle, przed sumą po regionie: 16 rekordów, czyli 4 regiony × 4 partycje.`,
         `Jedna akcja, dwa joby, i to bez AQE. Liczba jobów zależy od planu.`
       ],
       scope: `Pomiar lokalny, tak samo na PySpark 4.0.1 i 4.3.0. Osobny job dla strony broadcast to obserwacja z tego planu, a nie reguła z dokumentacji. Z włączonym AQE ta sama akcja dała 3 joby i 7 tasków.`
@@ -546,7 +546,7 @@ job 1: stage'y 2 wykonane, 0 pominięte
 local[3]    maxFailures = 1: job przerwany wyjątkiem
             stage: tasków 4, nieudanych prób 1, stan FAILED`,
       notes: [
-        `Powtórzony został tylko task partycji 1: jego numer próby to 1, pozostałe trzy policzyły się raz. Jednostką ponawiania jest task, a nie stage ani job.`,
+        `Powtórzony został tylko task partycji 1: jego numer próby to 1, pozostałe trzy policzyły się raz. Spark ponawia pojedynczy task, a nie cały stage ani job.`,
         `Limit dotyczy jednego taska. Job jest przerywany, gdy ten sam task zawiedzie z rzędu tyle razy, ile wynosi <code>spark.task.maxFailures</code>. Wartość domyślna 4 oznacza cztery kolejne porażki, czyli 3 ponowienia.`,
         `Zwykłe <code>local[3]</code> w tym teście nie ponowiło taska: pierwsza porażka przerwała job. Dlatego w trybie lokalnym nie zobaczysz ponowień, dopóki nie poprosisz o nie zapisem <code>local[K,F]</code>. Litera F nadpisuje limit tylko w trybie lokalnym. Na klastrze ustawia się <code>spark.task.maxFailures</code>.`
       ],
@@ -555,9 +555,9 @@ local[3]    maxFailures = 1: job przerwany wyjątkiem
         title: 'A gdy padnie cały executor albo driver?',
         html: [
           `Taski, które działały na utraconym executorze, są uruchamiane ponownie na innych.`,
-          `Trudniej jest, gdy razem z executorem znikają pliki shuffle, które zapisał. Task następnego stage'a nie ma wtedy czego czytać. Według opisu w kodzie Sparka driver wysyła wtedy ponownie utracony stage, ale tylko dla brakujących tasków, a potem wraca do przerwanej pracy. Udane wyniki, które nie przepadły, nie są liczone od nowa. Kolejne podejścia do stage'a mają osobny limit: <code>spark.stage.maxConsecutiveAttempts</code>, domyślnie 4. Utrata plików shuffle nie jest jedynym powodem, dla którego stage może się nie udać.`,
-          `To działa, bo plan mówi, z czego powstała każda partycja. Skutek uboczny: ponowiony task wykonuje swój kod jeszcze raz, więc na przykład <term id="accumulator">akumulator</term> użyty w transformacji może zostać zwiększony dwukrotnie.`,
-          `Driver jest jeden i to on trzyma plan oraz stan wykonania. Jego utraty ten mechanizm nie naprawi: w typowej konfiguracji aplikacja kończy się błędem i trzeba ją uruchomić ponownie.`
+          `Trudniej jest, gdy razem z executorem znikają pliki shuffle, które zapisał. Task następnego stage'a nie ma wtedy czego czytać. Według opisu w kodzie Sparka driver wysyła wtedy utracony stage jeszcze raz, ale tylko dla brakujących tasków. Potem wraca do przerwanej pracy. Udane wyniki, które nie przepadły, nie są liczone od nowa. Kolejne podejścia do stage'a mają osobny limit: <code>spark.stage.maxConsecutiveAttempts</code>, domyślnie 4. Utrata plików shuffle nie jest jedynym powodem, dla którego stage może się nie udać.`,
+          `To działa, bo plan mówi, z czego powstała każda partycja. Jest skutek uboczny: ponowiony task wykonuje swój kod jeszcze raz. Dlatego na przykład <term id="accumulator">akumulator</term> użyty w transformacji może zostać zwiększony dwukrotnie.`,
+          `Driver jest jeden. To on trzyma plan i stan wykonania. Jego utraty ten mechanizm nie naprawi: w typowej konfiguracji aplikacja kończy się błędem i trzeba ją uruchomić ponownie.`
         ]
       }
     },
@@ -625,7 +625,7 @@ export const quiz: QuizItem[] = [
     q: 'Czym różni się SparkSession od SparkContext?',
     options: ['To dwie nazwy tego samego obiektu', 'SparkSession to wejście do DataFrame i SQL, SparkContext to połączenie z klastrem, jedno na aplikację', 'SparkContext działa na executorach, a SparkSession na driverze'],
     correct: 1,
-    why: `W klasycznym Sparku oba obiekty żyją w driverze. Sesja jest wejściem do DataFrame'ów i SQL i może ich być kilka. Kontekst reprezentuje połączenie z klastrem i jest jeden: sesje utworzone przez <code>newSession()</code> go współdzielą. W Spark Connect klient nie ma dostępu do SparkContext.`
+    why: `W klasycznym Sparku oba obiekty żyją w driverze. Sesja jest wejściem do DataFrame'ów i SQL. Sesji może być kilka. Kontekst to połączenie z klastrem i jest jeden: sesje utworzone przez <code>newSession()</code> go współdzielą. W Spark Connect klient nie ma dostępu do SparkContext.`
   },
   {
     q: 'Który plan mówi, jakim algorytmem zostanie wykonany join i gdzie będzie shuffle?',
@@ -638,7 +638,7 @@ export const quiz: QuizItem[] = [
     setup: 'Założenia: klaster z ustawieniami domyślnymi Apache Spark.',
     options: ['Od razu przerywa job', 'Ponawia ten task, a job przerywa dopiero czwarta porażka z rzędu tego samego taska', `Uruchamia od nowa wszystkie stage'e joba`],
     correct: 1,
-    why: `Jednostką ponawiania jest task. <code>spark.task.maxFailures</code> wynosi domyślnie 4, czyli 3 ponowienia. Udane taski tego stage'a nie są powtarzane. Ponowne podejście do stage'a to osobny mechanizm z własnym limitem. Uruchamia je na przykład utrata plików shuffle, a Spark liczy wtedy od nowa brakujące wyniki, nie wszystko.`
+    why: `Spark ponawia pojedynczy task. <code>spark.task.maxFailures</code> wynosi domyślnie 4, czyli 3 ponowienia. Udane taski tego stage'a nie są powtarzane. Ponowne podejście do stage'a to osobny mechanizm z własnym limitem. Uruchamia je na przykład utrata plików shuffle, a Spark liczy wtedy od nowa brakujące wyniki, nie wszystko.`
   },
   {
     q: 'W jobie stage 0 czyta klientów, stage 1 czyta zamówienia, a stage 2 je łączy. Co wiadomo o kolejności?',
