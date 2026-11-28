@@ -1,0 +1,68 @@
+/* Knowledge Base na stronie: nagłówek rozdziału, spis treści i szerszy układ ilustracji. Treść bloków: kb-content.css. */
+.page.kb{padding-top:56px}
+.kb-head{max-width:1060px;margin:0 auto 44px}
+.kb-head h1{font-size:clamp(36px,5.6vw,60px);margin-bottom:20px}
+.kb-head .eyebrow a{color:inherit;text-decoration:none}
+.kb-head .eyebrow a:hover{text-decoration:underline}
+.kb-head .lede{max-width:60ch}
+.kb-meta{font:400 13px/1.6 var(--mono);color:var(--ink-3);margin:0 0 22px;max-width:none}
+.kb-actions{display:flex;flex-wrap:wrap;gap:10px;margin:0;max-width:none}
+.kb-actions .btn small{font:400 12px var(--mono);margin-left:10px;opacity:.8}
+
+.kb-layout{max-width:1060px;margin:0 auto;display:grid;grid-template-columns:250px minmax(0,720px);gap:64px;align-items:start;border-top:1px solid var(--line)}
+.kb-layout article{min-width:0;padding-top:36px}
+/* Nagłówek strony jest przyklejony i ma 61 px wysokości (57 px na wąskim ekranie). Stąd odsunięcia poniżej. */
+.kb-section{scroll-margin-top:72px}
+
+.kb-toc{position:sticky;top:61px;max-height:calc(100vh - 61px);overflow-y:auto;padding:36px 0 24px}
+.kb-toc-toggle{display:none}
+.kb-toc-h{font:500 12px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);margin:0 0 12px;padding-left:10px}
+.kb-toc ol{list-style:none;margin:0;padding:0}
+.kb-toc a{display:grid;grid-template-columns:22px minmax(0,1fr);gap:6px;padding:6px 10px;border-radius:8px;font-size:14.5px;line-height:1.35;color:var(--ink-3);text-decoration:none}
+.kb-toc a i{font:500 11px/1.8 var(--mono);font-style:normal}
+.kb-toc a:hover{color:var(--ink)}
+.kb-toc a[aria-current]{color:var(--ink);background:var(--bg-3)}
+.kb-toc a[aria-current] i{color:var(--accent)}
+.kb-toc .kb-toc-end a{grid-template-columns:minmax(0,1fr);padding-left:38px}
+.kb-toc li:not(.kb-toc-end) + .kb-toc-end{margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+
+.kb-foot{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px 24px;margin:72px 0 0;padding-top:24px;border-top:1px solid var(--line);font-size:16px;max-width:none}
+
+/* szerszy układ ilustracji, gdy jest na niego miejsce */
+@media (min-width:700px){
+  .kb-cells{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .kb-cells .kb-legend{grid-column:1 / -1}
+  .kb-parts-row{grid-template-columns:repeat(8,minmax(0,1fr))}
+  .kb-stacks{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .kb-body .kb-layer{display:block}
+  .kb-layer span{display:block}
+  .kb-clusters{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .kb-sources{columns:2;column-gap:32px}
+}
+
+@media (max-width:980px){
+  .kb-layout{grid-template-columns:minmax(0,1fr);gap:0;border-top:0}
+  .kb-section{scroll-margin-top:120px}
+  /* Spis treści jako pasek pod nagłówkiem strony: zawsze pod ręką, rozwijany przyciskiem. */
+  .kb-toc{top:61px;z-index:10;max-height:none;overflow:visible;margin:0 -28px;padding:0 28px;background:color-mix(in srgb,var(--bg) 94%,transparent);backdrop-filter:blur(10px);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+  .kb-toc-toggle{display:flex;justify-content:space-between;align-items:center;width:100%;border:0;background:transparent;padding:12px 0;font:500 13px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--ink-2)}
+  .kb-toc-toggle span{font-size:18px;color:var(--accent)}
+  .kb-toc-h{display:none}
+  .kb-toc ol{display:none;max-height:62vh;overflow-y:auto;padding:0 0 12px}
+  .kb-toc.open{background:var(--bg)}
+  .kb-toc.open ol{display:block}
+  .kb-toc a{padding:8px 0;font-size:15.5px;border-radius:0}
+  .kb-toc a[aria-current]{background:transparent}
+  .kb-toc .kb-toc-end a{padding-left:28px}
+  .kb-layout article{padding-top:28px}
+}
+@media (max-width:760px){
+  .page.kb{padding-top:36px}
+  .kb-head{margin-bottom:32px}
+  .kb-toc{top:57px;margin:0 -18px;padding:0 18px}
+  .kb-section{scroll-margin-top:114px}
+  .kb-body{font-size:17px}
+  .kb-code pre{font-size:12px;padding:12px 13px}
+  .kb-figure{padding:16px 14px 14px}
+  .kb-cols-4{min-width:560px}
+}

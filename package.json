@@ -13,7 +13,8 @@
     "typecheck": "npm run typecheck -w apps/web",
     "test": "npm run test -w apps/web && npm run test:runner",
     "test:runner": "node --test apps/lab-runner/*.test.mjs",
-    "check": "npm run typecheck && npm run test && npm run build"
+    "check": "npm run typecheck && npm run test && npm run build",
+    "kb:pdf": "node apps/web/scripts/kb-pdf.mjs"
   },
   "engines": {
     "node": ">=20.19"
