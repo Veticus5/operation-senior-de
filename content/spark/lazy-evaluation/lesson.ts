@@ -40,11 +40,11 @@ export const beats: Beat[] = [
     next: 'A jak robi to Snowflake?'
   },
   {
-    html: '<h2>Snowflake dostaje całe zapytanie naraz</h2>\n<p>Kiedy wysyłasz SQL, optymalizator widzi wszystko: że potrzebujesz 3 kolumn z 80 i tylko aktywnych wierszy. Czyta więc tyle, ile musi. To luksus języka deklaratywnego. Ty mówisz <b>co</b>, silnik decyduje <b>jak</b>.</p>\n<p>Spark chce dać Ci ten sam luksus w Pythonie. Tyle że Python podaje mu zapytanie po kawałku i Spark nigdy nie wie, czy to już koniec.</p>',
+    html: '<h2>Snowflake dostaje całe zapytanie naraz</h2>\n<p>Kiedy wysyłasz SQL, optymalizator widzi wszystko: że potrzebujesz 3 kolumn z 80 i tylko aktywnych wierszy. Czyta więc tyle, ile musi. Ty mówisz, <b>co</b> chcesz dostać. Silnik decyduje, <b>jak</b> to policzyć. Tak działa język deklaratywny, a SQL jest takim językiem.</p>\n<p>Spark chce dać Ci to samo w Pythonie. Tyle że Python podaje mu zapytanie po kawałku i Spark nigdy nie wie, czy to już koniec.</p>',
     next: 'Więc co robi?'
   },
   {
-    html: '<h2>Zapisuje plan i czeka.</h2>\n<p>Każda z tych czterech linijek tylko dopisuje krok do planu. Żaden wiersz nie jest przetwarzany. Dopiero gdy poprosisz o wynik, np. <code>revenue.show()</code>, Spark ma w ręku całe zapytanie. Upraszcza je tak, jak zrobiłby to Snowflake, i wykonuje.</p>\n<div class="cmp" id="cmp">\n  <div class="cmp-lane"><div class="lab">Linijka po linijce</div><div class="cmp-bars">\n    <div class="bar" style="--w:100%;--d:0s"><i></i><span>filter: wszystkie wiersze, 80 kolumn</span></div>\n    <div class="bar" style="--w:62%;--d:1s"><i></i><span>select: wynik pośredni, 80 kolumn</span></div>\n    <div class="bar" style="--w:9%;--d:2s"><i></i><span>groupBy</span></div>\n  </div></div>\n  <div class="cmp-lane"><div class="lab">Najpierw cały plan</div><div class="cmp-bars">\n    <div class="bar acc" style="--w:9%;--d:3s"><i></i><span>jedno przejście, 3 kolumny z 80</span></div>\n  </div></div>\n</div>\n<p class="small">Ilustracja proporcji, nie pomiar.</p>\n<p>Stąd trzy słowa, które usłyszysz na każdej rozmowie. Operacje, które tylko dopisują krok, to <b>transformacje</b>. Te, które żądają wyniku, to <b>akcje</b>. A cała strategia czekania nazywa się <b>lazy evaluation</b>.</p>\n<p>Jedno zastrzeżenie, żeby „nic nie czyta" nie stało się mitem. Spark musi wiedzieć, czy kolumna <code>status</code> w ogóle istnieje, więc potrzebuje <b>schematu</b>: listy kolumn i ich typów. Czytając plik <term id="parquet">Parquet</term> ze ścieżki, zagląda po niego do opisu na końcu pliku już w pierwszej linijce. To odczyt opisu danych, nie wierszy.</p>',
+    html: '<h2>Zapisuje plan i czeka.</h2>\n<p>Każda z tych czterech linijek tylko dopisuje krok do planu. Żaden wiersz nie jest przetwarzany. Dopiero gdy poprosisz o wynik, np. <code>revenue.show()</code>, Spark ma w ręku całe zapytanie. Upraszcza je tak, jak zrobiłby to Snowflake, i wykonuje.</p>\n<div class="cmp" id="cmp">\n  <div class="cmp-lane"><div class="lab">Linijka po linijce</div><div class="cmp-bars">\n    <div class="bar" style="--w:100%;--d:0s"><i></i><span>filter: wszystkie wiersze, 80 kolumn</span></div>\n    <div class="bar" style="--w:62%;--d:1s"><i></i><span>select: wynik pośredni, 80 kolumn</span></div>\n    <div class="bar" style="--w:9%;--d:2s"><i></i><span>groupBy</span></div>\n  </div></div>\n  <div class="cmp-lane"><div class="lab">Najpierw cały plan</div><div class="cmp-bars">\n    <div class="bar acc" style="--w:9%;--d:3s"><i></i><span>jedno przejście, 3 kolumny z 80</span></div>\n  </div></div>\n</div>\n<p class="small">Ilustracja proporcji, nie pomiar.</p>\n<p>Stąd trzy słowa, które usłyszysz na każdej rozmowie. Operacje, które tylko dopisują krok, to <b>transformacje</b>. Te, które żądają wyniku, to <b>akcje</b>. A cała strategia czekania nazywa się <b>lazy evaluation</b>.</p>\n<p>Jedno zastrzeżenie: „Spark nic nie czyta przed akcją" to mit. Spark musi wiedzieć, czy kolumna <code>status</code> w ogóle istnieje. Potrzebuje więc <b>schematu</b>, czyli listy kolumn i ich typów. Gdy czytasz plik <term id="parquet">Parquet</term> ze ścieżki, Spark już w pierwszej linijce zagląda po schemat do opisu na końcu pliku. To odczyt opisu danych, nie wierszy.</p>',
     more: {
       title: 'Skąd „3 kolumny z 80"?',
       html: ['Dane leżą w plikach <b>Parquet</b>. To format kolumnowy: wartości każdej kolumny są zapisane osobno, więc da się przeczytać trzy kolumny i nie ruszyć pozostałych. Snowflake przechowuje dane na tej samej zasadzie.']
@@ -56,8 +56,8 @@ export const beats: Beat[] = [
     bridge: {
       from: 'dbt i Snowflake',
       known: 'Model zmaterializowany jako <code>view</code>: definicja, którą silnik wykonuje dopiero przy zapytaniu.',
-      fresh: 'DataFrame: plan, który Spark wykonuje dopiero przy akcji. Kolejna akcja domyślnie nie dostaje wyniku poprzedniej.',
-      breaks: 'Widok żyje w bazie i każdy może go odpytać. DataFrame istnieje tylko w Twojej sesji. <code>cache()</code> nie jest też odpowiednikiem <code>materialized=\'table\'</code>: to tymczasowa kopia na czas sesji, którą Spark może usunąć z pamięci, a wtedy po cichu liczy brakującą część od nowa. Trwały odpowiednik tabeli to zapis, np. <code>saveAsTable</code>. I w drugą stronę: Snowflake ma result cache, który potrafi oddać wynik identycznego zapytania bez liczenia. W samym Apache Spark takiego mechanizmu nie ma.'
+      fresh: 'DataFrame: plan, którego wiersze Spark zwykle przetwarza dopiero przy akcji. Kolejna akcja domyślnie nie dostaje wyniku poprzedniej.',
+      breaks: 'Widok żyje w bazie i każdy może go odpytać. DataFrame istnieje tylko w Twojej sesji. <code>cache()</code> nie jest też odpowiednikiem <code>materialized=\'table\'</code>. To tymczasowa kopia na czas sesji. Spark może ją usunąć z pamięci, a wtedy po cichu liczy brakującą część od nowa. Trwały odpowiednik tabeli to zapis, np. <code>saveAsTable</code>. Jest też różnica w drugą stronę: Snowflake ma result cache, który potrafi oddać wynik identycznego zapytania bez liczenia. W samym Apache Spark takiego mechanizmu nie ma.'
     },
     next: 'Zobacz to na żywo'
   }
@@ -66,7 +66,7 @@ export const beats: Beat[] = [
 /** Etap Mechanizm: pytanie nad symulatorem i krótki wniosek pod nim. Szczegóły są w simNotes. */
 export const mechanism = {
   question: 'Co dzieje się z wierszami, kiedy dopisujesz operacje?',
-  takeaway: '<b>Wniosek.</b> Transformacja tylko wydłuża plan. Wiersze płyną dopiero przy akcji, po uproszczeniu całego planu. Bez <code>cache()</code> kolejna akcja może policzyć część albo całość planu od nowa.'
+  takeaway: '<b>Wniosek.</b> Zwykła transformacja tylko wydłuża plan. Wiersze płyną zwykle dopiero przy akcji. Spark najpierw upraszcza cały plan, a potem go wykonuje. Bez <code>cache()</code> kolejna akcja może policzyć część albo całość planu od nowa.'
 };
 
 /** Co w etapie Mechanizm jest symulacją, a co pochodzi z uruchomienia Sparka. */
@@ -74,7 +74,7 @@ export const simNotes: string[] = [
   'Ruch danych to animacja w JavaScripcie na 9 wierszach. Nie działa tu żaden Spark.',
   'Plan po optymalizacji, lista czytanych kolumn i przekazanie filtra do skanu pochodzą z prawdziwego <code>explain()</code> dla każdej kombinacji operacji i akcji (PySpark 4.0.1, źródło Parquet).',
   'Symulator zaczyna od DataFrame, który już istnieje. Schemat, czyli nazwy i typy kolumn, Spark poznał wcześniej z opisu pliku. Kropki pod źródłem liczą odczyty wierszy, nie odczyty opisu.',
-  'Powtórne liczenie przy kolejnym <code>show()</code> albo <code>count()</code> i jego brak po <code>cache()</code> są zmierzone licznikiem w labie (etap Praktyka). To zachowanie tych dwóch akcji w tym układzie. Wyjątek, czyli ponowne użycie wyników <term id="shuffle">shuffle\'u</term>, też jest w Praktyce.',
+  'Kolejne <code>show()</code> albo <code>count()</code> liczy tu od nowa, a po <code>cache()</code> już nie. To wynik pomiaru licznikiem w labie (etap Praktyka). Tak zachowały się te dwie akcje w tym układzie. Wyjątek, czyli ponowne użycie wyników <term id="shuffle">shuffle\'u</term>, też jest w Praktyce.',
   'Uproszczenia: nie ma <term id="partition">partycji</term>, <term id="job">jobów</term> ani <term id="stage">stage\'y</term>, cache wypełnia się od razu w całości, a <code>show()</code> pokazuje wszystko, choć naprawdę wyświetla do 20 wierszy.'
 ];
 
@@ -90,7 +90,7 @@ export const pushdown = {
     'Symulator pokazał napis „filtr przekazany do czytnika". Co czytnik może z nim zrobić? Plik <term id="parquet">Parquet</term> jest podzielony na <b>row groups</b>, czyli grupy wierszy zapisane jedna za drugą. Dla każdej grupy może przechowywać najmniejszą i największą wartość kolumny. Zmień filtr albo ułożenie danych i patrz na licznik.'
   ],
   /** Założenia uproszczonego modelu. Zawsze widoczne obok etykiety symulacji. */
-  assumptions: 'Model uproszczony: cztery grupy z wymyślonymi wartościami, plik ma statystyki min i max dla <code>amount</code>, a filtr jest takim, który czytnik potrafi z nimi porównać.',
+  assumptions: 'Model uproszczony: cztery grupy z wymyślonymi wartościami, plik ma statystyki min i max dla <code>amount</code>, a czytnik potrafi porównać ten filtr ze statystykami.',
   /** Dane ułożone po amount: zakresy grup prawie się nie nakładają. */
   sorted: [{ min: 10, max: 400 }, { min: 410, max: 850 }, { min: 900, max: 1800 }, { min: 1900, max: 5000 }] as RowGroup[],
   /** Te same wartości rozsiane po całym pliku: każda grupa ma pełny zakres. */
@@ -99,8 +99,8 @@ export const pushdown = {
   defaultFilter: 1000,
   nothingToSkip: 'Warunek został przekazany, ale nie ma czego pominąć: każda grupa może zawierać pasujący wiersz.',
   takeaway: [
-    'Przekazanie warunku do źródła nazywa się <b>predicate pushdown</b>. Jeśli największa wartość w grupie nie przekracza progu, żaden jej wiersz nie spełni warunku, więc czytnik może ją pominąć bez zaglądania do środka.',
-    'Grupa „do rozważenia" jest czytana w całości i nadal może zawierać wiersze, które warunku nie spełniają. Te Spark odrzuca potem sam, w węźle Filter. Dlatego przekazanie filtra to jeszcze nie oszczędność: ile grup odpadnie, zależy od statystyk i ułożenia danych.'
+    'Jeśli największa wartość w grupie nie przekracza progu, żaden jej wiersz nie spełni warunku. Czytnik może więc pominąć całą grupę bez zaglądania do środka. Żeby to zrobić, musi znać warunek, dlatego Spark przekazuje go do źródła. To przekazanie nazywa się <b>predicate pushdown</b>.',
+    'Grupa „do rozważenia" jest czytana w całości i nadal może zawierać wiersze, które warunku nie spełniają. Te wiersze Spark odrzuca potem sam, w kroku Filter swojego planu. Dlatego przekazanie filtra to jeszcze nie oszczędność. Ile grup odpadnie, zależy od statystyk i ułożenia danych.'
   ],
   measuredTitle: 'Pomiar: to samo na prawdziwym pliku',
   measured: [
@@ -118,7 +118,7 @@ export const pushdown = {
     from: 'Snowflake',
     known: 'Pruning mikropartycji: Snowflake trzyma dla każdej mikropartycji zakres wartości kolumn i pomija te, które nie mogą pasować do filtra.',
     fresh: 'To samo robi czytnik Parquet z row groups, na podstawie min i max zapisanych w pliku.',
-    breaks: 'W Snowflake te metadane prowadzi usługa, zawsze i dla każdej tabeli. W Parquet statystyki są opcjonalne i siedzą w każdym pliku osobno, więc żeby z nich skorzystać, trzeba najpierw otworzyć opis pliku. W obu systemach skuteczność zależy od ułożenia danych: gdy wartości są rozsiane po wszystkich kawałkach, nie ma czego pomijać.'
+    breaks: 'W Snowflake, w tabelach standardowych, te metadane prowadzi usługa, automatycznie dla każdej takiej tabeli. W Parquet statystyki są opcjonalne i siedzą w każdym pliku osobno. Żeby z nich skorzystać, trzeba najpierw otworzyć opis pliku. W obu systemach skuteczność zależy od ułożenia danych. Gdy wartości są rozsiane po wszystkich kawałkach, nie ma czego pomijać.'
   } as Bridge
 };
 
@@ -153,7 +153,7 @@ export const experiments: Experiment[] = [
     mono: false,
     output: '1. read.parquet uruchomił jobów: 1\n   definicja: 0.24 s   show(): 1.32 s   joby w show(): 2\n   joby w count(): 3',
     notes: [
-      'Definicja to tylko zbudowanie i sprawdzenie planu. Praca dzieje się w <code>show()</code>. Na 9 wierszach różnica jest kilkukrotna, na dużych danych urośnie, bo czas definicji nie zależy od liczby wierszy.',
+      'Definicja to tylko zbudowanie i sprawdzenie planu. Praca dzieje się w <code>show()</code>. Na 9 wierszach różnica jest kilkukrotna. Na dużych danych urośnie, bo czas definicji nie zależy od liczby wierszy.',
       'W wydruku pojawia się słowo <b>job</b>. To porcja pracy, którą Spark faktycznie wysyła do wykonania. Każdy job widać potem w <term id="spark-ui">Spark UI</term>, więc licząc joby, liczymy momenty, w których Spark naprawdę coś robił.',
       'Pierwsza linijka wydruku: samo <code>read.parquet</code> uruchomiło jeden job. Spark zajrzał do opisu na końcu pliku po <term id="schema">schemat</term>. Wierszy nie czytał.'
     ],
@@ -221,33 +221,33 @@ export const experiments: Experiment[] = [
     output: '3. Wiersze, które przeszły przez filter (źródło ma 9)\n   bez cache:  po show() 9, po count() <span class="k">18</span>\n   z cache():  po cache() 0, po show() 9, po count() <span class="k">9</span>, po drugim show() <span class="k">9</span>\n   wyjątek:    collect() dwa razy na tym samym DataFrame: 9, potem 9',
     notes: [
       'Osiemnaście. Spark nie przechował wyniku pierwszej akcji, więc przy drugiej wykonał plan od źródła jeszcze raz. Po <code>cache()</code> licznik staje na 9 i już się nie rusza. Samo wywołanie <code>cache()</code> niczego nie policzyło (licznik 0).',
-      'Trzecia linijka to wyjątek, o który lubią pytać. Dwa razy <code>collect()</code> na tym samym obiekcie nie powtórzyło pracy. <code>groupBy</code> wymaga <b>shuffle\'u</b>, czyli przetasowania wierszy tak, żeby te same klucze spotkały się w jednym miejscu, a jego wynik ląduje w plikach na dysku. Przy drugim <code>collect()</code> Spark użył tych plików ponownie i pominął etap, który je wytworzył.',
+      'Trzecia linijka to wyjątek, o który lubią pytać. Dwa razy <code>collect()</code> na tym samym obiekcie nie powtórzyło pracy. <code>groupBy</code> wymaga <b>shuffle\'u</b>, czyli przetasowania wierszy tak, żeby te same klucze spotkały się w jednym miejscu. Wynik shuffle\'u ląduje w plikach na dysku. Przy drugim <code>collect()</code> Spark użył tych plików ponownie i pominął etap, który je wytworzył.',
       'Dlatego dokumentacja mówi ostrożnie, że wynik „may be recomputed" przy każdej akcji. Bezpieczne zdanie na rozmowę: bez cache kolejna akcja może policzyć część albo całość planu od nowa.'
     ],
     scope: 'Licznik w UDF to narzędzie dydaktyczne. Na klastrze ponowione zadania mogą go zawyżyć, a liczba wywołań UDF nie jest przez Sparka gwarantowana.',
     more: {
       title: 'Kiedy dokładnie Spark liczy od nowa, a kiedy nie',
       html: [
-        'Zmierzone w <code>lazy_conditions_lab.py</code>, z AQE włączonym i wyłączonym, wynik ten sam. Ponowne użycie zadziałało tylko dla powtórzonego <code>collect()</code> na tym samym obiekcie DataFrame, w planie z shuffle\'em (9, potem 9; w Spark UI jeden stage wykonany, jeden pominięty).',
+        'Zmierzone w <code>lazy_conditions_lab.py</code>. Wynik był ten sam z włączonym i wyłączonym <term id="aqe">AQE</term>. Ponowne użycie zadziałało tylko w jednym przypadku: powtórzone <code>collect()</code> na tym samym obiekcie DataFrame, w planie z shuffle\'em (9, potem 9; w Spark UI jeden <term id="stage">stage</term> wykonany, jeden pominięty).',
         'Od nowa liczyły (9, potem 18): <code>show()</code> dwa razy, <code>count()</code> dwa razy, <code>show()</code> i <code>count()</code>, DataFrame pochodny zbudowany na tym samym planie oraz każdy plan bez shuffle\'u. <code>show()</code> i <code>count()</code> budują pod spodem nowe zapytanie, więc nie mają czego użyć ponownie.',
         '<b>cache() wypełnia się kawałkami.</b> Na pliku w 3 partycjach <code>take(1)</code> policzyło i zapamiętało 1 partycję z 3 (licznik 3). Dopiero <code>count()</code> dopełniło resztę (licznik 9, 3 z 3). W cache trafia to, co akcja faktycznie policzyła.',
-        '<b>cache() nie jest trwały.</b> Domyślny poziom dla DataFrame to pamięć z przelewaniem na dysk (<code>MEMORY_AND_DISK_DESER</code>). Według dokumentacji Spark sam usuwa najdawniej używane partycje, gdy brakuje miejsca, a utraconą partycję liczy od nowa z planu. Po <code>unpersist()</code> licznik w labie znów urósł o 9.',
-        'Cache jest dopasowywany po planie, nie po zmiennej. DataFrame pochodny czytał z cache (licznik bez zmian), a identyczny plan zbudowany od zera w innej zmiennej też w niego trafił.'
+        '<b>cache() nie jest trwały.</b> Domyślnie DataFrame trafia do pamięci, a to, co się nie mieści, na dysk (poziom <code>MEMORY_AND_DISK_DESER</code>). Według dokumentacji Spark sam usuwa najdawniej używane partycje, gdy brakuje miejsca. Utraconą partycję liczy od nowa z planu. Po <code>unpersist()</code> licznik w labie znów urósł o 9.',
+        'Spark rozpoznaje cache po planie, a nie po nazwie zmiennej. DataFrame pochodny czytał z cache (licznik bez zmian), a identyczny plan zbudowany od zera w innej zmiennej też w niego trafił.'
       ]
     }
   },
   {
     ask: 'W danych jest wartość <code>"abc"</code>, a Ty robisz <code>cast("int")</code> w linijce z <code>withColumn</code>. Kiedy zobaczysz błąd?',
-    setup: `Trzy wiersze, w jednym wartość <code>"abc"</code>. Akcja to <code>show()</code> na DataFrame, który używa nowej kolumny. Klasyczny PySpark (nie Spark Connect). ${ENV}.`,
+    setup: `Trzy wiersze, w jednym wartość <code>"abc"</code>. Akcja to <code>show()</code> na DataFrame, który używa nowej kolumny. Klasyczny PySpark (nie <term id="spark-connect">Spark Connect</term>). ${ENV}.`,
     choices: ['Od razu, w tej linijce', 'Dopiero w show()'],
     correct: 1,
     mono: false,
     output: '4. Błędy\n   literówka w kolumnie: błąd od razu -> [UNRESOLVED_COLUMN.WITH_SUGGESTION]\n   zły rzut typu: definicja przeszła bez błędu\n   zły rzut typu: błąd dopiero w show() -> [CAST_INVALID_INPUT]',
     notes: [
-      'Są dwa rodzaje błędów. Literówkę w nazwie kolumny Spark złapał od razu, bo sprawdza plan względem schematu już przy definicji. Błąd w samych danych może wyjść dopiero wtedy, gdy dane faktycznie popłyną, czyli przy akcji.',
+      'Są dwa rodzaje błędów. Literówkę w nazwie kolumny Spark złapał od razu, bo już przy definicji sprawdza, czy plan zgadza się ze schematem. Błąd w samych danych może wyjść dopiero wtedy, gdy dane faktycznie popłyną, czyli przy akcji.',
       'Praktyczny skutek: komunikat pojawia się daleko od linijki, która zawiniła. W zadaniach na końcu lekcji poszukasz takiej linijki sam.'
     ],
-    scope: 'Ten wynik ma trzy warunki: tryb ANSI, klasyczny Spark i akcję, która naprawdę wylicza wadliwą kolumnę. Każdy z nich zmienia odpowiedź.',
+    scope: 'Ten wynik ma trzy warunki: <term id="ansi">tryb ANSI</term>, klasyczny Spark i akcję, która naprawdę wylicza wadliwą kolumnę. Każdy z nich zmienia odpowiedź.',
     more: {
       title: 'Trzy warunki, od których zależy ten wynik',
       html: [
@@ -265,7 +265,7 @@ export const experiments: Experiment[] = [
     mono: false,
     output: '5. Joby na akcję (ten sam plan: filter + groupBy)\n   AQE=true   show(): 2   count(): 3   collect(): 2\n   AQE=false  show(): 5   count(): 1   collect(): 1',
     notes: [
-      'Od jednego do pięciu, na tym samym planie. Z AQE Spark wykonuje plan kawałkami, żeby między nimi poprawić resztę, i każdy kawałek bywa osobnym jobem.',
+      'Od jednego do pięciu, na tym samym planie. Z AQE Spark wykonuje plan kawałkami, żeby po każdym kawałku poprawić resztę. Każdy kawałek bywa osobnym jobem.',
       'Wniosek na rozmowę: akcja uruchamia wykonanie planu. Ile to jobów, zależy od planu, wersji i konfiguracji.'
     ],
     scope: 'Konkretne liczby są z tego uruchomienia i nie są regułą. Na innej wersji albo innym planie wyjdą inne.',
@@ -273,7 +273,7 @@ export const experiments: Experiment[] = [
       title: 'Skąd pięć jobów bez AQE',
       html: [
         '<code>show()</code> potrzebuje 21 wierszy, więc nie liczy wszystkiego naraz. Najpierw sprawdza jedną partycję wyniku, a gdy wierszy jest za mało, sięga po kolejne, za każdym razem cztery razy więcej (<code>spark.sql.limit.scaleUpFactor = 4</code>). Każda próba to osobny job.',
-        'Po shuffle\'u było 200 partycji, a wynik miał tylko 3 wiersze, więc Spark musiał przejść wszystkie: 1, 4, 16, 64 i reszta. Pięć prób, pięć jobów.',
+        'Po shuffle\'u było 200 partycji, a wynik miał tylko 3 wiersze. Spark musiał więc przejść wszystkie partycje: 1, 4, 16, 64 i reszta. Pięć prób, pięć jobów.',
         'To wyjaśnienie przewiduje konkretne liczby i lab je potwierdza: przy 1 partycji po shuffle\'u wyszedł 1 job, przy 5 dwa, przy 21 trzy, przy 200 pięć. W dokumentacji użytkownika nie znalazłem opisu tego mechanizmu, więc traktuj go jako wniosek z eksperymentu.'
       ]
     }
@@ -288,8 +288,8 @@ export const interview = {
   long: {
     label: 'Pełna wersja seniorska',
     time: { en: 'about 90 seconds', pl: 'ok. 90 sekund' },
-    en: 'I think of a DataFrame as a query plan, not as data. Transformations add to the plan, and an action hands it to the engine. That\'s what makes the DataFrame API optimizable at all. Python runs line by line, so the only way Spark can see my whole query, the way a SQL engine sees a statement, is to not execute anything until I ask for a result. Then the optimizer prunes columns, pushes filters into the scan and reorders operations. A few consequences matter day to day. First, re-execution. Spark doesn\'t keep results between actions, so another action can recompute part or all of the plan. In a small local test, show followed by count pushed every row through my filter twice. If a result feeds several actions I cache it, knowing the cache is temporary and can be evicted. If it has to survive the job, I write it to a table. Second, errors. In classic Spark a wrong column name fails immediately, but a bad cast only fails when an action actually evaluates it, far from the line that caused it. On Spark Connect even the name check is deferred. Third, lazy isn\'t absolute. Reading a Parquet path can already run a small job to get the schema from file metadata, and one action isn\'t always one job. With adaptive execution a single show can be several.',
-    pl: 'Myślę o DataFrame jak o planie zapytania, a nie o danych. Transformacje dopisują do planu, a akcja przekazuje go silnikowi. To dzięki temu API DataFrame w ogóle da się optymalizować. Python wykonuje się linijka po linijce, więc jedyny sposób, żeby Spark zobaczył całe moje zapytanie tak, jak silnik SQL widzi instrukcję, to nie wykonywać niczego, dopóki nie poproszę o wynik. Wtedy optymalizator wycina kolumny, spycha filtry do skanu i przestawia operacje. Na co dzień liczą się trzy konsekwencje. Po pierwsze, ponowne wykonanie. Spark nie przechowuje wyników między akcjami, więc kolejna akcja może policzyć część albo całość planu od nowa. W małym lokalnym teście show, a potem count przepuściły każdy wiersz przez mój filtr dwa razy. Jeśli wynik zasila kilka akcji, cache\'uję go, pamiętając, że cache jest tymczasowy i może zostać usunięty z pamięci. Jeśli ma przetrwać job, zapisuję go do tabeli. Po drugie, błędy. W klasycznym Sparku zła nazwa kolumny wywala się od razu, ale zły rzut typu dopiero wtedy, gdy akcja faktycznie go wyliczy, daleko od linijki, która go spowodowała. Na Spark Connect także sprawdzenie nazw jest odłożone. Po trzecie, leniwość nie jest absolutna. Odczyt Parquet ze ścieżki potrafi uruchomić mały job po schemat z metadanych pliku, a jedna akcja to nie zawsze jeden job. Z adaptive execution jedno show bywa kilkoma.',
+    en: 'I think of a DataFrame as a query plan, not as data. Transformations add to the plan, and an action hands it to the engine. That\'s what lets Spark optimize DataFrame code at all. Python runs line by line. A SQL engine sees the whole statement at once. The only way Spark can see my whole query like that is to normally defer the row computation until I ask for a result. Then the optimizer prunes columns, pushes filters into the scan and reorders operations. A few consequences matter day to day. First, re-execution. Spark doesn\'t keep results between actions, so another action can recompute part or all of the plan. In a small local test, show followed by count pushed every row through my filter twice. If a result feeds several actions I cache it, knowing the cache is temporary and can be evicted. If it has to survive the job, I write it to a table. Second, errors. In classic Spark a wrong column name fails immediately. A bad cast only fails when an action actually evaluates it, far from the line that caused it. On Spark Connect even the name check is deferred. Third, lazy isn\'t absolute. Reading a Parquet path can already run a small job to get the schema from file metadata, schema inference on CSV has to read the data, and one action isn\'t always one job. With adaptive execution a single show can be several.',
+    pl: 'Myślę o DataFrame jak o planie zapytania, a nie o danych. Transformacje dopisują do planu, a akcja przekazuje go silnikowi. To dzięki temu Spark w ogóle może optymalizować kod na DataFrame\'ach. Python wykonuje się linijka po linijce. Silnik SQL widzi całe zapytanie naraz. Spark może zobaczyć moje zapytanie w ten sam sposób tylko wtedy, gdy zwykle odkłada przetwarzanie wierszy, dopóki nie poproszę o wynik. Wtedy optymalizator wycina niepotrzebne kolumny, przekazuje filtry do skanu i przestawia operacje. Na co dzień liczą się trzy konsekwencje. Po pierwsze, ponowne wykonanie. Spark nie przechowuje wyników między akcjami, więc kolejna akcja może policzyć część albo całość planu od nowa. W małym lokalnym teście show, a potem count przepuściły każdy wiersz przez mój filtr dwa razy. Jeśli wynik zasila kilka akcji, cache\'uję go, pamiętając, że cache jest tymczasowy i może zostać usunięty z pamięci. Jeśli ma przetrwać job, zapisuję go do tabeli. Po drugie, błędy. W klasycznym Sparku zła nazwa kolumny daje błąd od razu. Zły rzut typu daje błąd dopiero wtedy, gdy akcja faktycznie go wyliczy, daleko od linijki, która go spowodowała. Na Spark Connect także sprawdzenie nazw jest odłożone. Po trzecie, leniwość nie jest absolutna. Odczyt Parquet ze ścieżki potrafi uruchomić mały job po schemat z metadanych pliku, zgadywanie schematu z CSV musi przeczytać dane, a jedna akcja to nie zawsze jeden job. Z adaptive execution jedno show bywa kilkoma.',
     note: 'Zdanie o „małym lokalnym teście" mów dopiero wtedy, gdy sam uruchomisz skrypt z etapu Praktyka. To pięć minut, a na pytanie „jak to sprawdziłeś?" będziesz mieć prawdziwą odpowiedź.'
   },
   bridgeIntro: 'Jeśli na co dzień pracujesz w SQL i dbt, a nie w Sparku, ten temat przenosi się prawie wprost. Możesz to powiedzieć otwarcie:',
