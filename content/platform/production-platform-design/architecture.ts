@@ -239,7 +239,7 @@ export const schema: Compare & { title: string; intro: string; takeaway: string;
       verdict: 'Usunięcie pola psuje wszystko, co z niego korzystało. Test na wejściu do STG wykrywa taką zmianę. Zapobiega jej dopiero <b>kontrakt danych</b>: uzgodnienie z właścicielem źródła, które pola i typy są gwarantowane.'
     }
   ],
-  takeaway: '<b>Wniosek.</b> RAW przyjmuje wszystko (evolution). STG pilnuje kształtu (enforcement). Dzięki temu podziałowi zmiana w źródle nigdy nie gubi danych i nigdy nie przechodzi po cichu do raportu.',
+  takeaway: '<b>Wniosek.</b> RAW przyjmuje wszystko (evolution). STG pilnuje kształtu (enforcement). Ten podział zmniejsza ryzyko, że zmiana w źródle zgubi dane albo po cichu przejdzie do raportu. Nie daje gwarancji: w przypadku „Pole zniknęło" bez testu w STG zero trafia do raportu, a RAW pomaga tylko tak długo, jak przechowuje dane.',
   more: {
     title: 'Jak to wygląda w Snowflake i dbt',
     html: [
@@ -260,7 +260,7 @@ export const fewer = {
       setup: 'Dział sprzedaży raz w miesiącu wgrywa plik CSV z celami sprzedażowymi: 12 wierszy, 3 kolumny, bez duplikatów. Plik jest używany w jednym raporcie.',
       options: ['Pełne RAW, STG, intermediate i MRT, żeby było spójnie', 'Tabela z surowym plikiem i jeden model, który nadaje typy i od razu służy raportowi', 'Wkleić wartości na sztywno do zapytania raportu'],
       correct: 1,
-      why: 'Surową kopię warto zachować zawsze, bo jest tania i pozwala sprawdzić, co wgrano. Osobne STG i MRT nie wnoszą tu jednak nic: nie ma duplikatów, kilku źródeł ani reguł biznesowych do rozdzielenia. Każda dodatkowa warstwa to model do utrzymania, testy i opóźnienie.',
+      why: 'Surową kopię warto zachować tak długo, jak pozwalają zasady retencji i ochrony danych osobowych, bo jest tania i pozwala sprawdzić, co wgrano. Osobne STG i MRT nie wnoszą tu jednak nic: nie ma duplikatów, kilku źródeł ani reguł biznesowych do rozdzielenia. Każda dodatkowa warstwa to model do utrzymania, testy i opóźnienie.',
       scope: 'Gdy plik zacznie zasilać kilka raportów albo dojdzie drugie źródło celów, rozdzielenie na STG i MRT zacznie się opłacać. Warstwy dodaje się, gdy pojawia się problem, który rozwiązują.'
     },
     {

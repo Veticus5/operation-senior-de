@@ -207,7 +207,7 @@ export const retry = {
     title: 'Która z dwóch bezpiecznych strategii i kiedy',
     html: [
       '<b>Nadpisanie zakresu</b> (usuń i wstaw dzień albo partycję w jednej transakcji) jest najprostsze, gdy dane mają naturalny podział na dni, a paczka zawiera komplet danego dnia. Taki zapis jest też atomowy, czyli wykonuje się w całości albo wcale: kto czyta tabelę, widzi stary albo nowy dzień, nigdy połowę.',
-      '<b>MERGE po kluczu</b> pasuje, gdy przychodzą pojedyncze zmiany rozrzucone po wielu dniach, np. z CDC. Wymaga wiarygodnego klucza i tego, żeby w paczce źródłowej był najwyżej jeden wiersz na klucz. W Snowflake kilka wierszy źródła pasujących do jednego wiersza celu to domyślnie błąd niedeterministycznego MERGE.',
+      '<b>MERGE po kluczu</b> pasuje, gdy przychodzą pojedyncze zmiany rozrzucone po wielu dniach, np. z CDC. Wymaga wiarygodnego klucza i tego, żeby w paczce źródłowej był najwyżej jeden wiersz na klucz. Ten wiersz trzeba wybierać według stałej reguły, a spóźniona, starsza zmiana nie może nadpisać nowszej. Sam MERGE po kluczu tego nie zapewnia. W Snowflake kilka wierszy źródła pasujących do jednego wiersza celu to domyślnie błąd niedeterministycznego MERGE.',
       'W dbt odpowiadają temu strategie modeli przyrostowych: <code>delete+insert</code>, <code>merge</code> i <code>microbatch</code>. Model przyrostowy bez <code>unique_key</code> tylko dopisuje wiersze, czyli zachowuje się jak pierwsza, niebezpieczna opcja w symulacji.',
       'Częściowa awaria dotyczy też wielu tabel naraz: fakty załadowane, wymiar nie. Dlatego publikację dla odbiorców robi się jako ostatni krok, po testach, a nie w trakcie.'
     ]
@@ -364,14 +364,14 @@ export const dag = {
       id: 'test', label: 'Test STG wykrył duplikaty',
       status: ['ok', 'ok', 'fail', 'skip', 'skip', 'skip'],
       dashboard: 'Dane z wczoraj, z widoczną datą ostatniego odświeżenia.',
-      verdict: 'Dane dotarły, ale nie spełniają reguły. Test działa jak bramka: MRT nie zostało przeliczone na podejrzanych danych. Stare, poprawne dane są lepsze niż świeże i błędne, o ile odbiorca wie, że są stare.'
+      verdict: 'Dane dotarły, ale nie spełniają reguły. Test działa jak bramka: MRT nie zostało przeliczone na podejrzanych danych. Stare, poprawne dane są lepsze niż świeże i błędne, o ile odbiorca wie, że są stare. Bramka chroni odbiorców tylko wtedy, gdy sprawdzona wersja jest publikowana atomowo, np. budowana obok i podmieniana po testach. Jeśli czytają wprost tabelę, która jest właśnie testowana, mogą już widzieć złe dane.'
     }
   ] as DagCase[],
   takeaway: '<b>Wniosek.</b> Orkiestracja to nie harmonogram, tylko zależności: krok startuje, gdy poprzedni się powiódł. Awaria powinna zatrzymać to, co od niej zależy, i zostawić odbiorcy ostatni poprawny stan.',
   more: {
     title: 'Jak to wygląda w dbt i Snowflake oraz czym jest uzgadnianie',
     html: [
-      '<code>dbt build</code> uruchamia modele i testy w kolejności zależności, a gdy test modelu się nie powiedzie, pomija modele, które od niego zależą. To jest bramka z ilustracji. Test z ważnością <code>warn</code> tylko ostrzega i niczego nie zatrzymuje.',
+      '<code>dbt build</code> uruchamia modele i testy w kolejności zależności, a gdy test modelu się nie powiedzie, pomija modele, które od niego zależą. To jest bramka z ilustracji. Sama nie wystarczy: żeby odbiorcy nie przeczytali wersji, która nie przeszła testu, sprawdzoną wersję trzeba publikować atomowo, np. zbudować obok i podmienić po testach. Test z ważnością <code>warn</code> tylko ostrzega i niczego nie zatrzymuje.',
       'W Snowflake zależności między instrukcjami SQL można zapisać jako graf <term id="streams-tasks">Tasks</term>: zadanie główne ma harmonogram, a zadania zależne startują po zakończeniu poprzedników. Wystarcza to dla prostych przepływów wewnątrz hurtowni. Zależności między systemami, np. „najpierw API, potem dbt", lepiej wyrazić w zewnętrznym orkiestratorze.',
       '<b>Uzgadnianie</b> (reconciliation) to porównanie platformy z niezależnym źródłem prawdy: liczba wierszy i suma kwot za dzień w RAW kontra to, co raportuje system płatności. Testy sprawdzają, czy dane zgadzają się same ze sobą. Uzgadnianie sprawdza, czy niczego nie brakuje w porównaniu ze światem zewnętrznym.',
       'Różnica w uzgodnieniu nie zawsze jest błędem: strefy czasowe, płatności w toku i zwroty zaksięgowane później tworzą znane, wyjaśnialne rozbieżności. Próg alertu ustawia się powyżej nich.'
