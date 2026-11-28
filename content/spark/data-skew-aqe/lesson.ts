@@ -258,7 +258,7 @@ export interface AqeMove {
 export const moves = {
   title: 'AQE: plan poprawiany w trakcie wykonania',
   intro: [
-    '<term id="optimizer">Optymalizator</term> układa plan przed wykonaniem. Nie wie jeszcze, ile danych zostanie po filtrach i joinach, więc musi to szacować. Jest jednak moment, w którym Spark zna prawdę. Shuffle dzieli zapytanie na etapy. Gdy etap się skończy, Spark zna prawdziwy rozmiar każdej partycji i może poprawić resztę planu. Ten mechanizm to <b>Adaptive Query Execution</b> (AQE).',
+    '<term id="optimizer">Optymalizator</term> układa plan przed wykonaniem. Nie wie jeszcze, ile danych zostanie po filtrach i joinach, więc musi to szacować. Jest jednak moment, w którym Spark zna prawdę. Zapytanie wykonuje się etapami (query stages), a etap kończy się shuffle\'em albo broadcastem. Gdy etap się skończy, Spark zna prawdziwy rozmiar jego wyniku, a po shuffle\'u rozmiar każdej partycji, i może poprawić resztę planu. Ten mechanizm to <b>Adaptive Query Execution</b> (AQE).',
     'W Apache Spark AQE jest domyślnie włączone od wersji 3.2.0. Wybierz, co AQE zobaczyło po shuffle\'u.'
   ],
   assumptions: 'Rysunki są ilustracją: rozmiary partycji są umowne. Zdanie „Pomiar" pod każdym z nich pochodzi z labu tej lekcji.',
@@ -291,7 +291,7 @@ export const moves = {
       note: 'Z progami domyślnymi AQE w tym labie niczego nie podzieliło: plan został przy zwykłym <code>SortMergeJoin</code>, bo gorąca partycja była dużo mniejsza niż 256 MB. Dlaczego, wyjaśnia następna część.'
     }
   ] as AqeMove[],
-  takeaway: '<b>Wniosek.</b> AQE nie zgaduje lepiej. Czeka, aż będzie znać prawdziwe rozmiary. Dlatego działa wyłącznie na granicach shuffle\'u, czyli po zakończonym etapie, i zmienia tylko to, co zostało jeszcze do wykonania.',
+  takeaway: '<b>Wniosek.</b> AQE nie zgaduje lepiej. Czeka, aż będzie znać prawdziwe rozmiary. Dlatego działa dopiero po zakończonym etapie zapytania, czyli po shuffle\'u albo broadcaście, i zmienia tylko to, co zostało jeszcze do wykonania.',
   planTitle: 'Jak sprawdzić, co AQE zmieniło',
   plan: [
     'Plan zapytania z AQE ma na górze węzeł <code>AdaptiveSparkPlan</code> z flagą <code>isFinalPlan</code>. Przed wykonaniem i w jego trakcie flaga ma wartość <code>false</code>, po zakończeniu <code>true</code>. Porównujesz plan początkowy z końcowym.',
@@ -304,7 +304,7 @@ export const moves = {
     from: 'Snowflake',
     known: 'Optymalizator hurtowni korzysta ze statystyk tabel, które usługa utrzymuje sama. Ty piszesz SQL i nie stroisz liczby partycji ani strategii joina.',
     fresh: 'AQE przybliża Sparka do tej wygody. Część decyzji, które kiedyś ustawiało się ręcznie, silnik podejmuje sam. Opiera je na rozmiarach zmierzonych w trakcie wykonania.',
-    breaks: 'AQE poprawia tylko to, co da się zmienić po shuffle\'u: liczbę partycji, strategię joina i podział skośnej partycji w joinie. Nie zmienia kolejności joinów. Jego reguła skew join nie rozbije też gorącego klucza w agregacji ani w funkcji okna. Kiedy AQE przestaje wystarczać, wracasz do ręcznych technik.'
+    breaks: 'AQE poprawia tylko to, co da się zmienić po zakończonym etapie zapytania (shuffle albo broadcast): liczbę partycji, strategię joina i podział skośnej partycji w joinie. Nie zmienia kolejności joinów. Jego reguła skew join nie rozbije też gorącego klucza w agregacji ani w funkcji okna. Kiedy AQE przestaje wystarczać, wracasz do ręcznych technik.'
   } as Bridge
 };
 
@@ -334,7 +334,7 @@ export const limits = {
     { id: 'right', label: 'Zamówienia RIGHT JOIN klienci', ok: false, why: 'W right outer joinie wolno dzielić tylko prawą stronę, a skośna jest lewa. Żeby podzielić lewą, trzeba by powielić partycję prawej. Jej niedopasowane wiersze pojawiłyby się wtedy w wyniku kilka razy.' },
     { id: 'full', label: 'Full outer join', ok: false, why: 'W full outer joinie nie wolno dzielić żadnej strony.' },
     { id: 'agg', label: 'groupBy albo funkcja okna', ok: false, why: 'Reguła skew join dotyczy joinów. Gorącego klucza w <code>groupBy</code> ani w funkcji okna nie rozbija. W labie funkcja okna została bez podziału. AQE ma osobną regułę, która dzieli skośne partycje po jawnej operacji rebalance, ale to inna sytuacja niż gorący klucz w agregacji.' },
-    { id: 'broadcast', label: 'Broadcast hash join', ok: false, why: 'AQE obsługuje skew tylko w joinach przez shuffle. W broadcast joinie duża strona nie jest przegrupowywana po kluczu, więc skośnej partycji po shuffle\'u zwykle w ogóle nie ma.' },
+    { id: 'broadcast', label: 'Broadcast hash join', ok: false, why: 'Reguła skew join działa tylko w joinach przez shuffle. W broadcast joinie duża strona nie jest przegrupowywana po kluczu, więc skośnej partycji po shuffle\'u zwykle w ogóle nie ma.' },
     { id: 'stream', label: 'Zapytanie streamingowe', ok: false, why: 'Nie zakładaj tego. Strona o AQE w dokumentacji Databricks podaje jako warunek, że zapytanie nie jest streamingowe. Osobna strona mówi, że od Databricks Runtime 18.0 AQE działa dla bezstanowych zapytań streamingowych, ale nie wymienia przy tym obsługi skew. Dokumentacja Apache Spark o AQE w streamingu nie mówi nic.' }
   ] as LimitOp[],
   defaultOp: 'inner',
@@ -488,7 +488,7 @@ export const quiz: QuizItem[] = [
     q: 'W stage\'u jeden task trwa 30 razy dłużej niż mediana. Co najlepiej potwierdza, że przyczyną jest skew?',
     options: ['Sam czas tego taska', 'Shuffle read tego taska wielokrotnie większy od mediany i rozkład wierszy na klucz', 'To, że pozostałe rdzenie stoją bezczynnie'],
     correct: 1,
-    why: 'Czas to objaw, który może mieć wiele przyczyn. Skew to nierówny podział danych. Potwierdza go więc to, ile danych task dostał, oraz liczba wierszy na klucz. Gdy wolny task ma typowy shuffle read, trzeba szukać innych przyczyn, choć nierównej pracy samo to nie wyklucza.'
+    why: 'Czas to objaw, który może mieć wiele przyczyn. Skew to nierówny podział danych. Shuffle read wielokrotnie większy od mediany to przesłanka, a nie dowód. Potwierdza ją rozkład: liczba wierszy na klucz albo rozmiary partycji. Gdy wolny task ma typowy shuffle read, trzeba szukać innych przyczyn, choć nierównej pracy samo to nie wyklucza.'
   },
   {
     q: 'Sort-merge join, AQE z ustawieniami domyślnymi. Mediana partycji to 30 MB, jedna ma 200 MB. Czy AQE ją podzieli?',
