@@ -5,6 +5,8 @@ import { chapters, chapterById, type KbBlock, type KbFigure } from '@content/kno
 import facts from '../../../../docs/verified-facts.md?raw';
 import { parseRich, termIds } from '../lib/richText';
 import * as modeling from '@content/data-modeling/dimensional-modeling/lesson';
+import * as snow from '@content/snowflake/architecture/lesson';
+import { credits, inherited, mustScan } from '../academy/snowflake-architecture/Visuals';
 import { countryReport, fanoutResult, fanoutRows, matchVersions, mrrByMonth, refundRates, rlsView, semanticCount, threeNumbers, totalRevenue } from '../academy/data-modeling/model';
 import { END, cellCounts, chapterRich, contentHash, outline, pdfPath, readingMinutes, scannedParts, wordCount } from './outline';
 import { renderPrintDocument } from './print';
@@ -25,7 +27,7 @@ describe('Knowledge Base: rejestr rozdziałów', () => {
     for (const id of ids) expect(id).toMatch(SLUG);
   });
   it('nie zmienił identyfikatorów, bo są częścią adresów i nazw plików PDF', () => {
-    expect(chapters.map(c => c.id)).toEqual(['database-architecture', 'advanced-data-modeling']);
+    expect(chapters.map(c => c.id)).toEqual(['database-architecture', 'advanced-data-modeling', 'snowflake-architecture-performance']);
     expect(chapterById('database-architecture')!.sections.map(s => s.id)).toEqual([
       'oltp-olap', 'wiersze-kolumny', 'projekt-logiczny-fizyczny', 'normalizacja', 'denormalizacja', 'klucze', 'indeksy',
       'pruning', 'plan-wykonania', 'transakcje', 'warehouse-lake-lakehouse', 'etl-elt', 'storage-compute', 'dobor-architektury'
@@ -34,6 +36,10 @@ describe('Knowledge Base: rejestr rozdziałów', () => {
       'fakty-i-wymiary', 'ziarno', 'fan-out', 'rodzaje-faktow-i-addytywnosc', 'klucze-zastepcze', 'nietypowe-fakty-i-wymiary', 'ksztalt-modelu',
       'scd', 'punkt-w-czasie', 'spoznione-dane', 'warstwa-semantyczna', 'kardynalnosc', 'rls', 'pre-agregacje', 'power-bi-looker', 'gdzie-logika',
       'metodyki', 'projektowanie'
+    ]);
+    expect(chapterById('snowflake-architecture-performance')!.sections.map(s => s.id)).toEqual([
+      'trzy-warstwy', 'rozdzielenie-storage-compute', 'mikropartycje-pruning', 'clustering', 'cache', 'query-profile', 'skalowanie', 'metoda-strojenia',
+      'koszty', 'streams-tasks', 'time-travel-fail-safe', 'klony', 'role', 'izolacja-sharing', 'porownanie'
     ]);
   });
 });
@@ -313,6 +319,180 @@ describe('Knowledge Base: liczby w tekście rozdziału Advanced Data Modeling wy
       else if (v && typeof v === 'object') Object.values(v).forEach(walk);
     };
     walk({ ...modeling });
+    const lessonWords = strings.join(' ').replace(/<[^>]+>/g, ' ').split(/\s+/).filter(Boolean).length;
+    expect(main).toBeLessThan(lessonWords);
+  });
+});
+
+describe('Knowledge Base: liczby w tekście rozdziału Snowflake Architecture & Performance wynikają z danych lekcji', () => {
+  const id = 'snowflake-architecture-performance';
+  const chapter = chapterById(id)!;
+  const section = (sectionId: string) => chapter.sections.find(s => s.id === sectionId)!.blocks;
+  const text = (sectionId: string) => section(sectionId).flatMap(b => (b.type === 'p' ? [b.html] : b.type === 'list' ? b.items : b.type === 'callout' ? b.html : [])).join(' ');
+  const plain = (cell: string) => cell.replace(/<\/?b>/g, '');
+  const tableBy = (sectionId: string, column: string, nth = 0) => {
+    const found = section(sectionId).filter(b => b.type === 'table' && b.columns.includes(column))[nth];
+    if (found?.type !== 'table') throw new Error(`brak tabeli z kolumną ${column}`);
+    return found.rows.map(r => r.map(plain));
+  };
+  const code = (sectionId: string) => section(sectionId).flatMap(b => (b.type === 'code' ? [b.code] : []));
+  const figureOf = <K extends KbFigure['kind']>(sectionId: string, kind: K) => {
+    const found = section(sectionId).flatMap(b => (b.type === 'figure' ? [b.figure] : [])).find(f => f.kind === kind);
+    if (!found) throw new Error(`brak ilustracji ${kind} w części ${sectionId}`);
+    return found as Extract<KbFigure, { kind: K }>;
+  };
+  /** Zapytanie z pojedynczymi odstępami: rozdział łamie linie inaczej niż lekcja. */
+  const flat = (q: string) => q.replace(/\s+/g, ' ').trim();
+  const layout = (layoutId: string) => snow.prune.layouts.find(x => x.id === layoutId)!;
+  const filter = (filterId: string) => snow.prune.filters.find(x => x.id === filterId)!;
+  const scanned = (layoutId: string, filterId: string) => layout(layoutId).parts.filter(part => mustScan(part, filter(filterId))).length;
+  const outcome = (w: string, a: string) => snow.scale.workloads.find(x => x.id === w)!.outcomes.find(o => o.action === a)!;
+  const pl = (n: number) => String(Math.round(n * 100) / 100).replace('.', ',');
+
+  it('trzy warstwy: zapytania są z lekcji, a wynik z cache nie używa warehouse\'u ani storage', () => {
+    const op = (opId: string) => snow.layers.ops.find(o => o.id === opId)!;
+    expect(code('trzy-warstwy')).toEqual([`${op('date').sql};`, `${op('cust').sql};`]);
+    const stacks = figureOf('trzy-warstwy', 'stacks');
+    expect(stacks.columns.map(c => c.label)).toEqual(['date', 'cust', 'repeat'].map(x => op(x).label));
+    const idle = stacks.columns.map(c => c.layers.map(l => l.text === snow.layers.idle));
+    expect(idle).toEqual(['date', 'cust', 'repeat'].map(x => [!op(x).services, !op(x).compute, !op(x).storage]));
+    expect(idle).toEqual([[false, false, false], [false, false, false], [false, true, true]]);
+    expect(text('trzy-warstwy')).toContain(op('meta').sql);
+  });
+  it('pruning po dacie: 1, 3 i 8 z 8 mikropartycji, a dla sześciu dni 2 i 4', () => {
+    const f = figureOf('mikropartycje-pruning', 'partitions');
+    expect(f.filter.range).toEqual(filter('day').range);
+    expect(f.layouts.map(l => l.label)).toEqual(['load', 'churn', 'clustered'].map(x => layout(x).label));
+    const counts = f.layouts.map(l => scannedParts(l.parts, f.filter.range).filter(Boolean).length);
+    expect(counts).toEqual(['load', 'churn', 'clustered'].map(x => scanned(x, 'day')));
+    expect(counts).toEqual([1, 3, 8]);
+    for (const n of ['Czytana jest 1 z 8', 'mieści się już w 3 z 8', 'niczego nie wyklucza: 8 z 8']) expect(text('mikropartycje-pruning')).toContain(n);
+    expect([scanned('load', 'range'), scanned('churn', 'range')]).toEqual([2, 4]);
+    expect(text('mikropartycje-pruning')).toContain('czytane są 2 mikropartycje, w drugim 4');
+    // Clustering powołuje się na te same liczby.
+    expect(text('clustering')).toContain('zszedł z 8 mikropartycji do 1');
+    expect(text('clustering')).toContain('trafiał w 3 mikropartycje zamiast w 1');
+  });
+  it('pruning po kliencie: 8 z 8 przy ładowaniu po dacie i 1 z 8 po uporządkowaniu po kliencie', () => {
+    const found = section('mikropartycje-pruning').find(b => b.type === 'table' && b.columns[0] === 'Mikropartycja');
+    if (found?.type !== 'table') throw new Error('brak tabeli zakresów customer_id');
+    expect(found.columns.slice(1)).toEqual([layout('load').label, layout('clustered').label]);
+    const ranges = found.rows.slice(0, -1);
+    expect(ranges.length).toBe(8);
+    // Pogrubiony zakres to mikropartycja, której model lekcji nie pozwala pominąć.
+    for (const [col, layoutId] of [[1, 'load'], [2, 'clustered']] as const) {
+      expect(ranges.map(r => r[col].startsWith('<b>'))).toEqual(layout(layoutId).parts.map(part => mustScan(part, filter('cust'))));
+    }
+    expect(found.rows.at(-1)!.map(plain)).toEqual(['Do przeczytania', `${scanned('load', 'cust')} z 8`, `${scanned('clustered', 'cust')} z 8`]);
+    expect(found.rows.at(-1)!.map(plain).slice(1)).toEqual(['8 z 8', '1 z 8']);
+    expect(plain(ranges[3][2])).toBe('3 751 – 5 000');
+  });
+  it('clustering: trzy decyzje są takie jak w lekcji', () => {
+    const decisions = section('clustering').flatMap(b => (b.type === 'p' ? [b.html.match(/^<b>Decyzja: ([^.]+)\.<\/b>/)?.[1]] : [])).filter(Boolean);
+    expect(decisions).toEqual(snow.clustering.cases.map(c => c.options[c.correct].toLowerCase()));
+    expect(decisions).toEqual(['opłaca się rozważyć', 'to strata kredytów', 'to strata kredytów']);
+  });
+  it('cache: źródło odpowiedzi w kolejnych krokach zgadza się z regułami lekcji', () => {
+    const o = snow.cache.outcomes;
+    expect(tableBy('cache', 'Skąd odpowiedź').map(r => r[1])).toEqual([o.cold.source, o.resultHit.source, o.localHit.source, '–', o.resultHit.source, '–', o.remote.source]);
+    expect(text('cache')).toContain(snow.cache.queryA);
+  });
+  it('Query Profile: statystyki czterech scenariuszy są z lekcji, a join oddaje 80 razy więcej wierszy', () => {
+    for (const [i, c] of snow.profiles.cases.entries()) expect(tableBy('query-profile', 'Statystyka', i)).toEqual(c.stats.map(s => [s.name, s.value]));
+    const value = (stat: string) => {
+      const [n, unit] = snow.profiles.cases.find(c => c.id === 'join')!.stats.find(s => s.name.includes(stat))!.value.split(' ');
+      return +n.replace(',', '.') * { mln: 1e6, mld: 1e9 }[unit as 'mln' | 'mld'];
+    };
+    expect(value('wyjściu') / value('(lewa)')).toBe(80);
+    expect(text('query-profile')).toContain('Join oddaje 80 razy więcej wierszy');
+    expect(flat(code('query-profile')[0])).toBe(flat(snow.profiles.lines.map(l => l.code).join(' ')));
+    // Większy warehouse jako pierwszy krok pada tylko w scenariuszu spillingu.
+    const first = section('query-profile').flatMap(b => (b.type === 'p' && b.html.startsWith('Pierwszy krok:') ? [b.html] : []));
+    expect(first.map(t => /^Pierwszy krok: przetestować większy warehouse/.test(t))).toEqual(snow.profiles.cases.map(c => c.id === 'spill'));
+  });
+  it('skalowanie: kredyty 4 / 2,67 / 4 oraz 0,2 / 0,8 / 0,2 i rachunek 5,33', () => {
+    for (const [i, w] of ['heavy', 'many'].entries()) {
+      expect(tableBy('skalowanie', 'Kredyty', i)).toEqual(snow.scale.actions.map(a => {
+        const o = outcome(w, a.id);
+        return [a.label, `${o.clusters} × ${o.size}`, `${o.minutes} min`, pl(credits(o))];
+      }));
+    }
+    expect(tableBy('skalowanie', 'Kredyty', 0).map(r => r[3])).toEqual(['4', '2,67', '4']);
+    expect(tableBy('skalowanie', 'Kredyty', 1).map(r => r[3])).toEqual(['0,2', '0,8', '0,2']);
+    const lanes = figureOf('skalowanie', 'lanes');
+    expect(lanes.lanes.map(l => l.steps.map(s => s.where))).toEqual([['8 działa, 16 czeka', '8 działa, 8 czeka', '8 działa, nikt nie czeka'], ['24 działają, nikt nie czeka']]);
+    expect(lanes.lanes.map(l => l.steps.length)).toEqual([outcome('many', 'none').minutes, outcome('many', 'out').minutes]);
+    expect(pl((8 * 40) / 60)).toBe('5,33');
+    expect(pl((16 * 20) / 60)).toBe('5,33');
+    expect(text('skalowanie')).toContain('Large to 8 kredytów na godzinę przez 40 minut, czyli 5,33 kredytu. X-Large to 16 przez 20 minut, czyli też 5,33');
+    expect(text('skalowanie')).toContain(snow.scale.sizes.map(([size, rate]) => `${size} ${rate}`).join(', '));
+    expect(outcome('heavy', 'none').minutes / outcome('heavy', 'up').minutes).toBe(6);
+    expect(outcome('heavy', 'up').rate / outcome('heavy', 'none').rate).toBe(4);
+  });
+  it('metoda: trzy liczby z projektu i żadnej konfiguracji ani oszczędności', () => {
+    const study = text('metoda-strojenia');
+    for (const n of ['96 godzin danych', '128 minut', '30 minut']) expect(study).toContain(n);
+    expect(study).not.toMatch(/X-Small|Small|Medium|Large|%/);
+    expect(section('metoda-strojenia').find(b => b.type === 'list' && b.ordered)).toMatchObject({ items: { length: snow.caseStudy.steps.length } });
+  });
+  it('koszty: resource monitor widzi dwa źródła z sześciu, budżet nie widzi tylko storage', () => {
+    const rows = tableBy('koszty', snow.cost.columns.monitor);
+    expect(rows).toEqual(snow.cost.items.map(x => [x.label, x.monitor ? 'widzi' : 'nie widzi', x.budget ? 'widzi' : 'nie widzi']));
+    expect(rows.filter(r => r[1] === 'widzi').length).toBe(2);
+    expect(rows.filter(r => r[2] === 'nie widzi').map(r => r[0])).toEqual([snow.cost.items.find(x => x.id === 'storage')!.label]);
+  });
+  it('stream: wersje, offset i liczba rekordów w kolejnych krokach', () => {
+    const rows = tableBy('streams-tasks', snow.stream.labels.offset);
+    expect(rows.map(r => r.slice(1))).toEqual([
+      ['v2', 'v1', '1'],
+      ['v3', 'v1', '3'],
+      ['v4', 'v1', '3'],
+      ['v4', 'v1', '3'],
+      ['v4', 'v4', '0'],
+      ['v4', 'v4', '0, uruchomienie pominięte']
+    ]);
+    expect(flat(code('streams-tasks').join(' '))).toBe(flat(snow.stream.lines.map(l => l.code).join(' ')));
+  });
+  it('retencja: 8 dni, najwyżej 97 dni i najwyżej 1 dzień płatnego storage', () => {
+    expect(tableBy('time-travel-fail-safe', 'Fail-safe')).toEqual([
+      ['Permanent, 1 dzień', '1 dzień', '7 dni', '8 dni'],
+      ['Permanent, 90 dni', '90 dni', '7 dni', 'najwyżej 97 dni'],
+      ['Transient', 'najwyżej 1 dzień', 'brak', 'najwyżej 1 dzień']
+    ]);
+    expect(snow.history.types.map(t => t.travel + t.failsafe)).toEqual([8, 97, 1]);
+    const lanes = figureOf('time-travel-fail-safe', 'lanes');
+    expect(lanes.lanes.map(l => l.label)).toEqual(snow.history.types.map(t => t.label));
+    expect(lanes.lanes.map(l => l.steps.map(s => s.name))).toEqual(snow.history.types.map(t => ['Time Travel', ...(t.failsafe ? ['Fail-safe'] : []), 'Usunięte']));
+    expect(text('time-travel-fail-safe')).toContain('kosztuje przez 8 dni, a przy 90 dniach Time Travel przez 97');
+  });
+  it('klony: 4, 5 i 6 mikropartycji w storage', () => {
+    const rows = tableBy('klony', 'Mikropartycje w storage');
+    expect(rows).toEqual(snow.history.steps.map(s => [s.label, s.source.join(', '), s.clone.join(', '), String(new Set([...s.source, ...s.clone]).size)]));
+    expect(rows.map(r => r[3])).toEqual(['4', '5', '6']);
+  });
+  it('role: każda rola w gałęzi dziedziczy role narysowane pod nią', () => {
+    const stacks = figureOf('role', 'stacks');
+    const ids = stacks.columns.map(c => c.layers.map(l => snow.access.roles.find(r => r.label === l.name.replace(/\u200b/g, ''))!.id));
+    expect(ids).toEqual([['sysadmin', 'analyst', 'sales_read'], ['sysadmin', 'engineer', 'sales_write', 'sales_read']]);
+    for (const branch of ids) branch.forEach((roleId, i) => expect(inherited(roleId).map(r => r.id), roleId).toEqual(expect.arrayContaining(branch.slice(i + 1))));
+    // Zdanie o tym, kto czyta schemat SALES, wymienia dokładnie role dziedziczące SALES_READ.
+    const readers = snow.access.roles.filter(r => inherited(r.id).some(x => x.id === 'sales_read')).map(r => r.label).sort();
+    expect(readers).toEqual(['ANALYST', 'DATA_ENGINEER', 'SALES_WRITE', 'SYSADMIN']);
+    for (const label of readers) expect(text('role')).toContain(`<code>${label}</code>`);
+  });
+  it('tabele izolacji i porównania są tabelami lekcji', () => {
+    expect(tableBy('izolacja-sharing', snow.access.tenantColumns[0])).toEqual(snow.access.tenants);
+    expect(tableBy('porownanie', snow.interview.compareColumns[1])).toEqual(snow.interview.compare);
+  });
+  it('treść główna rozdziału jest krótsza od lekcji', () => {
+    const main = wordCount({ ...chapter, keyPoints: [], glossary: [], misconceptions: [] });
+    const strings: string[] = [];
+    const walk = (v: unknown): void => {
+      if (typeof v === 'string') strings.push(v);
+      else if (Array.isArray(v)) v.forEach(walk);
+      else if (v && typeof v === 'object') Object.values(v).forEach(walk);
+    };
+    walk({ ...snow });
     const lessonWords = strings.join(' ').replace(/<[^>]+>/g, ' ').split(/\s+/).filter(Boolean).length;
     expect(main).toBeLessThan(lessonWords);
   });
